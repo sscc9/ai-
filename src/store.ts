@@ -1,0 +1,213 @@
+import { atom } from 'jotai';
+import { 
+    gamePhaseAtom, playersAtom, logsAtom, turnCountAtom, godStateAtom, 
+    summariesAtom, gameHistoryAtom, gameConfigAtom, actorProfilesAtom,
+    globalApiConfigAtom, appScreenAtom, isAutoPlayAtom, isTheaterModeAtom,
+    isPlayingAudioAtom, currentSpeakerIdAtom, speakingQueueAtom, 
+    timelineAtom, replaySourceLogsAtom, isReplayModeAtom, areRolesVisibleAtom,
+    gameArchivesAtom, isProcessingAtom, agentMessagesAtom,
+    llmPresetsAtom, ttsPresetsAtom
+} from './atoms';
+
+import { 
+    GamePhase, Player, GameLog, GameSnapshot, 
+    PRESETS, Role, PlayerStatus, ROLE_INFO, GameArchive,
+    DEFAULT_PHASE_PROMPTS
+} from './types';
+
+// Re-export everything from atoms
+export * from './atoms';
+export { DEFAULT_PHASE_PROMPTS };
+
+// --- Derived Atoms ---
+
+export const isDaytimeAtom = atom((get) => {
+    const phase = get(gamePhaseAtom);
+    return [
+        GamePhase.DAY_ANNOUNCE,
+        GamePhase.LAST_WORDS,
+        GamePhase.DAY_DISCUSSION,
+        GamePhase.VOTING,
+        GamePhase.HUNTER_ACTION,
+        GamePhase.GAME_OVER,
+        GamePhase.GAME_REVIEW
+    ].includes(phase);
+});
+
+// --- Actions ---
+
+export const saveSnapshotAtom = atom(null, (get, set) => {
+    const snapshot: GameSnapshot = {
+        phase: get(gamePhaseAtom),
+        players: JSON.parse(JSON.stringify(get(playersAtom))),
+        logs: JSON.parse(JSON.stringify(get(logsAtom))),
+        turn: get(turnCountAtom),
+        godState: JSON.parse(JSON.stringify(get(godStateAtom))),
+        summaries: [...get(summariesAtom)]
+    };
+    set(gameHistoryAtom, (prev) => [...prev, snapshot]);
+});
+
+export const initGameAtom = atom(null, (get, set, playerCount: 9 | 12) => {
+    const preset = PRESETS[playerCount];
+    const allActors = get(actorProfilesAtom);
+    const narratorId = get(globalApiConfigAtom).narratorActorId;
+    
+    // Filter out narrator from players pool
+    const playerCandidates = allActors.filter(a => a.id !== narratorId);
+
+    // Reset Config
+    set(gameConfigAtom, (prev) => ({
+        ...prev,
+        playerCount: preset.playerCount,
+        roles: preset.roles
+    }));
+
+    // Shuffle Roles
+    const shuffledRoles = [...preset.roles];
+    for (let i = shuffledRoles.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [shuffledRoles[i], shuffledRoles[j]] = [shuffledRoles[j], shuffledRoles[i]];
+    }
+
+    // Create Players with Actors
+    const rolePrompts = get(gameConfigAtom).rolePrompts;
+    
+    // Shuffle Actors
+    const shuffledActors = [...playerCandidates].sort(() => Math.random() - 0.5);
+
+    const newPlayers = Array.from({ length: playerCount }, (_, i) => {
+        const role = shuffledRoles[i];
+        const potions = role === Role.WITCH ? { cure: true, poison: true } : undefined;
+        // Fallback if not enough actors
+        const actor = shuffledActors[i % shuffledActors.length];
+
+        return {
+            id: i + 1,
+            seatNumber: i + 1,
+            role: role,
+            status: PlayerStatus.ALIVE,
+            avatarSeed: i + 100,
+            rolePrompt: rolePrompts[role] || "",
+            isSpeaking: false,
+            actorId: actor.id,
+            potions
+        };
+    });
+
+    set(playersAtom, newPlayers);
+    
+    // Reset Game State
+    set(gamePhaseAtom, GamePhase.NIGHT_START);
+    set(turnCountAtom, 1);
+    set(logsAtom, [{
+        id: 'sys-init',
+        turn: 1,
+        phase: GamePhase.NIGHT_START,
+        content: `游戏开始。${playerCount} 人局。\n配置：${preset.roles.map(r => ROLE_INFO[r].label).join(' ')}`,
+        timestamp: Date.now(),
+        isSystem: true
+    }]);
+    
+    // Reset Timeline & Audio
+    set(timelineAtom, []); 
+    set(replaySourceLogsAtom, []);
+    set(gameHistoryAtom, []);
+    set(isReplayModeAtom, false);
+    set(isTheaterModeAtom, false);
+    set(isAutoPlayAtom, false);
+    set(areRolesVisibleAtom, true); // Reset visibility to shown
+    set(godStateAtom, { wolfTarget: null, seerCheck: null, witchSave: false, witchPoison: null, guardProtect: null, deathsTonight: [] });
+    set(speakingQueueAtom, []);
+    set(currentSpeakerIdAtom, null);
+    set(summariesAtom, []);
+    set(appScreenAtom, 'GAME');
+    
+    // Save Initial Snapshot
+    set(saveSnapshotAtom);
+});
+
+export const exitGameAtom = atom(null, (get, set) => {
+    set(appScreenAtom, 'HOME');
+    set(isAutoPlayAtom, false);
+    set(isTheaterModeAtom, false);
+    set(isPlayingAudioAtom, false);
+});
+
+// Add current game to Archives
+export const saveGameArchiveAtom = atom(null, async (get, set, winner: 'GOOD' | 'WOLF') => {
+    const existingLogs = get(logsAtom);
+    if (existingLogs.length === 0) return;
+
+    // Check if already saved to avoid duplicates
+    let archivesRaw = get(gameArchivesAtom);
+    if (archivesRaw instanceof Promise) {
+        archivesRaw = await archivesRaw;
+    }
+    const archives = (Array.isArray(archivesRaw) ? archivesRaw : []) as GameArchive[];
+
+    const lastArchive = archives[archives.length - 1];
+    
+    // Simple debounce: if we saved in the last 5 seconds, ignore
+    if (lastArchive && (Date.now() - lastArchive.timestamp) < 5000) return;
+
+    const archive: GameArchive = {
+        id: `game-${Date.now()}`,
+        timestamp: Date.now(),
+        duration: 0,
+        playerCount: get(playersAtom).length,
+        winner: winner,
+        roles: get(gameConfigAtom).roles,
+        logs: JSON.parse(JSON.stringify(get(logsAtom))),
+        timeline: JSON.parse(JSON.stringify(get(timelineAtom))),
+        players: JSON.parse(JSON.stringify(get(playersAtom))),
+        turnCount: get(turnCountAtom)
+    };
+
+    set(gameArchivesAtom, [...archives, archive]);
+    console.log("Game Archived:", archive.id);
+});
+
+export const loadGameArchiveAtom = atom(null, (get, set, archive: GameArchive) => {
+    // 1. Reset Players to ALIVE state to allow for a true "Replay"
+    const initialPlayers: Player[] = archive.players.map(p => ({
+        ...p,
+        status: PlayerStatus.ALIVE,
+        isSpeaking: false
+    }));
+    
+    set(playersAtom, initialPlayers);
+
+    // 2. Setup Replay Logic
+    set(logsAtom, []); 
+    set(replaySourceLogsAtom, archive.logs); // The full script
+    set(timelineAtom, archive.timeline); // The audio keys
+    
+    // 3. Reset Game State for Replay
+    set(turnCountAtom, 1);
+    // Attempt to set start phase from first log, or default
+    const startPhase = archive.logs[0]?.phase || GamePhase.NIGHT_START;
+    set(gamePhaseAtom, startPhase);
+    
+    // 4. Reset Control State
+    set(isAutoPlayAtom, false);
+    set(isProcessingAtom, false);
+    set(isTheaterModeAtom, true); 
+    set(isReplayModeAtom, true); // Mark as Replay Mode to hide game controls
+    set(isPlayingAudioAtom, false);
+    set(currentSpeakerIdAtom, null);
+    set(areRolesVisibleAtom, true); // Reveal roles for replay
+
+    // Navigate
+    set(appScreenAtom, 'GAME');
+});
+
+export const restoreSnapshotAtom = atom(null, (get, set, snapshot: GameSnapshot) => {
+    set(gamePhaseAtom, snapshot.phase);
+    set(playersAtom, JSON.parse(JSON.stringify(snapshot.players)));
+    set(logsAtom, JSON.parse(JSON.stringify(snapshot.logs)));
+    set(turnCountAtom, snapshot.turn);
+    set(godStateAtom, JSON.parse(JSON.stringify(snapshot.godState)));
+    set(summariesAtom, snapshot.summaries || []);
+    set(isReplayModeAtom, true);
+});

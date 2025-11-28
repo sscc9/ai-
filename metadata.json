@@ -1,0 +1,5 @@
+{
+  "name": "AI Werewolf Simulator",
+  "description": "A visual AI Werewolf simulation platform designed for video content creation, featuring multi-agent interaction, rule customization, and full replay capabilities.",
+  "requestFramePermissions": []
+}
