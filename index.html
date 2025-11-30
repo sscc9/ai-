@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -47,42 +48,35 @@
             color: #1e293b;
             overflow: hidden;
         }
+
         /* Custom Scrollbar */
         ::-webkit-scrollbar {
             width: 8px;
         }
+
         ::-webkit-scrollbar-track {
             background: rgba(0, 0, 0, 0.05);
         }
+
         ::-webkit-scrollbar-thumb {
             background: rgba(0, 0, 0, 0.2);
             border-radius: 4px;
         }
+
         ::-webkit-scrollbar-thumb:hover {
             background: rgba(0, 0, 0, 0.3);
         }
+
         .custom-scrollbar {
             scrollbar-width: thin;
             scrollbar-color: rgba(0, 0, 0, 0.2) rgba(0, 0, 0, 0.05);
         }
     </style>
-<script type="importmap">
-{
-  "imports": {
-    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.30.0",
-    "react": "https://aistudiocdn.com/react@^19.2.0",
-    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
-    "react/": "https://aistudiocdn.com/react@^19.2.0/",
-    "jotai": "https://aistudiocdn.com/jotai@^2.15.1",
-    "jotai/utils": "https://aistudiocdn.com/jotai@^2.15.1/utils",
-    "clsx": "https://aistudiocdn.com/clsx@^2.1.1",
-    "idb-keyval": "https://aistudiocdn.com/idb-keyval@^6.2.1",
-    "jotai/": "https://aistudiocdn.com/jotai@^2.15.1/"
-  }
-}
-</script>
 </head>
+
 <body>
     <div id="app"></div>
+    <script type="module" src="/index.tsx"></script>
 </body>
+
 </html>
