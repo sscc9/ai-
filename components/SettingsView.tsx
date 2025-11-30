@@ -2,8 +2,8 @@
 import React, { useState, useRef } from 'react';
 import { useAtom, useSetAtom, useAtomValue } from 'jotai';
 import { clsx } from 'clsx';
-import { appScreenAtom, globalApiConfigAtom, llmPresetsAtom, ttsPresetsAtom, actorProfilesAtom, gameArchivesAtom, gameArchivesLoadableAtom } from '../store';
-import { LLMPreset, TTSPreset, ActorProfile } from '../types';
+import { appScreenAtom, globalApiConfigAtom, llmPresetsAtom, ttsPresetsAtom, actorProfilesAtom, gameArchivesAtom, gameArchivesLoadableAtom, llmProvidersAtom } from '../store';
+import { LLMPreset, TTSPreset, ActorProfile, LLMProviderConfig } from '../types';
 import { AudioService } from '../audio';
 
 type SettingsPage =
@@ -11,6 +11,8 @@ type SettingsPage =
     | { type: 'LLM_LIST' }
     | { type: 'TTS_LIST' }
     | { type: 'ACTOR_LIST' }
+    | { type: 'PROVIDER_LIST' }
+    | { type: 'PROVIDER_EDIT', id?: string }
     | { type: 'LLM_EDIT', id?: string }
     | { type: 'TTS_EDIT', id?: string }
     | { type: 'ACTOR_EDIT', id?: string };
@@ -68,6 +70,7 @@ const SettingsView = () => {
     // Atoms
     const [config, setConfig] = useAtom(globalApiConfigAtom);
     const [llmPresets, setLlmPresets] = useAtom(llmPresetsAtom);
+    const [llmProviders, setLlmProviders] = useAtom(llmProvidersAtom);
     const [ttsPresets, setTtsPresets] = useAtom(ttsPresetsAtom);
     const [actors, setActors] = useAtom(actorProfilesAtom);
 
@@ -141,11 +144,19 @@ const SettingsView = () => {
 
 
     // --- Helper CRUD Functions ---
+    const updateProvider = (id: string, updates: Partial<LLMProviderConfig>) => setLlmProviders(p => p.map(i => i.id === id ? { ...i, ...updates } : i));
+    const createProvider = () => {
+        const id = `provider-${Date.now()}`;
+        setLlmProviders(p => [...p, { id, name: 'New Provider', type: 'openai', baseUrl: '', apiKey: '' }]);
+        pushPage({ type: 'PROVIDER_EDIT', id });
+    };
+    const deleteProvider = (id: string) => { setLlmProviders(p => p.filter(i => i.id !== id)); popPage(); };
+
     const updateLlm = (id: string, updates: Partial<LLMPreset>) => setLlmPresets(p => p.map(i => i.id === id ? { ...i, ...updates } : i));
     const createLlm = () => {
         const id = `llm-${Date.now()}`;
         const name = '新 AI 模型';
-        setLlmPresets(p => [...p, { id, name, provider: 'gemini', modelId: 'gemini-2.5-flash', apiKey: '' }]);
+        setLlmPresets(p => [...p, { id, name, providerId: llmProviders[0]?.id || 'provider-gemini', modelId: 'gemini-2.5-flash' }]);
         const actorId = `a-${Date.now()}`;
         setActors(p => [...p, { id: actorId, name: name, llmPresetId: id, ttsPresetId: ttsPresets[0]?.id || 'tts-1', voiceId: 'zh_male_yuanbo_moon_bigtts', stylePrompt: '' }]);
         pushPage({ type: 'LLM_EDIT', id });
@@ -235,7 +246,8 @@ const SettingsView = () => {
 
                     <SectionHeader text="模型与语音库" />
                     <div className="space-y-0">
-                        <ListItem label="AI 模型库" sub="管理 Gemini, DeepSeek 等模型配置" icon="🧠" onClick={() => pushPage({ type: 'LLM_LIST' })} />
+                        <ListItem label="AI 供应商" sub="配置 Gemini, OpenRouter 等 API" icon="🔌" onClick={() => pushPage({ type: 'PROVIDER_LIST' })} />
+                        <ListItem label="AI 模型库" sub="管理具体模型 ID (如 gpt-4)" icon="🧠" onClick={() => pushPage({ type: 'LLM_LIST' })} />
                         <ListItem label="TTS 语音引擎" sub="管理 302.ai 通用语音配置" icon="🗣️" onClick={() => pushPage({ type: 'TTS_LIST' })} />
                     </div>
 
@@ -285,18 +297,21 @@ const SettingsView = () => {
                 <div className="flex-1 overflow-y-auto custom-scrollbar p-4 relative z-10 max-w-3xl mx-auto w-full">
                     <button onClick={createLlm} className="w-full py-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold mb-6 shadow-lg shadow-indigo-200 transition-all active:scale-95">+ 添加新模型</button>
                     <div className="space-y-3">
-                        {llmPresets.map(llm => (
-                            <div key={llm.id} onClick={() => pushPage({ type: 'LLM_EDIT', id: llm.id })} className="bg-white/80 backdrop-blur-md p-5 rounded-xl border border-slate-200 shadow-sm hover:shadow-md hover:border-indigo-300 transition-all cursor-pointer flex justify-between items-center group">
-                                <div>
-                                    <div className="font-bold text-slate-800 text-lg">{llm.name}</div>
-                                    <div className="text-xs font-mono mt-1.5 flex gap-2">
-                                        <span className={clsx("px-2 py-0.5 rounded font-bold", llm.provider === 'gemini' ? "bg-blue-100 text-blue-600" : "bg-emerald-100 text-emerald-600")}>{llm.provider}</span>
-                                        <span className="text-slate-500 bg-slate-100 px-2 py-0.5 rounded">{llm.modelId}</span>
+                        {llmPresets.map(llm => {
+                            const provider = llmProviders.find(p => p.id === llm.providerId);
+                            return (
+                                <div key={llm.id} onClick={() => pushPage({ type: 'LLM_EDIT', id: llm.id })} className="bg-white/80 backdrop-blur-md p-5 rounded-xl border border-slate-200 shadow-sm hover:shadow-md hover:border-indigo-300 transition-all cursor-pointer flex justify-between items-center group">
+                                    <div>
+                                        <div className="font-bold text-slate-800 text-lg">{llm.name}</div>
+                                        <div className="text-xs font-mono mt-1.5 flex gap-2">
+                                            <span className={clsx("px-2 py-0.5 rounded font-bold", provider?.type === 'gemini' ? "bg-blue-100 text-blue-600" : "bg-emerald-100 text-emerald-600")}>{provider?.name || 'Unknown'}</span>
+                                            <span className="text-slate-500 bg-slate-100 px-2 py-0.5 rounded">{llm.modelId}</span>
+                                        </div>
                                     </div>
+                                    <svg className="w-5 h-5 text-slate-300 group-hover:text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
                                 </div>
-                                <svg className="w-5 h-5 text-slate-300 group-hover:text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
-                            </div>
-                        ))}
+                            );
+                        })}
                     </div>
                 </div>
             </div>
@@ -315,30 +330,23 @@ const SettingsView = () => {
                         <InputGroup label="模型昵称" value={llm.name} onChange={(e: any) => updateLlm(llm.id, { name: e.target.value })} />
 
                         <div className="mb-5">
-                            <label className="block text-xs font-bold text-indigo-500 uppercase tracking-wide mb-2 ml-1">提供商</label>
-                            <div className="grid grid-cols-2 gap-3">
-                                <button onClick={() => updateLlm(llm.id, { provider: 'gemini' })} className={clsx("p-3 rounded-xl border text-sm font-bold transition-all", llm.provider === 'gemini' ? "bg-blue-50 border-blue-500 text-blue-700 ring-1 ring-blue-500" : "bg-white border-slate-200 text-slate-500 hover:bg-slate-50")}>Gemini</button>
-                                <button onClick={() => updateLlm(llm.id, { provider: 'openai' })} className={clsx("p-3 rounded-xl border text-sm font-bold transition-all", llm.provider === 'openai' ? "bg-emerald-50 border-emerald-500 text-emerald-700 ring-1 ring-emerald-500" : "bg-white border-slate-200 text-slate-500 hover:bg-slate-50")}>OpenAI / DeepSeek</button>
-                            </div>
-                        </div>
-
-                        {llm.provider === 'openai' && (
-                            <InputGroup label="Base URL" value={llm.baseUrl || ''} onChange={(e: any) => updateLlm(llm.id, { baseUrl: e.target.value })} placeholder="https://api.deepseek.com" sub="DeepSeek: https://api.deepseek.com | OpenAI: https://api.openai.com/v1" />
-                        )}
-
-                        <InputGroup label="Model ID" value={llm.modelId} onChange={(e: any) => updateLlm(llm.id, { modelId: e.target.value })} placeholder="gemini-2.5-flash" />
-
-                        <div className="mb-8">
-                            <label className="block text-xs font-bold text-indigo-500 uppercase tracking-wide mb-1.5 ml-1">API Key</label>
-                            {llm.provider === 'gemini' ? (
-                                <div className="w-full bg-blue-50 border border-blue-100 rounded-xl p-3.5 text-blue-600 text-sm font-medium flex items-center gap-2">
-                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                                    系统将自动使用环境变量 (process.env.API_KEY)。
+                            <label className="block text-xs font-bold text-indigo-500 uppercase tracking-wide mb-1.5 ml-1">选择供应商</label>
+                            <div className="relative">
+                                <select
+                                    value={llm.providerId}
+                                    onChange={e => updateLlm(llm.id, { providerId: e.target.value })}
+                                    className="w-full bg-white border border-slate-200 rounded-xl p-3.5 text-slate-800 appearance-none font-medium shadow-sm focus:ring-2 focus:ring-indigo-500/20"
+                                >
+                                    {llmProviders.map(p => <option key={p.id} value={p.id}>{p.name} ({p.type})</option>)}
+                                </select>
+                                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-slate-500">
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7 7" /></svg>
                                 </div>
-                            ) : (
-                                <InputGroup type="password" value={llm.apiKey || ''} onChange={(e: any) => updateLlm(llm.id, { apiKey: e.target.value })} placeholder="sk-..." sub="仅存储在本地浏览器中" />
-                            )}
+                            </div>
+                            <p className="text-[10px] text-slate-400 mt-1.5 ml-1">请先在“AI 供应商”中配置 API Key</p>
                         </div>
+
+                        <InputGroup label="Model ID" value={llm.modelId} onChange={(e: any) => updateLlm(llm.id, { modelId: e.target.value })} placeholder="gemini-2.5-flash" sub="请输入该供应商支持的模型 ID" />
 
                         <button onClick={() => deleteLlm(llm.id)} className="w-full py-3 text-red-600 border border-red-100 bg-red-50 hover:bg-red-100 rounded-xl font-bold transition-colors">删除模型</button>
                     </Card>

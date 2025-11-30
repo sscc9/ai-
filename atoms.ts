@@ -138,6 +138,7 @@ const DEFAULT_ACTORS: ActorProfile[] = [
     { id: 'a12', name: '路人戊', llmPresetId: 'llm-1', ttsPresetId: 'tts-1', voiceId: 'zh_male_qinqie_moon_bigtts', stylePrompt: '' },
 ];
 
+export const llmProvidersAtom = atomWithStorage<LLMProviderConfig[]>('werewolf-llmProviders', defaultLlmProviders);
 export const llmPresetsAtom = atomWithStorage<LLMPreset[]>('werewolf-llmPresets', defaultLlmPresets);
 export const ttsPresetsAtom = atomWithStorage<TTSPreset[]>('werewolf-ttsPresets-v2', defaultTtsPresets);
 export const actorProfilesAtom = atomWithStorage<ActorProfile[]>('werewolf-actorProfiles', DEFAULT_ACTORS);
