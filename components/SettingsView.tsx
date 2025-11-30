@@ -147,8 +147,10 @@ const SettingsView = () => {
     const updateProvider = (id: string, updates: Partial<LLMProviderConfig>) => setLlmProviders(p => p.map(i => i.id === id ? { ...i, ...updates } : i));
     const createProvider = () => {
         const id = `provider-${Date.now()}`;
+        // Use functional update to ensure we have the latest state, but we don't need 'p' for the new item
         setLlmProviders(p => [...p, { id, name: 'New Provider', type: 'openai', baseUrl: '', apiKey: '' }]);
-        pushPage({ type: 'PROVIDER_EDIT', id });
+        // Small timeout to ensure state propagation before navigation (though usually not needed with Jotai, it's safer for "Blue Screen" fix)
+        setTimeout(() => pushPage({ type: 'PROVIDER_DETAIL', id }), 0);
     };
     const deleteProvider = (id: string) => { setLlmProviders(p => p.filter(i => i.id !== id)); popPage(); };
 
@@ -246,8 +248,7 @@ const SettingsView = () => {
 
                     <SectionHeader text="模型与语音库" />
                     <div className="space-y-0">
-                        <ListItem label="AI 供应商" sub="配置 Gemini, OpenRouter 等 API" icon="🔌" onClick={() => pushPage({ type: 'PROVIDER_LIST' })} />
-                        <ListItem label="AI 模型库" sub="管理具体模型 ID (如 gpt-4)" icon="🧠" onClick={() => pushPage({ type: 'LLM_LIST' })} />
+                        <ListItem label="AI 模型库" sub="管理 AI 供应商与模型" icon="🧠" onClick={() => pushPage({ type: 'LLM_LIST' })} />
                         <ListItem label="TTS 语音引擎" sub="管理 302.ai 通用语音配置" icon="🗣️" onClick={() => pushPage({ type: 'TTS_LIST' })} />
                     </div>
 
@@ -295,20 +296,25 @@ const SettingsView = () => {
                 <Background />
                 <Header title="AI 模型库" backLabel="设置" />
                 <div className="flex-1 overflow-y-auto custom-scrollbar p-4 relative z-10 max-w-3xl mx-auto w-full">
-                    <button onClick={createLlm} className="w-full py-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold mb-6 shadow-lg shadow-indigo-200 transition-all active:scale-95">+ 添加新模型</button>
-                    <div className="space-y-3">
-                        {llmPresets.map(llm => {
-                            const provider = llmProviders.find(p => p.id === llm.providerId);
+                    <button onClick={createProvider} className="w-full py-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold mb-8 shadow-lg shadow-indigo-200 transition-all active:scale-95">+ 添加新供应商</button>
+
+                    <div className="grid grid-cols-1 gap-4">
+                        {llmProviders.map(provider => {
+                            const modelCount = llmPresets.filter(m => m.providerId === provider.id).length;
                             return (
-                                <div key={llm.id} onClick={() => pushPage({ type: 'LLM_EDIT', id: llm.id })} className="bg-white/80 backdrop-blur-md p-5 rounded-xl border border-slate-200 shadow-sm hover:shadow-md hover:border-indigo-300 transition-all cursor-pointer flex justify-between items-center group">
-                                    <div>
-                                        <div className="font-bold text-slate-800 text-lg">{llm.name}</div>
-                                        <div className="text-xs font-mono mt-1.5 flex gap-2">
-                                            <span className={clsx("px-2 py-0.5 rounded font-bold", provider?.type === 'gemini' ? "bg-blue-100 text-blue-600" : "bg-emerald-100 text-emerald-600")}>{provider?.name || 'Unknown'}</span>
-                                            <span className="text-slate-500 bg-slate-100 px-2 py-0.5 rounded">{llm.modelId}</span>
+                                <div key={provider.id} onClick={() => pushPage({ type: 'PROVIDER_DETAIL', id: provider.id })} className="bg-white/80 backdrop-blur-md p-6 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md hover:border-indigo-300 transition-all cursor-pointer group">
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-4">
+                                            <div className={clsx("w-12 h-12 rounded-2xl flex items-center justify-center text-2xl shadow-sm transition-transform group-hover:scale-110", provider.type === 'gemini' ? "bg-blue-100 text-blue-600" : "bg-emerald-100 text-emerald-600")}>
+                                                {provider.type === 'gemini' ? 'G' : 'O'}
+                                            </div>
+                                            <div>
+                                                <div className="font-bold text-slate-800 text-lg group-hover:text-indigo-700 transition-colors">{provider.name}</div>
+                                                <div className="text-xs font-medium text-slate-400 mt-0.5">{modelCount} 个模型 · {provider.type === 'gemini' ? 'Google Gemini' : 'OpenAI 兼容'}</div>
+                                            </div>
                                         </div>
+                                        <svg className="w-6 h-6 text-slate-300 group-hover:text-indigo-400 transform group-hover:translate-x-1 transition-all" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
                                     </div>
-                                    <svg className="w-5 h-5 text-slate-300 group-hover:text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
                                 </div>
                             );
                         })}
@@ -318,32 +324,98 @@ const SettingsView = () => {
         );
     }
 
-    if (currentPage.type === 'LLM_EDIT') {
-        const llm = llmPresets.find(i => i.id === currentPage.id);
-        if (!llm) return null;
+    if (currentPage.type === 'PROVIDER_DETAIL') {
+        const provider = llmProviders.find(i => i.id === currentPage.id);
+        if (!provider) return (
+            <div className="h-screen w-screen bg-[#f8fafc] flex flex-col items-center justify-center">
+                <div className="text-slate-400">Provider Not Found</div>
+                <button onClick={popPage} className="mt-4 text-indigo-600 font-bold">Back</button>
+            </div>
+        );
+
         return (
             <div className="h-screen w-screen bg-[#f8fafc] flex flex-col relative overflow-hidden font-sans">
                 <Background />
-                <Header title="编辑模型" backLabel="AI 模型库" />
+                <Header title={provider.name} backLabel="模型库" />
+                <div className="flex-1 overflow-y-auto custom-scrollbar p-4 relative z-10 max-w-2xl mx-auto w-full pb-10">
+
+                    <SectionHeader text="供应商设置" />
+                    <Card>
+                        <InputGroup label="供应商名称" value={provider.name} onChange={(e: any) => updateProvider(provider.id, { name: e.target.value })} placeholder="例如: OpenRouter" />
+
+                        <div className="mb-5">
+                            <label className="block text-xs font-bold text-indigo-500 uppercase tracking-wide mb-2 ml-1">接口类型</label>
+                            <div className="grid grid-cols-2 gap-3">
+                                <button onClick={() => updateProvider(provider.id, { type: 'gemini' })} className={clsx("p-3 rounded-xl border text-sm font-bold transition-all", provider.type === 'gemini' ? "bg-blue-50 border-blue-500 text-blue-700 ring-1 ring-blue-500" : "bg-white border-slate-200 text-slate-500 hover:bg-slate-50")}>Google Gemini</button>
+                                <button onClick={() => updateProvider(provider.id, { type: 'openai' })} className={clsx("p-3 rounded-xl border text-sm font-bold transition-all", provider.type === 'openai' ? "bg-emerald-50 border-emerald-500 text-emerald-700 ring-1 ring-emerald-500" : "bg-white border-slate-200 text-slate-500 hover:bg-slate-50")}>OpenAI 兼容</button>
+                            </div>
+                        </div>
+
+                        {provider.type === 'openai' && (
+                            <InputGroup label="Base URL" value={provider.baseUrl || ''} onChange={(e: any) => updateProvider(provider.id, { baseUrl: e.target.value })} placeholder="https://api.openai.com/v1" sub="请输入 API 基础地址" />
+                        )}
+
+                        <div className="mb-2">
+                            <label className="block text-xs font-bold text-indigo-500 uppercase tracking-wide mb-1.5 ml-1">API Key</label>
+                            <InputGroup type="password" value={provider.apiKey || ''} onChange={(e: any) => updateProvider(provider.id, { apiKey: e.target.value })} placeholder="sk-..." sub="仅存储在本地浏览器中" />
+                        </div>
+                    </Card>
+
+                    <SectionHeader text="模型列表" />
+                    <div className="space-y-3">
+                        {llmPresets.filter(m => m.providerId === provider.id).map(llm => (
+                            <div key={llm.id} onClick={() => pushPage({ type: 'LLM_EDIT', id: llm.id })} className="bg-white/80 backdrop-blur-md p-4 rounded-xl border border-slate-200 shadow-sm hover:shadow-md hover:border-indigo-300 transition-all cursor-pointer flex justify-between items-center group">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center font-bold text-xs">M</div>
+                                    <div>
+                                        <div className="font-bold text-slate-800 text-sm">{llm.name}</div>
+                                        <div className="text-[10px] font-mono text-slate-400">{llm.modelId}</div>
+                                    </div>
+                                </div>
+                                <svg className="w-4 h-4 text-slate-300 group-hover:text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+                            </div>
+                        ))}
+
+                        <button
+                            onClick={() => {
+                                const id = `llm-${Date.now()}`;
+                                setLlmPresets(p => [...p, { id, name: '新模型', providerId: provider.id, modelId: '' }]);
+                                pushPage({ type: 'LLM_EDIT', id });
+                            }}
+                            className="w-full py-3 border border-dashed border-slate-300 text-slate-400 hover:text-indigo-500 hover:border-indigo-300 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2 bg-white/50"
+                        >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
+                            添加模型 ID
+                        </button>
+                    </div>
+
+                    <div className="mt-10">
+                        <button onClick={() => deleteProvider(provider.id)} className="w-full py-3 text-red-600 border border-red-100 bg-red-50 hover:bg-red-100 rounded-xl font-bold transition-colors">删除此供应商</button>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
+    if (currentPage.type === 'LLM_EDIT') {
+        const llm = llmPresets.find(i => i.id === currentPage.id);
+        if (!llm) return null;
+        const provider = llmProviders.find(p => p.id === llm.providerId);
+
+        return (
+            <div className="h-screen w-screen bg-[#f8fafc] flex flex-col relative overflow-hidden font-sans">
+                <Background />
+                <Header title="编辑模型" backLabel={provider?.name || "AI 模型库"} />
                 <div className="p-4 pt-8 relative z-10 max-w-2xl mx-auto w-full">
                     <Card>
                         <InputGroup label="模型昵称" value={llm.name} onChange={(e: any) => updateLlm(llm.id, { name: e.target.value })} />
 
                         <div className="mb-5">
-                            <label className="block text-xs font-bold text-indigo-500 uppercase tracking-wide mb-1.5 ml-1">选择供应商</label>
-                            <div className="relative">
-                                <select
-                                    value={llm.providerId}
-                                    onChange={e => updateLlm(llm.id, { providerId: e.target.value })}
-                                    className="w-full bg-white border border-slate-200 rounded-xl p-3.5 text-slate-800 appearance-none font-medium shadow-sm focus:ring-2 focus:ring-indigo-500/20"
-                                >
-                                    {llmProviders.map(p => <option key={p.id} value={p.id}>{p.name} ({p.type})</option>)}
-                                </select>
-                                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-slate-500">
-                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7 7" /></svg>
-                                </div>
+                            <label className="block text-xs font-bold text-indigo-500 uppercase tracking-wide mb-2 ml-1">所属供应商</label>
+                            <div className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3.5 text-slate-600 font-medium flex items-center gap-2">
+                                <span className={clsx("w-2 h-2 rounded-full", provider?.type === 'gemini' ? "bg-blue-500" : "bg-emerald-500")}></span>
+                                {provider?.name || 'Unknown Provider'}
                             </div>
-                            <p className="text-[10px] text-slate-400 mt-1.5 ml-1">请先在“AI 供应商”中配置 API Key</p>
                         </div>
 
                         <InputGroup label="Model ID" value={llm.modelId} onChange={(e: any) => updateLlm(llm.id, { modelId: e.target.value })} placeholder="gemini-2.5-flash" sub="请输入该供应商支持的模型 ID" />
@@ -458,7 +530,21 @@ const SettingsView = () => {
                                     <label className="block text-xs font-bold text-indigo-500 uppercase tracking-wide mb-1.5 ml-1">基础模型 (Brain)</label>
                                     <div className="relative">
                                         <select value={actor.llmPresetId} onChange={e => updateActor(actor.id, { llmPresetId: e.target.value })} className="w-full bg-white border border-slate-200 rounded-xl p-3.5 text-slate-800 appearance-none font-medium shadow-sm focus:ring-2 focus:ring-indigo-500/20">
-                                            {llmPresets.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                                            {llmProviders.map(provider => (
+                                                <optgroup key={provider.id} label={provider.name}>
+                                                    {llmPresets.filter(p => p.providerId === provider.id).map(p => (
+                                                        <option key={p.id} value={p.id}>{p.name}</option>
+                                                    ))}
+                                                </optgroup>
+                                            ))}
+                                            {/* Handle orphaned presets if any */}
+                                            {llmPresets.filter(p => !llmProviders.find(prov => prov.id === p.providerId)).length > 0 && (
+                                                <optgroup label="其他">
+                                                    {llmPresets.filter(p => !llmProviders.find(prov => prov.id === p.providerId)).map(p => (
+                                                        <option key={p.id} value={p.id}>{p.name}</option>
+                                                    ))}
+                                                </optgroup>
+                                            )}
                                         </select>
                                         <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-slate-500">
                                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
