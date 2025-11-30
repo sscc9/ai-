@@ -6,7 +6,7 @@ import { appScreenAtom, globalApiConfigAtom, llmPresetsAtom, ttsPresetsAtom, act
 import { LLMPreset, TTSPreset, ActorProfile } from '../types';
 import { AudioService } from '../audio';
 
-type SettingsPage = 
+type SettingsPage =
     | { type: 'ROOT' }
     | { type: 'LLM_LIST' }
     | { type: 'TTS_LIST' }
@@ -48,11 +48,11 @@ const Card = ({ children }: { children?: React.ReactNode }) => (
 const InputGroup = ({ label, value, onChange, placeholder, type = "text", sub }: any) => (
     <div className="mb-5">
         <label className="block text-xs font-bold text-indigo-500 uppercase tracking-wide mb-1.5 ml-1">{label}</label>
-        <input 
+        <input
             type={type}
-            value={value} 
-            onChange={onChange} 
-            className="w-full bg-white border border-slate-200 rounded-xl p-3.5 text-slate-800 font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all shadow-sm placeholder:text-slate-300" 
+            value={value}
+            onChange={onChange}
+            className="w-full bg-white border border-slate-200 rounded-xl p-3.5 text-slate-800 font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all shadow-sm placeholder:text-slate-300"
             placeholder={placeholder}
         />
         {sub && <p className="text-[10px] text-slate-400 mt-1.5 ml-1">{sub}</p>}
@@ -70,11 +70,11 @@ const SettingsView = () => {
     const [llmPresets, setLlmPresets] = useAtom(llmPresetsAtom);
     const [ttsPresets, setTtsPresets] = useAtom(ttsPresetsAtom);
     const [actors, setActors] = useAtom(actorProfilesAtom);
-    
+
     // Use Loadable for Archives to prevent suspense flash
     const archivesLoadable = useAtomValue(gameArchivesLoadableAtom);
     const setArchives = useSetAtom(gameArchivesAtom);
-    
+
     const archives = archivesLoadable.state === 'hasData' ? archivesLoadable.data : [];
     const isArchivesLoading = archivesLoadable.state === 'loading';
 
@@ -142,30 +142,42 @@ const SettingsView = () => {
 
     // --- Helper CRUD Functions ---
     const updateLlm = (id: string, updates: Partial<LLMPreset>) => setLlmPresets(p => p.map(i => i.id === id ? { ...i, ...updates } : i));
-    const createLlm = () => { 
-        const id = `llm-${Date.now()}`; 
+    const createLlm = () => {
+        const id = `llm-${Date.now()}`;
         const name = '新 AI 模型';
-        setLlmPresets(p => [...p, { id, name, provider: 'gemini', modelId: 'gemini-2.5-flash', apiKey: '' }]); 
+        setLlmPresets(p => [...p, { id, name, provider: 'gemini', modelId: 'gemini-2.5-flash', apiKey: '' }]);
         const actorId = `a-${Date.now()}`;
         setActors(p => [...p, { id: actorId, name: name, llmPresetId: id, ttsPresetId: ttsPresets[0]?.id || 'tts-1', voiceId: 'zh_male_yuanbo_moon_bigtts', stylePrompt: '' }]);
-        pushPage({ type: 'LLM_EDIT', id }); 
+        pushPage({ type: 'LLM_EDIT', id });
     };
     const deleteLlm = (id: string) => { setLlmPresets(p => p.filter(i => i.id !== id)); popPage(); };
 
     const updateTts = (id: string, updates: Partial<TTSPreset>) => setTtsPresets(p => p.map(i => i.id === id ? { ...i, ...updates } : i));
-    const createTts = () => { 
-        const id = `tts-${Date.now()}`; 
-        setTtsPresets(p => [...p, { id, name: '302.ai (Doubao)', provider: 'doubao', modelId: '', baseUrl: 'https://api.302.ai/302/tts/generate', apiKey: '' }]); 
-        pushPage({ type: 'TTS_EDIT', id }); 
+    const createTts = () => {
+        const id = `tts-${Date.now()}`;
+        setTtsPresets(p => [...p, { id, name: '302.ai (Doubao)', provider: 'doubao', modelId: '', baseUrl: 'https://api.302.ai/302/tts/generate', apiKey: '' }]);
+        pushPage({ type: 'TTS_EDIT', id });
     };
     const deleteTts = (id: string) => { setTtsPresets(p => p.filter(i => i.id !== id)); popPage(); };
 
     const updateActor = (id: string, updates: Partial<ActorProfile>) => setActors(p => p.map(i => i.id === id ? { ...i, ...updates } : i));
-    const cloneActor = (sourceId: string) => { 
+    const cloneActor = (sourceId: string) => {
         const source = actors.find(a => a.id === sourceId);
         if (!source) return;
-        const id = `a-${Date.now()}`; 
-        setActors(p => [...p, { ...source, id, name: `${source.name} (分身)` }]); 
+        const id = `a-${Date.now()}`;
+        setActors(p => [...p, { ...source, id, name: `${source.name} (分身)` }]);
+    };
+    const createActor = () => {
+        const id = `a-${Date.now()}`;
+        setActors(p => [...p, {
+            id,
+            name: '新玩家',
+            llmPresetId: llmPresets[0]?.id || 'llm-1',
+            ttsPresetId: ttsPresets[0]?.id || 'tts-1',
+            voiceId: 'zh_male_yuanbo_moon_bigtts',
+            stylePrompt: ''
+        }]);
+        pushPage({ type: 'ACTOR_EDIT', id });
     };
     const deleteActor = (id: string) => { setActors(p => p.filter(i => i.id !== id)); popPage(); };
 
@@ -196,7 +208,7 @@ const SettingsView = () => {
                 <Header title="设置" />
                 <div className="flex-1 overflow-y-auto custom-scrollbar px-4 pb-10 relative z-10 max-w-3xl mx-auto w-full">
                     <input type="file" ref={fileInputRef} onChange={handleFileChange} accept=".json" className="hidden" />
-                    
+
                     <SectionHeader text="全局开关" />
                     <Card>
                         <div className="flex items-center justify-between">
@@ -204,8 +216,8 @@ const SettingsView = () => {
                                 <span className="text-base font-bold text-slate-800 block">启用语音 (TTS)</span>
                                 <span className="text-xs text-slate-500 block mt-0.5">需要配置 TTS 引擎的 API Key</span>
                             </div>
-                            <div 
-                                onClick={() => setConfig(p => ({...p, enabled: !p.enabled}))}
+                            <div
+                                onClick={() => setConfig(p => ({ ...p, enabled: !p.enabled }))}
                                 className={clsx(
                                     "relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none mr-2",
                                     config.enabled ? 'bg-indigo-500' : 'bg-slate-300'
@@ -231,21 +243,21 @@ const SettingsView = () => {
                     <div className="space-y-0">
                         <ListItem label="玩家列表" sub="管理所有模型分身、声音与性格" icon="👥" onClick={() => pushPage({ type: 'ACTOR_LIST' })} />
                         <div onClick={() => pushPage({ type: 'ACTOR_EDIT', id: config.narratorActorId })} className="group flex items-center justify-between p-5 bg-indigo-50/50 hover:bg-indigo-50 border border-indigo-100 hover:border-indigo-200 shadow-sm hover:shadow-md rounded-xl cursor-pointer transition-all duration-200 mt-2">
-                             <div className="flex items-center gap-4">
+                            <div className="flex items-center gap-4">
                                 <span className="text-2xl">☁️</span>
                                 <div>
                                     <div className="text-indigo-900 font-bold text-base">上帝 (旁白) 设置</div>
                                     <div className="text-indigo-400 text-xs mt-0.5 font-medium">设置上帝的声音与风格</div>
                                 </div>
-                             </div>
-                             <svg className="w-5 h-5 text-indigo-300 group-hover:text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+                            </div>
+                            <svg className="w-5 h-5 text-indigo-300 group-hover:text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
                         </div>
                     </div>
-                    
+
                     <SectionHeader text="数据管理" />
                     <div className="grid grid-cols-2 gap-3">
-                        <button 
-                            onClick={handleExport} 
+                        <button
+                            onClick={handleExport}
                             disabled={isArchivesLoading}
                             className={clsx(
                                 "flex flex-col items-center justify-center p-4 bg-white border border-slate-200 rounded-xl shadow-sm hover:shadow-md hover:bg-slate-50 transition-all",
@@ -271,8 +283,8 @@ const SettingsView = () => {
                 <Background />
                 <Header title="AI 模型库" backLabel="设置" />
                 <div className="flex-1 overflow-y-auto custom-scrollbar p-4 relative z-10 max-w-3xl mx-auto w-full">
-                     <button onClick={createLlm} className="w-full py-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold mb-6 shadow-lg shadow-indigo-200 transition-all active:scale-95">+ 添加新模型</button>
-                     <div className="space-y-3">
+                    <button onClick={createLlm} className="w-full py-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold mb-6 shadow-lg shadow-indigo-200 transition-all active:scale-95">+ 添加新模型</button>
+                    <div className="space-y-3">
                         {llmPresets.map(llm => (
                             <div key={llm.id} onClick={() => pushPage({ type: 'LLM_EDIT', id: llm.id })} className="bg-white/80 backdrop-blur-md p-5 rounded-xl border border-slate-200 shadow-sm hover:shadow-md hover:border-indigo-300 transition-all cursor-pointer flex justify-between items-center group">
                                 <div>
@@ -285,7 +297,7 @@ const SettingsView = () => {
                                 <svg className="w-5 h-5 text-slate-300 group-hover:text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
                             </div>
                         ))}
-                     </div>
+                    </div>
                 </div>
             </div>
         );
@@ -300,8 +312,8 @@ const SettingsView = () => {
                 <Header title="编辑模型" backLabel="AI 模型库" />
                 <div className="p-4 pt-8 relative z-10 max-w-2xl mx-auto w-full">
                     <Card>
-                        <InputGroup label="模型昵称" value={llm.name} onChange={(e:any) => updateLlm(llm.id, { name: e.target.value })} />
-                        
+                        <InputGroup label="模型昵称" value={llm.name} onChange={(e: any) => updateLlm(llm.id, { name: e.target.value })} />
+
                         <div className="mb-5">
                             <label className="block text-xs font-bold text-indigo-500 uppercase tracking-wide mb-2 ml-1">提供商</label>
                             <div className="grid grid-cols-2 gap-3">
@@ -311,10 +323,10 @@ const SettingsView = () => {
                         </div>
 
                         {llm.provider === 'openai' && (
-                            <InputGroup label="Base URL" value={llm.baseUrl || ''} onChange={(e:any) => updateLlm(llm.id, { baseUrl: e.target.value })} placeholder="https://api.deepseek.com" sub="DeepSeek: https://api.deepseek.com | OpenAI: https://api.openai.com/v1" />
+                            <InputGroup label="Base URL" value={llm.baseUrl || ''} onChange={(e: any) => updateLlm(llm.id, { baseUrl: e.target.value })} placeholder="https://api.deepseek.com" sub="DeepSeek: https://api.deepseek.com | OpenAI: https://api.openai.com/v1" />
                         )}
 
-                        <InputGroup label="Model ID" value={llm.modelId} onChange={(e:any) => updateLlm(llm.id, { modelId: e.target.value })} placeholder="gemini-2.5-flash" />
+                        <InputGroup label="Model ID" value={llm.modelId} onChange={(e: any) => updateLlm(llm.id, { modelId: e.target.value })} placeholder="gemini-2.5-flash" />
 
                         <div className="mb-8">
                             <label className="block text-xs font-bold text-indigo-500 uppercase tracking-wide mb-1.5 ml-1">API Key</label>
@@ -324,7 +336,7 @@ const SettingsView = () => {
                                     系统将自动使用环境变量 (process.env.API_KEY)。
                                 </div>
                             ) : (
-                                <InputGroup type="password" value={llm.apiKey || ''} onChange={(e:any) => updateLlm(llm.id, { apiKey: e.target.value })} placeholder="sk-..." sub="仅存储在本地浏览器中" />
+                                <InputGroup type="password" value={llm.apiKey || ''} onChange={(e: any) => updateLlm(llm.id, { apiKey: e.target.value })} placeholder="sk-..." sub="仅存储在本地浏览器中" />
                             )}
                         </div>
 
@@ -336,13 +348,13 @@ const SettingsView = () => {
     }
 
     if (currentPage.type === 'TTS_LIST') {
-         return (
+        return (
             <div className="h-screen w-screen bg-[#f8fafc] flex flex-col relative overflow-hidden font-sans">
                 <Background />
                 <Header title="TTS 语音引擎" backLabel="设置" />
                 <div className="flex-1 overflow-y-auto custom-scrollbar p-4 relative z-10 max-w-3xl mx-auto w-full">
-                     <button onClick={createTts} className="w-full py-4 bg-purple-600 hover:bg-purple-700 text-white rounded-xl font-bold mb-6 shadow-lg shadow-purple-200 transition-all active:scale-95">+ 添加新引擎</button>
-                     <div className="space-y-3">
+                    <button onClick={createTts} className="w-full py-4 bg-purple-600 hover:bg-purple-700 text-white rounded-xl font-bold mb-6 shadow-lg shadow-purple-200 transition-all active:scale-95">+ 添加新引擎</button>
+                    <div className="space-y-3">
                         {ttsPresets.map(tts => (
                             <div key={tts.id} onClick={() => pushPage({ type: 'TTS_EDIT', id: tts.id })} className="bg-white/80 backdrop-blur-md p-5 rounded-xl border border-slate-200 shadow-sm hover:shadow-md hover:border-purple-300 transition-all cursor-pointer flex justify-between items-center group">
                                 <div>
@@ -355,7 +367,7 @@ const SettingsView = () => {
                                 <svg className="w-5 h-5 text-slate-300 group-hover:text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
                             </div>
                         ))}
-                     </div>
+                    </div>
                 </div>
             </div>
         );
@@ -370,11 +382,11 @@ const SettingsView = () => {
                 <Header title="编辑引擎" backLabel="TTS 列表" />
                 <div className="p-4 pt-8 relative z-10 max-w-2xl mx-auto w-full">
                     <Card>
-                        <InputGroup label="引擎昵称" value={tts.name} onChange={(e:any) => updateTts(tts.id, { name: e.target.value })} />
-                        <InputGroup label="供应商 (Provider)" value={tts.provider} onChange={(e:any) => updateTts(tts.id, { provider: e.target.value })} placeholder="doubao, openai..." sub="请输入 302.ai 支持的底层 TTS 供应商代码" />
-                        <InputGroup label="Base URL" value={tts.baseUrl || ''} onChange={(e:any) => updateTts(tts.id, { baseUrl: e.target.value })} placeholder="https://api.302.ai/302/tts/generate" />
-                        <InputGroup type="password" label="302 API Key" value={tts.apiKey || ''} onChange={(e:any) => updateTts(tts.id, { apiKey: e.target.value })} placeholder="sk-..." />
-                        <InputGroup label="Model ID (Optional)" value={tts.modelId} onChange={(e:any) => updateTts(tts.id, { modelId: e.target.value })} placeholder="tts-1" sub="Doubao 等不需要此参数" />
+                        <InputGroup label="引擎昵称" value={tts.name} onChange={(e: any) => updateTts(tts.id, { name: e.target.value })} />
+                        <InputGroup label="供应商 (Provider)" value={tts.provider} onChange={(e: any) => updateTts(tts.id, { provider: e.target.value })} placeholder="doubao, openai..." sub="请输入 302.ai 支持的底层 TTS 供应商代码" />
+                        <InputGroup label="Base URL" value={tts.baseUrl || ''} onChange={(e: any) => updateTts(tts.id, { baseUrl: e.target.value })} placeholder="https://api.302.ai/302/tts/generate" />
+                        <InputGroup type="password" label="302 API Key" value={tts.apiKey || ''} onChange={(e: any) => updateTts(tts.id, { apiKey: e.target.value })} placeholder="sk-..." />
+                        <InputGroup label="Model ID (Optional)" value={tts.modelId} onChange={(e: any) => updateTts(tts.id, { modelId: e.target.value })} placeholder="tts-1" sub="Doubao 等不需要此参数" />
 
                         <div className="mt-8">
                             <button onClick={() => deleteTts(tts.id)} className="w-full py-3 text-red-600 border border-red-100 bg-red-50 hover:bg-red-100 rounded-xl font-bold transition-colors">删除引擎</button>
@@ -387,33 +399,34 @@ const SettingsView = () => {
 
     if (currentPage.type === 'ACTOR_LIST') {
         return (
-           <div className="h-screen w-screen bg-[#f8fafc] flex flex-col relative overflow-hidden font-sans">
-               <Background />
-               <Header title="玩家列表" backLabel="设置" />
-               <div className="flex-1 overflow-y-auto custom-scrollbar p-4 relative z-10 max-w-3xl mx-auto w-full">
+            <div className="h-screen w-screen bg-[#f8fafc] flex flex-col relative overflow-hidden font-sans">
+                <Background />
+                <Header title="玩家列表" backLabel="设置" />
+                <div className="flex-1 overflow-y-auto custom-scrollbar p-4 relative z-10 max-w-3xl mx-auto w-full">
+                    <button onClick={createActor} className="w-full py-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold mb-6 shadow-lg shadow-indigo-200 transition-all active:scale-95">+ 添加新玩家</button>
                     <div className="space-y-3">
-                       {actors.filter(a => a.id !== config.narratorActorId).map(actor => {
-                           const llm = llmPresets.find(l => l.id === actor.llmPresetId);
-                           const tts = ttsPresets.find(t => t.id === actor.ttsPresetId);
-                           return (
-                               <div key={actor.id} onClick={() => pushPage({ type: 'ACTOR_EDIT', id: actor.id })} className="bg-white/80 backdrop-blur-md p-5 rounded-xl border border-slate-200 shadow-sm hover:shadow-md hover:border-indigo-300 transition-all cursor-pointer flex justify-between items-center group">
-                                   <div>
-                                       <div className="font-bold text-slate-800 text-lg">{actor.name}</div>
-                                       <div className="text-xs mt-1.5 flex gap-2">
+                        {actors.filter(a => a.id !== config.narratorActorId).map(actor => {
+                            const llm = llmPresets.find(l => l.id === actor.llmPresetId);
+                            const tts = ttsPresets.find(t => t.id === actor.ttsPresetId);
+                            return (
+                                <div key={actor.id} onClick={() => pushPage({ type: 'ACTOR_EDIT', id: actor.id })} className="bg-white/80 backdrop-blur-md p-5 rounded-xl border border-slate-200 shadow-sm hover:shadow-md hover:border-indigo-300 transition-all cursor-pointer flex justify-between items-center group">
+                                    <div>
+                                        <div className="font-bold text-slate-800 text-lg">{actor.name}</div>
+                                        <div className="text-xs mt-1.5 flex gap-2">
                                             <span className="bg-blue-50 text-blue-600 px-2 py-0.5 rounded border border-blue-100 font-medium">{llm?.name || 'Unknown LLM'}</span>
                                             <span className="bg-purple-50 text-purple-600 px-2 py-0.5 rounded border border-purple-100 font-medium">{tts?.name || 'Unknown TTS'}</span>
-                                       </div>
-                                   </div>
-                                   <svg className="w-5 h-5 text-slate-300 group-hover:text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
-                               </div>
-                           );
-                       })}
+                                        </div>
+                                    </div>
+                                    <svg className="w-5 h-5 text-slate-300 group-hover:text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+                                </div>
+                            );
+                        })}
                     </div>
                     <p className="text-xs text-slate-400 mt-8 text-center">如需添加新类型玩家，请先在“AI 模型库”中添加模型。点击玩家可进行分身。</p>
-               </div>
-           </div>
-       );
-   }
+                </div>
+            </div>
+        );
+    }
 
     if (currentPage.type === 'ACTOR_EDIT') {
         const actor = actors.find(i => i.id === currentPage.id);
@@ -422,22 +435,26 @@ const SettingsView = () => {
         const llmModelId = llm?.modelId || "未知ID";
         const isNarrator = actor.id === config.narratorActorId;
         const tts = ttsPresets.find(t => t.id === actor.ttsPresetId);
-        
+
         return (
             <div className="h-screen w-screen bg-[#f8fafc] flex flex-col relative overflow-hidden font-sans">
                 <Background />
                 <Header title={isNarrator ? "设置上帝" : "编辑玩家"} backLabel={isNarrator ? "设置" : "玩家列表"} />
                 <div className="p-4 pt-8 relative z-10 max-w-2xl mx-auto w-full">
                     <Card>
-                        <InputGroup label={isNarrator ? "旁白称呼" : "玩家名称"} value={actor.name} onChange={(e:any) => updateActor(actor.id, { name: e.target.value })} />
+                        <InputGroup label={isNarrator ? "旁白称呼" : "玩家名称"} value={actor.name} onChange={(e: any) => updateActor(actor.id, { name: e.target.value })} />
 
                         <div className={clsx("grid gap-5 mb-6", isNarrator ? "grid-cols-1" : "grid-cols-2")}>
-                             {!isNarrator && (
-                                 <div>
+                            {!isNarrator && (
+                                <div>
                                     <label className="block text-xs font-bold text-indigo-500 uppercase tracking-wide mb-1.5 ml-1">基础模型 (Brain)</label>
-                                    <div className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 text-slate-500 text-sm flex items-center gap-2 font-mono overflow-hidden">
-                                        <span className="text-lg flex-none opacity-70">🧠</span>
-                                        <span className="truncate font-medium">{llm?.name || llmModelId}</span>
+                                    <div className="relative">
+                                        <select value={actor.llmPresetId} onChange={e => updateActor(actor.id, { llmPresetId: e.target.value })} className="w-full bg-white border border-slate-200 rounded-xl p-3.5 text-slate-800 appearance-none font-medium shadow-sm focus:ring-2 focus:ring-indigo-500/20">
+                                            {llmPresets.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                                        </select>
+                                        <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-slate-500">
+                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+                                        </div>
                                     </div>
                                 </div>
                             )}
@@ -457,23 +474,23 @@ const SettingsView = () => {
                         <div className="bg-indigo-50/50 p-5 rounded-xl border border-indigo-100 mb-8">
                             <label className="block text-xs font-bold text-indigo-800 uppercase tracking-wide mb-2">音色 ID (Voice ID)</label>
                             <div className="flex gap-3">
-                                 <input value={actor.voiceId} onChange={e => updateActor(actor.id, { voiceId: e.target.value })} className="flex-1 bg-white border border-slate-200 rounded-xl p-3 font-mono text-sm text-slate-700 shadow-sm" />
-                                 <button 
+                                <input value={actor.voiceId} onChange={e => updateActor(actor.id, { voiceId: e.target.value })} className="flex-1 bg-white border border-slate-200 rounded-xl p-3 font-mono text-sm text-slate-700 shadow-sm" />
+                                <button
                                     onClick={async () => {
                                         const tts = ttsPresets.find(t => t.id === actor.ttsPresetId);
-                                        if(tts) await AudioService.getInstance().playOrGenerate(`你好，我是${actor.name}`, actor.voiceId, `test-${Date.now()}`, tts);
+                                        if (tts) await AudioService.getInstance().playOrGenerate(`你好，我是${actor.name}`, actor.voiceId, `test-${Date.now()}`, tts);
                                     }}
                                     className="px-5 bg-purple-600 hover:bg-purple-700 text-white rounded-xl font-bold shadow-md shadow-purple-200 transition-all active:scale-95"
-                                 >试听</button>
+                                >试听</button>
                             </div>
                             <p className="text-[10px] text-slate-500 mt-2 ml-1 leading-relaxed">
                                 {tts?.provider === 'doubao' ? "Doubao: 请输入火山引擎音色 ID，如 'zh_male_M392_conversation_wvae_bigtts'。" : `Provider: ${tts?.provider}. 请输入 Voice ID (如 OpenAI: alloy).`}
                             </p>
                         </div>
 
-                         {!isNarrator && (
+                        {!isNarrator && (
                             <div className="flex gap-4 border-t border-slate-100 pt-6">
-                                <button onClick={() => { cloneActor(actor.id); pushPage({type: 'ACTOR_LIST'}) }} className="flex-1 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold shadow-lg shadow-indigo-100 transition-all active:scale-95 flex items-center justify-center gap-2">
+                                <button onClick={() => { cloneActor(actor.id); pushPage({ type: 'ACTOR_LIST' }) }} className="flex-1 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold shadow-lg shadow-indigo-100 transition-all active:scale-95 flex items-center justify-center gap-2">
                                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
                                     创建分身
                                 </button>

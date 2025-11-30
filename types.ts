@@ -28,21 +28,21 @@ export const ROLE_INFO: Record<Role, { label: string; icon: string; color: strin
 export enum GamePhase {
     SETUP = 'SETUP',
     NIGHT_START = 'NIGHT_START',
-    
+
     // Night Actions
     WEREWOLF_ACTION = 'WEREWOLF_ACTION',
     SEER_ACTION = 'SEER_ACTION',
     WITCH_ACTION = 'WITCH_ACTION',
     GUARD_ACTION = 'GUARD_ACTION', // Reserved
-    
+
     // Day Flow
     DAY_ANNOUNCE = 'DAY_ANNOUNCE',   // God announces deaths
     HUNTER_ACTION = 'HUNTER_ACTION', // If hunter died
     LAST_WORDS = 'LAST_WORDS',       // If applicable
-    
+
     DAY_DISCUSSION = 'DAY_DISCUSSION',
     VOTING = 'VOTING',
-    
+
     GAME_OVER = 'GAME_OVER',
     GAME_REVIEW = 'GAME_REVIEW' // Post-game chat
 }
@@ -90,16 +90,22 @@ export interface Player {
 
 // --- New Settings Structure ---
 
-export type LLMProvider = 'gemini' | 'openai'; // 'openai' covers DeepSeek, Moonshot, etc.
+// export type LLMProvider = 'gemini' | 'openai'; // Moved to LLMProviderConfig
 
 // 1. LLM Definition
+export interface LLMProviderConfig {
+    id: string;
+    name: string;
+    type: 'gemini' | 'openai'; // 'openai' covers DeepSeek, Moonshot, etc.
+    baseUrl?: string;
+    apiKey?: string;
+}
+
 export interface LLMPreset {
     id: string;
     name: string; // Nickname
-    provider: LLMProvider; 
+    providerId: string; // Link to LLMProviderConfig
     modelId: string; // API Model String (e.g., gemini-2.5-flash)
-    apiKey?: string; // Specific key for this model
-    baseUrl?: string; // Specific URL (for OpenAI compatible)
 }
 
 // 2. TTS Definition (302.ai Format)
@@ -163,7 +169,7 @@ export interface TimelineEvent {
     ttsModel?: string;
     ttsBaseUrl?: string;
     ttsApiKey?: string;
-    
+
     audioKey: string; // IndexedDB Key
     timestamp: number;
 }
@@ -203,7 +209,7 @@ export interface GameArchive {
     playerCount: number;
     winner: 'GOOD' | 'WOLF' | 'UNKNOWN';
     roles: Role[];
-    
+
     // State needed for replay
     logs: GameLog[];
     timeline: TimelineEvent[];

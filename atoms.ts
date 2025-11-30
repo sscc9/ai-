@@ -3,11 +3,11 @@ import { atom } from 'jotai';
 import { atomWithStorage, loadable } from 'jotai/utils';
 import { get, set, del } from 'idb-keyval';
 import type { PrimitiveAtom } from 'jotai';
-import { 
-    GameConfig, GamePhase, Player, GameLog, GameSnapshot, GodState, AgentMessage, 
-    PRESETS, DEFAULT_ROLE_PROMPTS, DEFAULT_PHASE_PROMPTS, TimelineEvent, 
+import {
+    GameConfig, GamePhase, Player, GameLog, GameSnapshot, GodState, AgentMessage,
+    PRESETS, DEFAULT_ROLE_PROMPTS, DEFAULT_PHASE_PROMPTS, TimelineEvent,
     TTSPreset, ActorProfile, GameArchive, LLMPreset, GlobalApiConfig, Role, PlayerStatus, ROLE_INFO,
-    Perspective
+    Perspective, LLMProviderConfig
 } from './types';
 
 // --- State Atoms ---
@@ -24,70 +24,87 @@ export const gameConfigAtom = atom<GameConfig>({
 
 // Define IndexedDB storage adapter
 const idbStorage = {
-  getItem: async (key: string, initialValue: any) => {
-    const val = await get(key);
-    // if there is no value, return initialValue
-    return val === undefined ? initialValue : val;
-  },
-  setItem: async (key: string, newValue: any) => {
-    await set(key, newValue);
-  },
-  removeItem: async (key: string) => {
-    await del(key);
-  },
+    getItem: async (key: string, initialValue: any) => {
+        const val = await get(key);
+        // if there is no value, return initialValue
+        return val === undefined ? initialValue : val;
+    },
+    setItem: async (key: string, newValue: any) => {
+        await set(key, newValue);
+    },
+    removeItem: async (key: string) => {
+        await del(key);
+    },
 };
 
 
 // --- Hierarchical Settings Atoms (with Persistence) ---
 
+// --- Default Data ---
+
+const defaultLlmProviders: LLMProviderConfig[] = [
+    {
+        id: 'provider-gemini',
+        name: 'Google Gemini',
+        type: 'gemini',
+        apiKey: '' // User to fill
+    },
+    {
+        id: 'provider-deepseek',
+        name: 'DeepSeek',
+        type: 'openai',
+        baseUrl: 'https://api.deepseek.com',
+        apiKey: '' // User to fill
+    },
+    {
+        id: 'provider-volc',
+        name: 'Volcengine (DeepSeek)',
+        type: 'openai',
+        baseUrl: 'https://ark.cn-beijing.volces.com/api/v3',
+        apiKey: ''
+    }
+];
+
 const defaultLlmPresets: LLMPreset[] = [
-    { 
-        id: 'llm-1', 
-        name: 'Gemini 3 Pro', 
-        provider: 'gemini', 
-        modelId: 'gemini-3-pro-preview',
-        apiKey: '' 
+    {
+        id: 'llm-1',
+        name: 'Gemini 2.5 Flash',
+        providerId: 'provider-gemini',
+        modelId: 'gemini-2.5-flash',
     },
-    { 
-        id: 'llm-2', 
-        name: 'Gemini 2.5 Pro', 
-        provider: 'gemini', 
+    {
+        id: 'llm-2',
+        name: 'Gemini 2.5 Pro',
+        providerId: 'provider-gemini',
         modelId: 'gemini-2.5-pro',
-        apiKey: ''
     },
-    { 
-        id: 'llm-3', 
-        name: 'DeepSeek Chat', 
-        provider: 'openai', 
+    {
+        id: 'llm-3',
+        name: 'DeepSeek Chat',
+        providerId: 'provider-deepseek',
         modelId: 'deepseek-chat',
-        baseUrl: 'https://api.deepseek.com',
-        apiKey: ''
     },
-    { 
-        id: 'llm-4', 
-        name: 'DeepSeek R1', 
-        provider: 'openai', 
+    {
+        id: 'llm-4',
+        name: 'DeepSeek R1',
+        providerId: 'provider-deepseek',
         modelId: 'deepseek-reasoner',
-        baseUrl: 'https://api.deepseek.com',
-        apiKey: ''
     },
-    { 
-        id: 'llm-deepseek-v3.1', 
-        name: 'DeepSeek v3.1 (Terminus)', 
-        provider: 'openai', 
-        modelId: 'deepseek-v3-1-terminus', // This ID triggers the logic in llm.ts
-        baseUrl: 'https://ark.cn-beijing.volces.com/api/v3', 
-        apiKey: '' 
+    {
+        id: 'llm-deepseek-v3.1',
+        name: 'DeepSeek v3.1 (Terminus)',
+        providerId: 'provider-volc',
+        modelId: 'deepseek-v3-1-terminus',
     },
 ];
 
 const defaultTtsPresets: TTSPreset[] = [
-    { 
-        id: 'tts-1', 
-        name: '302.ai (Doubao)', 
-        provider: 'doubao', 
-        modelId: '', 
-        baseUrl: 'https://api.302.ai/302/tts/generate', 
+    {
+        id: 'tts-1',
+        name: '302.ai (Doubao)',
+        provider: 'doubao',
+        modelId: '',
+        baseUrl: 'https://api.302.ai/302/tts/generate',
         apiKey: ''
     },
     {
@@ -103,16 +120,16 @@ const defaultTtsPresets: TTSPreset[] = [
 const DEFAULT_ACTORS: ActorProfile[] = [
     // Narrator: Gentle Female (Doubao Voice)
     { id: 'n1', name: '上帝 (旁白)', llmPresetId: 'llm-1', ttsPresetId: 'tts-1', voiceId: 'zh_female_shentong_moon_bigtts', stylePrompt: '' },
-    
+
     // Gemini Clones (Using various high-quality Doubao voices)
     { id: 'a1', name: 'Gemini 3 Pro', llmPresetId: 'llm-1', ttsPresetId: 'tts-1', voiceId: 'zh_male_yuanbo_moon_bigtts', stylePrompt: '' },
     { id: 'a2', name: 'Gemini 3 Pro (Clone 1)', llmPresetId: 'llm-1', ttsPresetId: 'tts-1', voiceId: 'zh_female_shuangkuai_hongliang_common_bigtts', stylePrompt: '' },
     { id: 'a3', name: 'Gemini 3 Pro (Clone 2)', llmPresetId: 'llm-1', ttsPresetId: 'tts-1', voiceId: 'zh_male_quanshen_moon_bigtts', stylePrompt: '' },
-    
+
     // DeepSeek Clones
     { id: 'a4', name: 'DeepSeek Chat', llmPresetId: 'llm-3', ttsPresetId: 'tts-1', voiceId: 'zh_female_zhixing_moon_bigtts', stylePrompt: '' },
     { id: 'a5', name: 'DeepSeek R1', llmPresetId: 'llm-4', ttsPresetId: 'tts-1', voiceId: 'zh_male_yibo_moon_bigtts', stylePrompt: '' },
-    
+
     // Fillers
     { id: 'a8', name: '路人甲', llmPresetId: 'llm-1', ttsPresetId: 'tts-1', voiceId: 'zh_male_chunhou_moon_bigtts', stylePrompt: '' },
     { id: 'a9', name: '路人乙', llmPresetId: 'llm-1', ttsPresetId: 'tts-1', voiceId: 'zh_female_qingshang_moon_bigtts', stylePrompt: '' },
@@ -150,17 +167,17 @@ export const areRolesVisibleAtom = atom<boolean>(true);
 export const replayPerspectiveAtom = atom<Perspective>('GOOD');
 
 export const godStateAtom = atom<GodState>({
-    wolfTarget: null, 
-    seerCheck: null, 
-    witchSave: false, 
-    witchPoison: null, 
-    guardProtect: null, 
+    wolfTarget: null,
+    seerCheck: null,
+    witchSave: false,
+    witchPoison: null,
+    guardProtect: null,
     deathsTonight: []
 });
 
 export const playersAtom = atom<Player[]>([]);
 export const logsAtom = atom<GameLog[]>([]);
-export const summariesAtom = atom<string[]>([]); 
+export const summariesAtom = atom<string[]>([]);
 export const gameHistoryAtom = atom<GameSnapshot[]>([]);
 
 export const speakingQueueAtom = atom<number[]>([]);

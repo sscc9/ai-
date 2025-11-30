@@ -1,32 +1,36 @@
 
 import { GoogleGenAI, HarmCategory, HarmBlockThreshold } from "@google/genai";
-import { LLMPreset, Player, ROLE_INFO } from '../types';
+import { LLMPreset, Player, ROLE_INFO, LLMProviderConfig } from '../types';
 
 // --- LLM Service ---
 
 export async function generateText(
     messages: { role: string; content: string }[],
-    preset: LLMPreset
+    preset: LLMPreset,
+    providerConfig: LLMProviderConfig
 ): Promise<string> {
     try {
-        if (preset.provider === 'gemini') {
+        if (providerConfig.type === 'gemini') {
             // --- GEMINI NATIVE SDK ---
-            // Use process.env.API_KEY explicitly as per environment requirements
-            const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-            
+            // Use configured API Key or fallback to process.env
+            const apiKey = providerConfig.apiKey || process.env.API_KEY;
+            if (!apiKey) return "Error: No API Key configured for Gemini.";
+
+            const ai = new GoogleGenAI({ apiKey });
+
             // Convert OpenAI-style messages to Gemini format
             // Simplified: Just concat user/model or use chat history if strict
             // For 2.5 Flash/Pro, we can use generateContent with history or just block text
-            
+
             // Extract System Prompt (usually index 0)
             let systemInstruction = "";
             let promptParts: string[] = [];
-            
+
             messages.forEach(m => {
                 if (m.role === 'system') systemInstruction += m.content + "\n\n";
                 else promptParts.push(`${m.role === 'user' ? 'User' : 'Model'}: ${m.content}`);
             });
-            
+
             const finalPrompt = promptParts.join('\n');
 
             const response = await ai.models.generateContent({
@@ -48,13 +52,12 @@ export async function generateText(
 
         } else {
             // --- OPENAI COMPATIBLE (DeepSeek, etc.) ---
-            // For third-party providers, we still require the user to provide an API Key
-            if (!preset.apiKey) return "Error: No API Key configured for this model.";
+            if (!providerConfig.apiKey) return "Error: No API Key configured for this provider.";
 
-            const baseUrl = preset.baseUrl || "https://api.openai.com/v1";
+            const baseUrl = providerConfig.baseUrl || "https://api.openai.com/v1";
             // Ensure clean URL structure
             const url = baseUrl.endsWith('/') ? `${baseUrl}chat/completions` : `${baseUrl}/chat/completions`;
-            
+
             // Prepare base body
             const body: any = {
                 model: preset.modelId,
@@ -63,15 +66,14 @@ export async function generateText(
             };
 
             // [Special Logic] Hard-lock "Deep Thinking" mode for DeepSeek v3.1 Terminus
-            // This binding is invisible to the user but enforced by the system.
             if (preset.modelId === 'deepseek-v3-1-terminus') {
                 body.thinking = { type: "enabled" };
             }
-            
+
             const response = await fetch(url, {
                 method: 'POST',
                 headers: {
-                    'Authorization': `Bearer ${preset.apiKey}`,
+                    'Authorization': `Bearer ${providerConfig.apiKey}`,
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify(body)
@@ -79,7 +81,7 @@ export async function generateText(
 
             if (!response.ok) {
                 const errorText = await response.text();
-                console.error(`LLM API Error (${preset.provider}):`, errorText);
+                console.error(`LLM API Error (${providerConfig.name}):`, errorText);
                 return `Error: ${response.status} - ${response.statusText}`;
             }
 
@@ -114,7 +116,7 @@ export const parseLLMResponse = (responseText: string): any => {
 };
 
 export const buildSystemPrompt = (
-    player: Player, 
+    player: Player,
     alivePlayers: Player[],
     roleConfigStr: string
 ) => {
