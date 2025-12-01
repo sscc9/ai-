@@ -150,9 +150,30 @@ const SettingsView = () => {
         // Use functional update to ensure we have the latest state, but we don't need 'p' for the new item
         setLlmProviders(p => [...p, { id, name: 'New Provider', type: 'openai', baseUrl: '', apiKey: '' }]);
         // Small timeout to ensure state propagation before navigation (though usually not needed with Jotai, it's safer for "Blue Screen" fix)
-        setTimeout(() => pushPage({ type: 'PROVIDER_DETAIL', id }), 0);
+        setTimeout(() => pushPage({ type: 'PROVIDER_EDIT', id }), 0);
     };
-    const deleteProvider = (id: string) => { setLlmProviders(p => p.filter(i => i.id !== id)); popPage(); };
+    const deleteProvider = (id: string) => {
+        // 1. Find all models belonging to this provider
+        const modelsToDelete = llmPresets.filter(m => m.providerId === id).map(m => m.id);
+
+        // 2. Reset any actors using these models
+        setActors(prevActors => prevActors.map(actor => {
+            if (modelsToDelete.includes(actor.llmPresetId)) {
+                // Reset to the first available model that ISN'T being deleted, or a safe fallback
+                const safeModel = llmPresets.find(m => !modelsToDelete.includes(m.id) && m.providerId !== id);
+                return { ...actor, llmPresetId: safeModel?.id || '' };
+            }
+            return actor;
+        }));
+
+        // 3. Delete the models
+        setLlmPresets(p => p.filter(m => m.providerId !== id));
+
+        // 4. Delete the provider
+        setLlmProviders(p => p.filter(i => i.id !== id));
+
+        popPage();
+    };
 
     const updateLlm = (id: string, updates: Partial<LLMPreset>) => setLlmPresets(p => p.map(i => i.id === id ? { ...i, ...updates } : i));
     const createLlm = () => {
@@ -163,7 +184,21 @@ const SettingsView = () => {
         setActors(p => [...p, { id: actorId, name: name, llmPresetId: id, ttsPresetId: ttsPresets[0]?.id || 'tts-1', voiceId: 'zh_male_yuanbo_moon_bigtts', stylePrompt: '' }]);
         pushPage({ type: 'LLM_EDIT', id });
     };
-    const deleteLlm = (id: string) => { setLlmPresets(p => p.filter(i => i.id !== id)); popPage(); };
+    const deleteLlm = (id: string) => {
+        // 1. Reset any actors using this model
+        setActors(prevActors => prevActors.map(actor => {
+            if (actor.llmPresetId === id) {
+                // Reset to the first available model that ISN'T the one being deleted
+                const safeModel = llmPresets.find(m => m.id !== id);
+                return { ...actor, llmPresetId: safeModel?.id || '' };
+            }
+            return actor;
+        }));
+
+        // 2. Delete the model
+        setLlmPresets(p => p.filter(i => i.id !== id));
+        popPage();
+    };
 
     const updateTts = (id: string, updates: Partial<TTSPreset>) => setTtsPresets(p => p.map(i => i.id === id ? { ...i, ...updates } : i));
     const createTts = () => {
@@ -302,7 +337,7 @@ const SettingsView = () => {
                         {llmProviders.map(provider => {
                             const modelCount = llmPresets.filter(m => m.providerId === provider.id).length;
                             return (
-                                <div key={provider.id} onClick={() => pushPage({ type: 'PROVIDER_DETAIL', id: provider.id })} className="bg-white/80 backdrop-blur-md p-6 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md hover:border-indigo-300 transition-all cursor-pointer group">
+                                <div key={provider.id} onClick={() => pushPage({ type: 'PROVIDER_EDIT', id: provider.id })} className="bg-white/80 backdrop-blur-md p-6 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md hover:border-indigo-300 transition-all cursor-pointer group">
                                     <div className="flex items-center justify-between">
                                         <div className="flex items-center gap-4">
                                             <div className={clsx("w-12 h-12 rounded-2xl flex items-center justify-center text-2xl shadow-sm transition-transform group-hover:scale-110", provider.type === 'gemini' ? "bg-blue-100 text-blue-600" : "bg-emerald-100 text-emerald-600")}>
@@ -324,7 +359,7 @@ const SettingsView = () => {
         );
     }
 
-    if (currentPage.type === 'PROVIDER_DETAIL') {
+    if (currentPage.type === 'PROVIDER_EDIT') {
         const provider = llmProviders.find(i => i.id === currentPage.id);
         if (!provider) return (
             <div className="h-screen w-screen bg-[#f8fafc] flex flex-col items-center justify-center">
