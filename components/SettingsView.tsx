@@ -251,7 +251,7 @@ const SettingsView = () => {
 
     if (currentPage.type === 'ROOT') {
         return (
-            <div className="h-screen w-screen bg-[#f8fafc] flex flex-col relative overflow-hidden font-sans">
+            <div className="h-full w-full bg-[#f8fafc] flex flex-col relative overflow-hidden font-sans">
                 <Background />
                 <Header title="设置" />
                 <div className="flex-1 overflow-y-auto custom-scrollbar px-4 pb-10 relative z-10 max-w-3xl mx-auto w-full">
@@ -327,7 +327,7 @@ const SettingsView = () => {
 
     if (currentPage.type === 'LLM_LIST') {
         return (
-            <div className="h-screen w-screen bg-[#f8fafc] flex flex-col relative overflow-hidden font-sans">
+            <div className="h-full w-full bg-[#f8fafc] flex flex-col relative overflow-hidden font-sans">
                 <Background />
                 <Header title="AI 模型库" backLabel="设置" />
                 <div className="flex-1 overflow-y-auto custom-scrollbar p-4 relative z-10 max-w-3xl mx-auto w-full">
@@ -369,7 +369,7 @@ const SettingsView = () => {
         );
 
         return (
-            <div className="h-screen w-screen bg-[#f8fafc] flex flex-col relative overflow-hidden font-sans">
+            <div className="h-full w-full bg-[#f8fafc] flex flex-col relative overflow-hidden font-sans">
                 <Background />
                 <Header title={provider.name} backLabel="模型库" />
                 <div className="flex-1 overflow-y-auto custom-scrollbar p-4 relative z-10 max-w-2xl mx-auto w-full pb-10">
@@ -438,7 +438,7 @@ const SettingsView = () => {
         const provider = llmProviders.find(p => p.id === llm.providerId);
 
         return (
-            <div className="h-screen w-screen bg-[#f8fafc] flex flex-col relative overflow-hidden font-sans">
+            <div className="h-full w-full bg-[#f8fafc] flex flex-col relative overflow-hidden font-sans">
                 <Background />
                 <Header title="编辑模型" backLabel={provider?.name || "AI 模型库"} />
                 <div className="p-4 pt-8 relative z-10 max-w-2xl mx-auto w-full">
@@ -464,7 +464,7 @@ const SettingsView = () => {
 
     if (currentPage.type === 'TTS_LIST') {
         return (
-            <div className="h-screen w-screen bg-[#f8fafc] flex flex-col relative overflow-hidden font-sans">
+            <div className="h-full w-full bg-[#f8fafc] flex flex-col relative overflow-hidden font-sans">
                 <Background />
                 <Header title="TTS 语音引擎" backLabel="设置" />
                 <div className="flex-1 overflow-y-auto custom-scrollbar p-4 relative z-10 max-w-3xl mx-auto w-full">
@@ -492,7 +492,7 @@ const SettingsView = () => {
         const tts = ttsPresets.find(i => i.id === currentPage.id);
         if (!tts) return null;
         return (
-            <div className="h-screen w-screen bg-[#f8fafc] flex flex-col relative overflow-hidden font-sans">
+            <div className="h-full w-full bg-[#f8fafc] flex flex-col relative overflow-hidden font-sans">
                 <Background />
                 <Header title="编辑引擎" backLabel="TTS 列表" />
                 <div className="p-4 pt-8 relative z-10 max-w-2xl mx-auto w-full">
@@ -515,7 +515,7 @@ const SettingsView = () => {
 
     if (currentPage.type === 'ACTOR_LIST') {
         return (
-            <div className="h-screen w-screen bg-[#f8fafc] flex flex-col relative overflow-hidden font-sans">
+            <div className="h-full w-full bg-[#f8fafc] flex flex-col relative overflow-hidden font-sans">
                 <Background />
                 <Header title="玩家列表" backLabel="设置" />
                 <div className="flex-1 overflow-y-auto custom-scrollbar p-4 relative z-10 max-w-3xl mx-auto w-full">
@@ -553,7 +553,7 @@ const SettingsView = () => {
         const tts = ttsPresets.find(t => t.id === actor.ttsPresetId);
 
         return (
-            <div className="h-screen w-screen bg-[#f8fafc] flex flex-col relative overflow-hidden font-sans">
+            <div className="h-full w-full bg-[#f8fafc] flex flex-col relative overflow-hidden font-sans">
                 <Background />
                 <Header title={isNarrator ? "设置上帝" : "编辑玩家"} backLabel={isNarrator ? "设置" : "玩家列表"} />
                 <div className="p-4 pt-8 relative z-10 max-w-2xl mx-auto w-full">

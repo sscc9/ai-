@@ -1,12 +1,13 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { clsx } from 'clsx';
 import { useAtomValue } from 'jotai';
-import { replayPerspectiveAtom, isTheaterModeAtom, playersAtom } from '../store';
+import { replayPerspectiveAtom, isTheaterModeAtom, playersAtom, isPortraitModeAtom } from '../store';
 import { Role, GamePhase } from '../types';
 
 interface LogItemProps {
     log: any;
     viewerId?: number;
+    isPortrait?: boolean;
 }
 
 const cleanContent = (text: string) => {
@@ -14,9 +15,9 @@ const cleanContent = (text: string) => {
     return text.replace(/[\(（][^\)）]*[\)）]/g, '').trim();
 };
 
-export const LogItem: React.FC<LogItemProps> = ({ log, viewerId }) => {
+const LogItemComponent: React.FC<LogItemProps> = ({ log, viewerId, isPortrait = false }) => {
     const [isThoughtOpen, setIsThoughtOpen] = useState(false);
-    
+
     const perspective = useAtomValue(replayPerspectiveAtom);
     const isReplay = useAtomValue(isTheaterModeAtom);
     const players = useAtomValue(playersAtom);
@@ -35,21 +36,21 @@ export const LogItem: React.FC<LogItemProps> = ({ log, viewerId }) => {
                     isVisible = log.visibleTo.some((id: number) => wolfIds.includes(id));
                 }
             }
-            
+
             // 2. System Messages (Phases)
             if (log.isSystem) {
                 const p = log.phase;
                 if (perspective === 'GOOD') {
-                    if (p === GamePhase.WEREWOLF_ACTION || 
-                        p === GamePhase.SEER_ACTION || 
-                        p === GamePhase.WITCH_ACTION || 
+                    if (p === GamePhase.WEREWOLF_ACTION ||
+                        p === GamePhase.SEER_ACTION ||
+                        p === GamePhase.WITCH_ACTION ||
                         p === GamePhase.GUARD_ACTION) {
                         isVisible = false;
                     }
                 }
                 if (perspective === 'WOLF') {
-                    if (p === GamePhase.SEER_ACTION || 
-                        p === GamePhase.WITCH_ACTION || 
+                    if (p === GamePhase.SEER_ACTION ||
+                        p === GamePhase.WITCH_ACTION ||
                         p === GamePhase.GUARD_ACTION) {
                         isVisible = false;
                     }
@@ -81,15 +82,30 @@ export const LogItem: React.FC<LogItemProps> = ({ log, viewerId }) => {
                 </div>
             ) : (
                 <div className="flex gap-3 group">
-                    <div className="flex-none w-8 h-8 rounded-full bg-gray-500 overflow-hidden">
-                         <img src={`https://picsum.photos/seed/${log.speakerId ? log.speakerId + 100 : 0}/50`} className="w-full h-full object-cover"/>
+                    <div className={clsx(
+                        "flex-none rounded-full bg-gray-500 overflow-hidden transform-gpu",
+                        isPortrait ? "w-6 h-6" : "w-8 h-8"
+                    )}>
+                        <img
+                            src={`https://picsum.photos/seed/${log.speakerId ? log.speakerId + 100 : 0}/50`}
+                            className="w-full h-full object-cover"
+                            loading="lazy"
+                            decoding="async"
+                            alt={`Player ${log.speakerId}`}
+                        />
                     </div>
                     <div className="flex-1">
-                        <div className="text-xs opacity-50 mb-1 flex items-center gap-2">
+                        <div className={clsx(
+                            "opacity-50 mb-1 flex items-center gap-2",
+                            isPortrait ? "text-[10px]" : "text-xs"
+                        )}>
                             <span>{log.speakerId}号玩家</span>
                             {log.visibleTo && <span className="text-purple-400 text-[10px]">[私聊]</span>}
                         </div>
-                        <div className="text-lg md:text-xl leading-relaxed font-medium whitespace-pre-wrap">
+                        <div className={clsx(
+                            "leading-relaxed font-medium whitespace-pre-wrap",
+                            isPortrait ? "text-base" : "text-lg md:text-xl"
+                        )}>
                             {finalContent}
                         </div>
                     </div>
@@ -99,9 +115,13 @@ export const LogItem: React.FC<LogItemProps> = ({ log, viewerId }) => {
     );
 };
 
+// Optimization: Memoize LogItem to prevent re-rendering of existing logs when new logs are added
+export const LogItem = React.memo(LogItemComponent);
+
 export const AutoScrollLog = ({ logs, className, viewerId }: { logs: any[], className?: string, viewerId?: number }) => {
     const scrollRef = useRef<HTMLDivElement>(null);
-    
+    const isPortrait = useAtomValue(isPortraitModeAtom); // Need access to portrait state
+
     useEffect(() => {
         const container = scrollRef.current;
         if (!container) return;
@@ -121,10 +141,10 @@ export const AutoScrollLog = ({ logs, className, viewerId }: { logs: any[], clas
         <div ref={scrollRef} className={clsx("overflow-y-auto custom-scrollbar scroll-smooth relative", className)}>
             {logs.length === 0 ? (
                 <div className="h-full flex items-center justify-center opacity-50 text-xl">
-                     等待记录...
+                    等待记录...
                 </div>
             ) : (
-                logs.map((log) => <LogItem key={log.id} log={log} viewerId={viewerId} />)
+                logs.map((log) => <LogItem key={log.id} log={log} viewerId={viewerId} isPortrait={isPortrait} />)
             )}
         </div>
     );

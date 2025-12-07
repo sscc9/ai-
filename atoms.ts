@@ -162,6 +162,7 @@ export const turnCountAtom = atom(1);
 export const isAutoPlayAtom = atom<boolean>(false);
 export const isProcessingAtom = atom<boolean>(false);
 export const isReplayModeAtom = atom<boolean>(false);
+export const isPortraitModeAtom = atom<boolean>(false);
 export const areRolesVisibleAtom = atom<boolean>(true);
 
 // New atom for replay perspective

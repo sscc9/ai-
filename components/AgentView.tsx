@@ -12,7 +12,7 @@ const AgentView = () => {
     const [input, setInput] = useState("");
     const [isThinking, setIsThinking] = useState(false);
     const scrollRef = useRef<HTMLDivElement>(null);
-    
+
     const config = useAtomValue(globalApiConfigAtom);
     const actors = useAtomValue(actorProfilesAtom);
     const llmPresets = useAtomValue(llmPresetsAtom);
@@ -36,20 +36,20 @@ const AgentView = () => {
             const llm = llmPresets.find(l => l.id === narrator.llmPresetId) || llmPresets[0];
             const apiMsgs = [...messages.map(m => ({ role: m.role, content: m.content })), { role: 'user', content: input }];
             const text = await generateText(apiMsgs, llm);
-            
+
             if (text) setMessages(prev => [...prev, { id: Date.now().toString(), role: 'model', content: text, timestamp: Date.now() }]);
-        } catch (e) { 
-            setMessages(prev => [...prev, { id: Date.now().toString(), role: 'model', content: "连接 AI 失败。", timestamp: Date.now() }]); 
-        } finally { 
-            setIsThinking(false); 
+        } catch (e) {
+            setMessages(prev => [...prev, { id: Date.now().toString(), role: 'model', content: "连接 AI 失败。", timestamp: Date.now() }]);
+        } finally {
+            setIsThinking(false);
         }
     };
 
     const isSendingDisabled = !input.trim() || isThinking;
-    
+
     return (
-        <div 
-            className="fixed inset-0 h-full w-full bg-slate-50 flex flex-col relative overflow-hidden font-sans z-50"
+        <div
+            className="absolute inset-0 h-full w-full bg-slate-50 flex flex-col relative overflow-hidden font-sans z-50"
             style={{ backgroundColor: '#f8fafc' }}
         >
             <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
@@ -70,43 +70,43 @@ const AgentView = () => {
                     <div key={m.id} className={clsx("flex flex-col max-w-[85%]", m.role === 'user' ? "ml-auto items-end" : "mr-auto items-start")}>
                         <div className={clsx(
                             "p-4 rounded-2xl text-sm leading-relaxed shadow-sm border",
-                            m.role === 'user' 
-                                ? "bg-indigo-600 text-white rounded-tr-none border-indigo-600" 
+                            m.role === 'user'
+                                ? "bg-indigo-600 text-white rounded-tr-none border-indigo-600"
                                 : "bg-white text-slate-700 rounded-tl-none border-slate-100"
                         )}>
                             {m.content}
                         </div>
-                        <span className="text-[10px] text-slate-400 mt-1 px-1">{new Date(m.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
+                        <span className="text-[10px] text-slate-400 mt-1 px-1">{new Date(m.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                     </div>
                 ))}
                 {isThinking && (
                     <div className="flex flex-col max-w-[85%] mr-auto items-start animate-pulse">
-                         <div className="bg-white p-4 rounded-2xl rounded-tl-none border border-slate-100 shadow-sm flex gap-1">
+                        <div className="bg-white p-4 rounded-2xl rounded-tl-none border border-slate-100 shadow-sm flex gap-1">
                             <div className="w-2 h-2 bg-slate-400 rounded-full animate-bounce"></div>
                             <div className="w-2 h-2 bg-slate-400 rounded-full animate-bounce delay-100"></div>
                             <div className="w-2 h-2 bg-slate-400 rounded-full animate-bounce delay-200"></div>
-                         </div>
+                        </div>
                     </div>
                 )}
             </div>
 
             <div className="p-4 bg-white/80 backdrop-blur-md border-t border-slate-200 relative z-20 pb-safe">
                 <div className="flex gap-3 max-w-4xl mx-auto">
-                    <input 
-                        value={input} 
-                        onChange={e => setInput(e.target.value)} 
+                    <input
+                        value={input}
+                        onChange={e => setInput(e.target.value)}
                         onKeyDown={e => e.key === 'Enter' && handleSend()}
-                        className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all duration-200 shadow-inner" 
-                        placeholder="询问规则或寻求建议..." 
-                        style={{ backgroundColor: '#f8fafc' }} 
+                        className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all duration-200 shadow-inner"
+                        placeholder="询问规则或寻求建议..."
+                        style={{ backgroundColor: '#f8fafc' }}
                     />
-                    <button 
-                        onClick={handleSend} 
+                    <button
+                        onClick={handleSend}
                         disabled={isSendingDisabled}
                         className={clsx(
                             "text-white px-6 rounded-xl font-bold transition-all active:scale-95 flex items-center",
-                            isSendingDisabled 
-                                ? "bg-slate-300 cursor-not-allowed" 
+                            isSendingDisabled
+                                ? "bg-slate-300 cursor-not-allowed"
                                 : "bg-indigo-600 hover:bg-indigo-700 shadow-lg shadow-indigo-200"
                         )}
                     >

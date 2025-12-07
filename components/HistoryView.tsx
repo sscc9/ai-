@@ -2,9 +2,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAtom, useSetAtom, useAtomValue } from 'jotai';
 import { clsx } from 'clsx';
-import { 
-    appScreenAtom, 
-    gameArchivesAtom, 
+import {
+    appScreenAtom,
+    gameArchivesAtom,
     gameArchivesLoadableAtom,
     loadGameArchiveAtom,
     globalApiConfigAtom,
@@ -16,7 +16,7 @@ import { AudioService, PrefetchResult } from '../audio';
 
 const HistoryView = () => {
     const setScreen = useSetAtom(appScreenAtom);
-    
+
     // Use loadable atom to avoid global suspense
     const archivesLoadable = useAtomValue(gameArchivesLoadableAtom);
     const setArchives = useSetAtom(gameArchivesAtom);
@@ -24,15 +24,15 @@ const HistoryView = () => {
     const isArchivesLoading = archivesLoadable.state === 'loading';
 
     const loadGame = useSetAtom(loadGameArchiveAtom);
-    
+
     const globalConfig = useAtomValue(globalApiConfigAtom);
     const actors = useAtomValue(actorProfilesAtom);
     const ttsPresets = useAtomValue(ttsPresetsAtom);
-    
+
     const [downloadProgress, setDownloadProgress] = useState<Record<string, number>>({});
     const [audioCoverage, setAudioCoverage] = useState<Record<string, number>>({});
     const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
-    
+
     // Track current generating item to show detailed status
     const [generatingStatus, setGeneratingStatus] = useState<string>("");
 
@@ -57,7 +57,7 @@ const HistoryView = () => {
 
     const handleDelete = (id: string, e: React.MouseEvent) => {
         e.stopPropagation();
-        
+
         if (deleteConfirmId === id) {
             // Second click: Perform delete
             const newArchives = archives.filter(a => a.id !== id);
@@ -79,7 +79,7 @@ const HistoryView = () => {
         if (!game || !game.timeline || game.timeline.length === 0) return;
 
         setDownloadProgress(prev => ({ ...prev, [gameId]: 0 }));
-        
+
         const total = game.timeline.length;
         const timeline = game.timeline;
         const CONCURRENCY = 10; // 改为 10 并发
@@ -88,10 +88,10 @@ const HistoryView = () => {
             // 定义处理单个事件的函数
             const processEvent = async (index: number) => {
                 const event = timeline[index];
-                
+
                 // 更新状态提示（显示当前最新触发的任务）
                 setGeneratingStatus(`${index + 1}/${total}: ${event.speakerName}`);
-                
+
                 let ttsPresetToUse: TTSPreset;
                 let voiceIdToUse: string;
 
@@ -104,31 +104,31 @@ const HistoryView = () => {
                 } else {
                     voiceIdToUse = event.voiceId;
                     ttsPresetToUse = {
-                        id: 'temp-replay', 
-                        name: 'Temp Replay', 
-                        provider: event.ttsProvider, 
-                        modelId: event.ttsModel, 
-                        baseUrl: event.ttsBaseUrl, 
+                        id: 'temp-replay',
+                        name: 'Temp Replay',
+                        provider: event.ttsProvider,
+                        modelId: event.ttsModel,
+                        baseUrl: event.ttsBaseUrl,
                         apiKey: event.ttsApiKey
                     };
                 }
 
                 let result: PrefetchResult = 'FAILED';
                 let attempts = 0;
-                
+
                 // 简单的重试逻辑
                 while (result === 'FAILED' && attempts < 3) {
                     try {
                         result = await AudioService.getInstance().prefetch(
-                            event.text, 
-                            voiceIdToUse, 
-                            event.audioKey, 
+                            event.text,
+                            voiceIdToUse,
+                            event.audioKey,
                             ttsPresetToUse
                         );
                     } catch (err) {
                         console.warn("Prefetch error", err);
                     }
-                    
+
                     if (result === 'FAILED') {
                         attempts++;
                         // 失败后随机延迟 1-3 秒再重试，避免瞬间并发过高导致持续 429
@@ -142,7 +142,7 @@ const HistoryView = () => {
             for (let i = 0; i < total; i += CONCURRENCY) {
                 // 生成当前批次的索引数组
                 const batchIndices = Array.from({ length: Math.min(CONCURRENCY, total - i) }, (_, k) => i + k);
-                
+
                 // 并发执行当前批次
                 await Promise.all(batchIndices.map(idx => processEvent(idx)));
 
@@ -160,13 +160,13 @@ const HistoryView = () => {
         } finally {
             setGeneratingStatus("");
             setTimeout(() => {
-                 setDownloadProgress(prev => { const next = { ...prev }; delete next[gameId]; return next; });
+                setDownloadProgress(prev => { const next = { ...prev }; delete next[gameId]; return next; });
             }, 1000);
         }
     };
 
     return (
-        <div className="h-screen w-screen bg-[#f8fafc] flex flex-col relative overflow-hidden font-sans">
+        <div className="h-full w-full bg-[#f8fafc] flex flex-col relative overflow-hidden font-sans">
             <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
                 <div className="absolute top-[-10%] left-[20%] w-[600px] h-[600px] bg-indigo-100/50 rounded-full blur-[100px] mix-blend-multiply"></div>
                 <div className="absolute bottom-[10%] right-[-10%] w-[600px] h-[600px] bg-blue-100/50 rounded-full blur-[100px] mix-blend-multiply"></div>
@@ -182,7 +182,7 @@ const HistoryView = () => {
 
             <div className="flex-1 overflow-y-auto custom-scrollbar p-4 relative z-10 max-w-4xl mx-auto w-full space-y-4">
                 {isArchivesLoading ? (
-                     <div className="flex flex-col items-center justify-center mt-20 gap-4">
+                    <div className="flex flex-col items-center justify-center mt-20 gap-4">
                         <div className="w-10 h-10 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin"></div>
                         <p className="text-slate-400 font-bold animate-pulse">加载历史记录中...</p>
                     </div>
@@ -200,8 +200,8 @@ const HistoryView = () => {
                         const hasPartial = coverage > 0 && coverage < 100;
 
                         return (
-                            <div 
-                                key={game.id} 
+                            <div
+                                key={game.id}
                                 onClick={() => !isDownloading && loadGame(game)}
                                 className={clsx(
                                     "bg-white/80 backdrop-blur-md rounded-2xl border border-slate-200 p-4 transition-all duration-300 group relative",
@@ -232,14 +232,14 @@ const HistoryView = () => {
                                             </div>
                                         </div>
                                     </div>
-                                    
+
                                     {/* Right Side: Actions & Status */}
                                     <div className="flex flex-col items-end gap-2">
                                         <div className="flex items-center gap-2 flex-wrap justify-end">
                                             {/* Winner Badge moved here */}
                                             <span className={clsx("px-2 py-1.5 rounded-lg text-[10px] font-bold border shadow-sm whitespace-nowrap",
-                                                game.winner === 'GOOD' ? "bg-blue-50 text-blue-600 border-blue-100" : 
-                                                game.winner === 'WOLF' ? "bg-red-50 text-red-600 border-red-100" : "bg-slate-50 text-slate-500 border-slate-100"
+                                                game.winner === 'GOOD' ? "bg-blue-50 text-blue-600 border-blue-100" :
+                                                    game.winner === 'WOLF' ? "bg-red-50 text-red-600 border-red-100" : "bg-slate-50 text-slate-500 border-slate-100"
                                             )}>
                                                 {game.winner === 'GOOD' ? '好人胜利' : game.winner === 'WOLF' ? '狼人胜利' : '未知结果'}
                                             </span>
@@ -255,9 +255,9 @@ const HistoryView = () => {
                                                     onClick={(e) => handleDownloadAudio(game.id, e)}
                                                     className={clsx(
                                                         "px-2 py-1.5 rounded-lg transition-all flex items-center gap-1 border text-[10px] font-bold shadow-sm whitespace-nowrap",
-                                                        isComplete ? "text-emerald-600 border-emerald-200 bg-emerald-50 hover:bg-emerald-100" : 
-                                                        hasPartial ? "text-orange-600 border-orange-200 bg-orange-50 hover:bg-orange-100" : 
-                                                        "text-slate-600 border-slate-200 bg-white hover:bg-slate-50"
+                                                        isComplete ? "text-emerald-600 border-emerald-200 bg-emerald-50 hover:bg-emerald-100" :
+                                                            hasPartial ? "text-orange-600 border-orange-200 bg-orange-50 hover:bg-orange-100" :
+                                                                "text-slate-600 border-slate-200 bg-white hover:bg-slate-50"
                                                     )}
                                                 >
                                                     {isComplete ? (
@@ -280,12 +280,12 @@ const HistoryView = () => {
                                             )}
 
                                             {!isDownloading && (
-                                                <button 
-                                                    onClick={(e) => handleDelete(game.id, e)} 
+                                                <button
+                                                    onClick={(e) => handleDelete(game.id, e)}
                                                     className={clsx(
                                                         "w-12 py-1.5 flex items-center justify-center rounded-lg transition-all",
-                                                        deleteConfirmId === game.id 
-                                                            ? "bg-red-50 text-red-600 text-[10px] font-bold" 
+                                                        deleteConfirmId === game.id
+                                                            ? "bg-red-50 text-red-600 text-[10px] font-bold"
                                                             : "text-slate-300 hover:text-red-500 hover:bg-slate-50"
                                                     )}
                                                 >
@@ -309,7 +309,7 @@ const HistoryView = () => {
                                         </div>
                                     ))}
                                 </div>
-                                
+
                                 {!isDownloading && (
                                     <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none">
                                         <div className="bg-indigo-600/90 backdrop-blur-sm text-white px-6 py-2 rounded-full font-bold shadow-xl flex items-center gap-2 transform scale-90 group-hover:scale-100 transition-transform">
