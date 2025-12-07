@@ -7,13 +7,13 @@ export type PrefetchResult = 'CACHED' | 'DOWNLOADED' | 'FAILED';
 export class AudioService {
     private static instance: AudioService;
     private currentAudio: HTMLAudioElement | null = null;
-    
+
     // Concurrency Control
-    private playbackId = 0; 
+    private playbackId = 0;
     private currentResolve: (() => void) | null = null;
-    
+
     // Prevent multiple initializations
-    private constructor() {}
+    private constructor() { }
 
     public static getInstance(): AudioService {
         if (!AudioService.instance) {
@@ -27,7 +27,7 @@ export class AudioService {
      */
     private async fetchFrom302(text: string, voiceId: string, ttsPreset: TTSPreset): Promise<Blob | null> {
         try {
-             const requestBody = {
+            const requestBody = {
                 text: text,
                 provider: ttsPreset.provider, // e.g. 'doubao', 'openai', 'azure'
                 voice: voiceId,
@@ -58,7 +58,7 @@ export class AudioService {
             }
 
             const json = await response.json();
-            
+
             // 2. Get Audio URL from response
             if (!json.audio_url) {
                 console.error("TTS Response missing audio_url", json);
@@ -77,6 +77,116 @@ export class AudioService {
         } catch (e) {
             console.error("TTS Service Error", e);
             return null;
+        }
+    }
+
+    private uuidv4() {
+        return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
+            var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
+            return v.toString(16);
+        });
+    }
+
+    /**
+     * Helper to verify if using Volcengine direct API
+     */
+    private isVolcengine(provider: string): boolean {
+        // Check if provider identifier implies direct Volcengine usage
+        // This is a convention we are establishing: 'volcengine' or 'doubao-direct'
+        return provider === 'volcengine';
+    }
+
+    /**
+     * Fetch from Volcengine (Doubao) Direct API
+     */
+    private async fetchFromVolc(text: string, voiceId: string, ttsPreset: TTSPreset): Promise<Blob | null> {
+        try {
+            // Use local proxy by default to avoid CORS in browser environment
+            const baseUrl = ttsPreset.baseUrl || '/api/volcengine';
+            const appId = ttsPreset.appId;
+            const token = ttsPreset.apiKey;
+
+            if (!appId || !token) {
+                console.error("Volcengine TTS requires both AppID and AccessToken (apiKey)");
+                return null;
+            }
+
+            const reqId = this.uuidv4();
+
+            const requestBody = {
+                app: {
+                    appid: appId,
+                    token: token, // Some endpoints require it in body too
+                    cluster: "volcano_tts"
+                },
+                user: {
+                    uid: "user_01" // Generic UID
+                },
+                audio: {
+                    voice_type: voiceId,
+                    encoding: "mp3",
+                    speed_ratio: 1.0,
+                    volume_ratio: 1.0,
+                    pitch_ratio: 1.0
+                },
+                request: {
+                    reqid: reqId,
+                    text: text,
+                    text_type: "plain",
+                    operation: "query"
+                }
+            };
+
+            const response = await fetch(baseUrl, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer; ${token}`, // Note the semicolon per Volc docs
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(requestBody)
+            });
+
+            if (!response.ok) {
+                const err = await response.text();
+                console.error(`Volcengine TTS Error (${response.status}): ${err}`);
+                return null;
+            }
+
+            const json = await response.json();
+
+            // Handle Volc response structure
+            // Success: { code: 3000, message: "Success", data: "base64..." }
+            if (json.code !== 3000) {
+                console.error("Volcengine API Error", json);
+                return null;
+            }
+
+            if (!json.data) {
+                return null;
+            }
+
+            // Convert Base64 to Blob
+            const binaryString = atob(json.data);
+            const bytes = new Uint8Array(binaryString.length);
+            for (let i = 0; i < binaryString.length; i++) {
+                bytes[i] = binaryString.charCodeAt(i);
+            }
+            return new Blob([bytes], { type: 'audio/mp3' });
+
+        } catch (e) {
+            console.error("Volcengine Service Error", e);
+            return null;
+        }
+    }
+
+    /**
+     * Routes the request to appropriate provider
+     */
+    private async fetchTTS(text: string, voiceId: string, ttsPreset: TTSPreset): Promise<Blob | null> {
+        if (this.isVolcengine(ttsPreset.provider)) {
+            return this.fetchFromVolc(text, voiceId, ttsPreset);
+        } else {
+            return this.fetchFrom302(text, voiceId, ttsPreset);
         }
     }
 
@@ -119,10 +229,10 @@ export class AudioService {
             // 2. Fetch logic
             if (!ttsPreset.apiKey) return 'FAILED';
 
-            const audioBlob = await this.fetchFrom302(text, voiceId, ttsPreset);
+            const audioBlob = await this.fetchTTS(text, voiceId, ttsPreset);
 
             if (!audioBlob) return 'FAILED';
-            
+
             // 3. Store
             await set(cacheKey, audioBlob);
             return 'DOWNLOADED';
@@ -137,9 +247,9 @@ export class AudioService {
      * Returns a promise that resolves when playback finishes.
      */
     public async playOrGenerate(
-        text: string, 
-        voiceId: string, 
-        cacheKey: string, 
+        text: string,
+        voiceId: string,
+        cacheKey: string,
         ttsPreset: TTSPreset,
         onPlayStart?: () => void,
         onPlayEnd?: () => void
@@ -150,7 +260,7 @@ export class AudioService {
 
         try {
             // 1. Reset state and capture new playback ID
-            this.stop(); 
+            this.stop();
             const myId = this.playbackId;
 
             // 2. Check IndexedDB Cache
@@ -166,13 +276,13 @@ export class AudioService {
                     return Promise.resolve();
                 }
 
-                audioBlob = await this.fetchFrom302(text, voiceId, ttsPreset);
+                audioBlob = await this.fetchTTS(text, voiceId, ttsPreset);
 
                 // Check cancellation after network request (The most likely race condition point)
                 if (this.playbackId !== myId) return Promise.resolve();
 
                 if (audioBlob) {
-                     // Store in Cache
+                    // Store in Cache
                     await set(cacheKey, audioBlob);
                 } else {
                     console.warn("TTS API failed to generate audio.");

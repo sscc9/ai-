@@ -115,6 +115,7 @@ export interface TTSPreset {
     provider: string; // 302 sub-provider: 'doubao', 'openai', 'azure', etc.
     modelId?: string; // API Model String (optional for some providers)
     apiKey?: string;
+    appId?: string; // Required for Volcengine specific param
     baseUrl?: string; // Defaults to https://api.302.ai/302/tts/generate
 }
 

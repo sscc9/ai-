@@ -498,9 +498,10 @@ const SettingsView = () => {
                 <div className="p-4 pt-8 relative z-10 max-w-2xl mx-auto w-full">
                     <Card>
                         <InputGroup label="引擎昵称" value={tts.name} onChange={(e: any) => updateTts(tts.id, { name: e.target.value })} />
-                        <InputGroup label="供应商 (Provider)" value={tts.provider} onChange={(e: any) => updateTts(tts.id, { provider: e.target.value })} placeholder="doubao, openai..." sub="请输入 302.ai 支持的底层 TTS 供应商代码" />
-                        <InputGroup label="Base URL" value={tts.baseUrl || ''} onChange={(e: any) => updateTts(tts.id, { baseUrl: e.target.value })} placeholder="https://api.302.ai/302/tts/generate" />
-                        <InputGroup type="password" label="302 API Key" value={tts.apiKey || ''} onChange={(e: any) => updateTts(tts.id, { apiKey: e.target.value })} placeholder="sk-..." />
+                        <InputGroup label="供应商 (Provider)" value={tts.provider} onChange={(e: any) => updateTts(tts.id, { provider: e.target.value })} placeholder="doubao, objcengine, openai..." sub="如使用火山引擎直连，请填 'volcengine'" />
+                        <InputGroup label="Base URL" value={tts.baseUrl || ''} onChange={(e: any) => updateTts(tts.id, { baseUrl: e.target.value })} placeholder={tts.provider === 'volcengine' ? "留空即可 (推荐)" : "https://api.302.ai/302/tts/generate"} />
+                        <InputGroup label="App ID (Volcengine Only)" value={tts.appId || ''} onChange={(e: any) => updateTts(tts.id, { appId: e.target.value })} placeholder="12345678" sub="火山引擎需要 App ID，其他服务留空" />
+                        <InputGroup type="password" label="API Key / Token" value={tts.apiKey || ''} onChange={(e: any) => updateTts(tts.id, { apiKey: e.target.value })} placeholder="sk-..." sub="302填API Key，火山引擎填Access Token" />
                         <InputGroup label="Model ID (Optional)" value={tts.modelId} onChange={(e: any) => updateTts(tts.id, { modelId: e.target.value })} placeholder="tts-1" sub="Doubao 等不需要此参数" />
 
                         <div className="mt-8">
@@ -613,7 +614,7 @@ const SettingsView = () => {
                                 >试听</button>
                             </div>
                             <p className="text-[10px] text-slate-500 mt-2 ml-1 leading-relaxed">
-                                {tts?.provider === 'doubao' ? "Doubao: 请输入火山引擎音色 ID，如 'zh_male_M392_conversation_wvae_bigtts'。" : `Provider: ${tts?.provider}. 请输入 Voice ID (如 OpenAI: alloy).`}
+                                {(tts?.provider === 'doubao' || tts?.provider === 'volcengine') ? "Doubao/Volc: 请输入火山引擎音色 ID，如 'zh_male_M392_conversation_wvae_bigtts'。" : `Provider: ${tts?.provider}. 请输入 Voice ID (如 OpenAI: alloy).`}
                             </p>
                         </div>
 
