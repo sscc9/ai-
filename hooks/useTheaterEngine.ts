@@ -1,13 +1,13 @@
 
 import { useEffect, useRef } from 'react';
 import { useAtom, useSetAtom, useAtomValue } from 'jotai';
-import { 
-    timelineAtom, 
-    isTheaterModeAtom, 
-    currentSpeakerIdAtom, 
-    logsAtom, 
-    replaySourceLogsAtom, 
-    gamePhaseAtom, 
+import {
+    timelineAtom,
+    isTheaterModeAtom,
+    currentSpeakerIdAtom,
+    logsAtom,
+    replaySourceLogsAtom,
+    gamePhaseAtom,
     playersAtom,
     globalApiConfigAtom,
     actorProfilesAtom,
@@ -25,22 +25,22 @@ const detectDeath = (content: string): number[] => {
         /猎人开枪.*(\d+)号\s*倒牌/,
         /毒死了\s*(\d+)号/
     ];
-    
+
     singlePatterns.forEach(p => {
         const match = content.match(p);
         if (match && match[1]) deadIds.push(parseInt(match[1]));
     });
 
     if (content.includes("死亡") || content.includes("倒牌")) {
-         const numberMatches = content.match(/(\d+)号/g);
-         if (numberMatches) {
-             numberMatches.forEach(m => {
-                 const id = parseInt(m.replace('号', ''));
-                 deadIds.push(id);
-             });
-         }
+        const numberMatches = content.match(/(\d+)号/g);
+        if (numberMatches) {
+            numberMatches.forEach(m => {
+                const id = parseInt(m.replace('号', ''));
+                deadIds.push(id);
+            });
+        }
     }
-    
+
     return [...new Set(deadIds)];
 };
 
@@ -63,12 +63,12 @@ const shouldExperienceLog = (log: GameLog, perspective: Perspective, players: Pl
     // Hide specific phases from specific perspectives to simulate "Closing Eyes"
     if (log.isSystem) {
         const p = log.phase;
-        
+
         // GOOD Perspective: Hide all Night actions except Start/End
         if (perspective === 'GOOD') {
-            if (p === GamePhase.WEREWOLF_ACTION || 
-                p === GamePhase.SEER_ACTION || 
-                p === GamePhase.WITCH_ACTION || 
+            if (p === GamePhase.WEREWOLF_ACTION ||
+                p === GamePhase.SEER_ACTION ||
+                p === GamePhase.WITCH_ACTION ||
                 p === GamePhase.GUARD_ACTION) {
                 return false;
             }
@@ -76,8 +76,8 @@ const shouldExperienceLog = (log: GameLog, perspective: Perspective, players: Pl
 
         // WOLF Perspective: Hide God actions (Seer/Witch/Guard)
         if (perspective === 'WOLF') {
-            if (p === GamePhase.SEER_ACTION || 
-                p === GamePhase.WITCH_ACTION || 
+            if (p === GamePhase.SEER_ACTION ||
+                p === GamePhase.WITCH_ACTION ||
                 p === GamePhase.GUARD_ACTION) {
                 return false;
             }
@@ -89,20 +89,40 @@ const shouldExperienceLog = (log: GameLog, perspective: Perspective, players: Pl
 
 // --- Helper: Resolve Audio Config ---
 const resolveAudioConfig = (
-    event: TimelineEvent, 
-    globalConfig: GlobalApiConfig, 
-    actors: ActorProfile[], 
+    event: TimelineEvent,
+    speakerId: number | undefined,
+    players: Player[],
+    globalConfig: GlobalApiConfig,
+    actors: ActorProfile[],
     ttsPresets: TTSPreset[]
 ): { voiceId: string, ttsPreset: TTSPreset } => {
     if (event.type === 'NARRATOR') {
         const narratorActorId = globalConfig.narratorActorId;
         const narratorActor = actors.find(a => a.id === narratorActorId) || actors[0];
         const narratorTts = ttsPresets.find(p => p.id === narratorActor.ttsPresetId) || ttsPresets[0];
-        return { 
-            voiceId: narratorActor.voiceId, 
-            ttsPreset: narratorTts 
+        return {
+            voiceId: narratorActor.voiceId,
+            ttsPreset: narratorTts
         };
     } else {
+        // Try to resolve dynamic player config
+        if (speakerId !== undefined) {
+            const player = players.find(p => p.id === speakerId);
+            if (player && player.actorId) {
+                const actor = actors.find(a => a.id === player.actorId);
+                if (actor) {
+                    const preset = ttsPresets.find(p => p.id === actor.ttsPresetId);
+                    if (preset) {
+                        return {
+                            voiceId: actor.voiceId,
+                            ttsPreset: preset
+                        };
+                    }
+                }
+            }
+        }
+
+        // Fallback to history
         return {
             voiceId: event.voiceId,
             ttsPreset: {
@@ -120,31 +140,31 @@ const resolveAudioConfig = (
 export const useTheaterEngine = () => {
     const timeline = useAtomValue(timelineAtom);
     const replayLogs = useAtomValue(replaySourceLogsAtom);
-    
+
     const [isTheater, setIsTheater] = useAtom(isTheaterModeAtom);
     const setSpeaker = useSetAtom(currentSpeakerIdAtom);
     const setLogs = useSetAtom(logsAtom);
     const setPhase = useSetAtom(gamePhaseAtom);
-    
+
     const globalConfig = useAtomValue(globalApiConfigAtom);
     const actors = useAtomValue(actorProfilesAtom);
     const ttsPresets = useAtomValue(ttsPresetsAtom);
-    
+
     const perspective = useAtomValue(replayPerspectiveAtom);
     const perspectiveRef = useRef(perspective);
     useEffect(() => { perspectiveRef.current = perspective; }, [perspective]);
 
     const { setTurn } = useGameTurn();
-    
+
     const [playersAtomVal, setPlayersAtom] = useAtom(playersAtom);
     const playersRef = useRef(playersAtomVal);
     useEffect(() => { playersRef.current = playersAtomVal; }, [playersAtomVal]);
 
     useEffect(() => {
         if (!isTheater || replayLogs.length === 0) return;
-        
+
         let isCancelled = false;
-        
+
         // Cursor to track position in timeline.
         let timelineCursor = 0;
 
@@ -152,13 +172,13 @@ export const useTheaterEngine = () => {
             // Using index loop for lookahead capabilities
             for (let i = 0; i < replayLogs.length; i++) {
                 if (isCancelled) return;
-                
+
                 const log = replayLogs[i];
 
                 // 1. Update World State (Always happens, to keep state in sync)
                 setPhase(log.phase);
                 setTurn(log.turn);
-                
+
                 // 2. Add Log (Visual text log)
                 setLogs(prev => {
                     if (prev.find(l => l.id === log.id)) return prev;
@@ -169,7 +189,7 @@ export const useTheaterEngine = () => {
                 if (log.isSystem) {
                     const victims = detectDeath(log.content);
                     if (victims.length > 0) {
-                        setPlayersAtom(prev => prev.map(p => 
+                        setPlayersAtom(prev => prev.map(p =>
                             victims.includes(p.id) ? { ...p, status: PlayerStatus.DEAD_NIGHT } : p
                         ));
                     }
@@ -188,16 +208,37 @@ export const useTheaterEngine = () => {
                     // Play Audio
                     // IMPORTANT: Search from timelineCursor to handle duplicate IDs correctly
                     const eventIndex = timeline.findIndex((t, idx) => idx >= timelineCursor && t.id === log.id);
-                    
+
                     if (eventIndex !== -1) {
                         const event = timeline[eventIndex];
                         timelineCursor = eventIndex + 1; // Advance cursor past this event
 
                         // Resolve config for CURRENT event
-                        const { voiceId, ttsPreset } = resolveAudioConfig(event, globalConfig, actors, ttsPresets);
+                        const { voiceId, ttsPreset } = resolveAudioConfig(
+                            event,
+                            log.speakerId,
+                            playersRef.current,
+                            globalConfig,
+                            actors,
+                            ttsPresets
+                        );
+
+                        // Determine Audio Key: Check if config changed from history
+                        let audioKey = event.audioKey;
+                        const isConfigChanged = (
+                            voiceId !== event.voiceId ||
+                            ttsPreset.provider !== event.ttsProvider ||
+                            (ttsPreset.modelId || '') !== (event.ttsModel || '')
+                        );
+
+                        if (isConfigChanged) {
+                            // Generate new dynamic key to avoid cache collision
+                            audioKey = `${event.audioKey}_v${voiceId}_m${ttsPreset.modelId || 'def'}`;
+                        }
 
                         // --- Just-In-Time Prefetch Logic ---
                         let nextEvent: TimelineEvent | null = null;
+                        let nextSpeakerId: number | undefined = undefined;
                         let lookaheadCursor = timelineCursor; // Start searching from where we left off
 
                         for (let j = i + 1; j < replayLogs.length; j++) {
@@ -207,7 +248,8 @@ export const useTheaterEngine = () => {
                                 const futureIndex = timeline.findIndex((t, idx) => idx >= lookaheadCursor && t.id === futureLog.id);
                                 if (futureIndex !== -1) {
                                     nextEvent = timeline[futureIndex];
-                                    break; 
+                                    nextSpeakerId = futureLog.speakerId;
+                                    break;
                                 }
                             }
                         }
@@ -215,20 +257,38 @@ export const useTheaterEngine = () => {
                         // Callback when current audio starts: Prefetch next
                         const onPlayStart = () => {
                             if (!isCancelled && nextEvent) {
-                                const nextConfig = resolveAudioConfig(nextEvent, globalConfig, actors, ttsPresets);
+                                const nextConfig = resolveAudioConfig(
+                                    nextEvent,
+                                    nextSpeakerId,
+                                    playersRef.current,
+                                    globalConfig,
+                                    actors,
+                                    ttsPresets
+                                );
+
+                                let nextAudioKey = nextEvent.audioKey;
+                                const isNextChanged = (
+                                    nextConfig.voiceId !== nextEvent.voiceId ||
+                                    nextConfig.ttsPreset.provider !== nextEvent.ttsProvider ||
+                                    (nextConfig.ttsPreset.modelId || '') !== (nextEvent.ttsModel || '')
+                                );
+                                if (isNextChanged) {
+                                    nextAudioKey = `${nextEvent.audioKey}_v${nextConfig.voiceId}_m${nextConfig.ttsPreset.modelId || 'def'}`;
+                                }
+
                                 AudioService.getInstance().prefetch(
                                     nextEvent.text,
                                     nextConfig.voiceId,
-                                    nextEvent.audioKey,
+                                    nextAudioKey,
                                     nextConfig.ttsPreset
                                 ).catch(e => console.warn("Prefetch warning", e));
                             }
                         };
 
                         await AudioService.getInstance().playOrGenerate(
-                            event.text, 
-                            voiceId, 
-                            event.audioKey, 
+                            event.text,
+                            voiceId,
+                            audioKey,
                             ttsPreset,
                             onPlayStart
                         );
@@ -237,22 +297,22 @@ export const useTheaterEngine = () => {
                         await new Promise(r => setTimeout(r, 1500));
                     }
 
-                    if (isCancelled) return; 
+                    if (isCancelled) return;
 
                     // Reset Speaker
                     setSpeaker(null);
-                    
+
                     // Gap between visible turns
                     await new Promise(r => setTimeout(r, 500));
 
                 } else {
                     // Hidden Log: Fast Forward
-                    await new Promise(r => setTimeout(r, 10)); 
+                    await new Promise(r => setTimeout(r, 10));
                 }
-                
+
                 if (isCancelled) return;
             }
-            
+
             // Loop finished. 
             // IMPORTANT: We do NOT set isTheater(false) here. 
             // Keeping it true keeps the Replay Perspective UI active and prevents "jumping" to live game state.
@@ -261,10 +321,10 @@ export const useTheaterEngine = () => {
 
         playSequence();
 
-        return () => { 
-            isCancelled = true; 
-            setSpeaker(null); 
-            AudioService.getInstance().stop(); 
+        return () => {
+            isCancelled = true;
+            setSpeaker(null);
+            AudioService.getInstance().stop();
         };
-    }, [isTheater, replayLogs, timeline, setLogs, setIsTheater, setSpeaker, setPhase, setTurn, setPlayersAtom, globalConfig, actors, ttsPresets]); 
+    }, [isTheater, replayLogs, timeline, setLogs, setIsTheater, setSpeaker, setPhase, setTurn, setPlayersAtom, globalConfig, actors, ttsPresets]);
 };

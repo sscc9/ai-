@@ -254,22 +254,18 @@ ${voteOverride}
             // 明确时间顺序
             const currentTurnText = currentTurnLogs.map(l => l.isSystem ? `[系统]: ${l.content}` : `[${l.speakerId}号]: ${l.content}`).join('\n');
 
-            let teammateInfo = '';
+            let privateContext = '';
 
-            // --- 狼人增强逻辑 ---
+            // --- 狼人增强逻辑 (保持不变，但变量名统一归入 privateContext) ---
             if (player.role === Role.WEREWOLF) {
                 const allWolves = players.filter(p => p.role === Role.WEREWOLF);
-
-                // 1. 始终提供队友详细状态 (用户要求)
                 const teammateStatusStr = allWolves
                     .filter(p => p.id !== player.id)
                     .map(p => `${p.id}号(${p.status === PlayerStatus.ALIVE ? '存活' : '已出局'})`)
                     .join('，');
 
-                teammateInfo = `\n[狼人视野] 你的队友状态：${teammateStatusStr || '无 (你是孤狼)'}。`;
+                privateContext += `\n[狼人视野] 你的队友状态：${teammateStatusStr || '无 (你是孤狼)'}。`;
 
-                // 2. 包含以前夜晚的对话总结 (用户要求)
-                // 筛选 phase 为 WEREWOLF_ACTION 且 不是本轮（本轮的在 currentTurnText 里）
                 const pastNightLogs = logs.filter(l =>
                     l.phase === GamePhase.WEREWOLF_ACTION &&
                     l.turn < turnCount &&
@@ -279,31 +275,66 @@ ${voteOverride}
 
                 if (pastNightLogs.length > 0) {
                     const nightHistoryStr = pastNightLogs.map(l => `[第${l.turn}夜] ${l.speakerId}号: ${l.content}`).join('\n');
-                    teammateInfo += `\n\n### 过往夜晚对话记忆\n${nightHistoryStr}`;
+                    privateContext += `\n\n### 过往夜晚对话记忆\n${nightHistoryStr}`;
                 }
 
                 if (phase === GamePhase.DAY_DISCUSSION || phase === GamePhase.DAY_ANNOUNCE) {
                     if (godState.wolfTarget) {
                         const targetId = godState.wolfTarget;
                         const targetPlayer = players.find(p => p.id === targetId);
-                        // Check if they actually died in the Day Announce phase
-                        // (In Day Discussion, status is already updated to DEAD_NIGHT if they died)
                         const isTargetAlive = targetPlayer?.status === PlayerStatus.ALIVE;
 
-                        teammateInfo += `\n[狼人隐秘视野] 昨晚你们袭击了 ${targetId}号。`;
-
+                        privateContext += `\n[狼人隐秘视野] 昨晚你们袭击了 ${targetId}号。`;
                         if (isTargetAlive) {
-                            teammateInfo += `\n结果：平安夜（他没死）。好人不知道刀口是 ${targetId}号。`;
+                            privateContext += `\n结果：平安夜（他没死）。好人不知道刀口是 ${targetId}号。`;
                         } else {
-                            teammateInfo += `\n结果：他死了。`;
+                            privateContext += `\n结果：他死了。`;
                         }
                     }
                 }
             }
 
-            if (player.role === Role.WITCH && player.potions) {
-                teammateInfo += `\n[身份信息] 剩余药水：解药=${player.potions.cure ? '有' : '无'}，毒药=${player.potions.poison ? '有' : '无'}。`;
+            // --- 预言家记忆逻辑 (NEW) ---
+            if (player.role === Role.SEER) {
+                // 获取过往的查验结果 (系统私聊给预言家的)
+                // 筛选条件: 
+                // 1. phase 是 PROPHET/SEER_ACTION (上帝回复通常在这里)
+                // 2. visibleTo 包含自己
+                // 3. isSystem = true (上帝说的话)
+                // 4. turn < turnCount (以前的夜晚)
+                const pastCheckLogs = logs.filter(l =>
+                    l.phase === GamePhase.SEER_ACTION &&
+                    l.turn < turnCount &&
+                    l.isSystem &&
+                    l.visibleTo?.includes(player.id)
+                );
+
+                if (pastCheckLogs.length > 0) {
+                    const checkHistoryStr = pastCheckLogs.map(l => `[第${l.turn}夜] ${l.content}`).join('\n');
+                    privateContext += `\n\n### 【关键】过往查验记录\n${checkHistoryStr}`;
+                }
             }
+
+            // --- 女巫记忆逻辑 (NEW) ---
+            if (player.role === Role.WITCH) {
+                if (player.potions) {
+                    privateContext += `\n[身份信息] 剩余药水：解药=${player.potions.cure ? '有' : '无'}，毒药=${player.potions.poison ? '有' : '无'}。`;
+                }
+
+                // 获取过往的操作记录 (上帝私聊的反馈)
+                const pastWitchLogs = logs.filter(l =>
+                    l.phase === GamePhase.WITCH_ACTION &&
+                    l.turn < turnCount &&
+                    l.isSystem &&
+                    l.visibleTo?.includes(player.id)
+                );
+
+                if (pastWitchLogs.length > 0) {
+                    const witchHistoryStr = pastWitchLogs.map(l => `[第${l.turn}夜] ${l.content}`).join('\n');
+                    privateContext += `\n\n### 【关键】过往用药记录\n${witchHistoryStr}`;
+                }
+            }
+
 
             // --- WOLF DOMINANCE CHECK ---
             let dominancePrompt = "";
@@ -329,7 +360,7 @@ ${voteOverride}
             // 修改：传入 roleConfig
             const systemPrompt = buildSystemPrompt(player, alivePlayers, getRoleConfigStr());
 
-            const userPrompt = `游戏阶段：${PHASE_LABELS[phase]}\n存活：${aliveList}${teammateInfo}\n${memoryText}\n### 本轮发言（按时间先后）\n${currentTurnText}\n${speakingOrderStr}\n\n${actionInstruction || "分析场上局势，然后发言。目的是为了让你的阵营获胜。"}${dominancePrompt}`;
+            const userPrompt = `游戏阶段：${PHASE_LABELS[phase]}\n存活：${aliveList}${privateContext}\n${memoryText}\n### 本轮发言（按时间先后）\n${currentTurnText}\n${speakingOrderStr}\n\n${actionInstruction || "分析场上局势，然后发言。目的是为了让你的阵营获胜。"}${dominancePrompt}`;
 
             const messages = [
                 { role: 'system', content: systemPrompt },
@@ -530,7 +561,7 @@ JSON包含 "useCure": boolean, "poisonTarget": number | null。
                             try {
                                 if (witch.potions?.cure && result.useCure && dyingId) {
                                     setGodState(prev => ({ ...prev, witchSave: true }));
-                                    await addSystemLog(`上帝(私聊): 使用了解药。`, [witch.id]);
+                                    await addSystemLog(`上帝(私聊): 使用解药救了 ${dyingId}号。`, [witch.id]);
                                     setPlayers(prev => prev.map(p => p.id === witch.id ? { ...p, potions: { ...p.potions!, cure: false } } : p));
                                 } else if (witch.potions?.poison && result.poisonTarget) {
                                     setGodState(prev => ({ ...prev, witchPoison: result.poisonTarget }));
