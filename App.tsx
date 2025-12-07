@@ -10,6 +10,7 @@ import SettingsView from './components/SettingsView';
 import AgentView from './components/AgentView';
 import HistoryView from './components/HistoryView';
 import ScreenControls from './components/ScreenControls';
+import StateHydrator from './components/StateHydrator';
 
 
 const App = () => {
@@ -62,6 +63,9 @@ const App = () => {
                     {renderContent()}
                 </div>
             </div>
+
+            {/* Force hydration of persistent atoms */}
+            <StateHydrator />
 
             {/* Global Controls - Outside the recorded area */}
             <ScreenControls targetId={APP_CONTENT_ID} />
