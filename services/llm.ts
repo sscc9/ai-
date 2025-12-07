@@ -4,25 +4,41 @@ import { LLMPreset, Player, ROLE_INFO, LLMProviderConfig } from '../types';
 
 // --- LLM Service ---
 
+// Helper: auto-retry wrapper
+async function withRetry<T>(
+    fn: () => Promise<T>,
+    retries: number = 3,
+    delayMs: number = 1000,
+    backoffFactor: number = 2
+): Promise<T> {
+    let lastError: any;
+    for (let i = 0; i < retries; i++) {
+        try {
+            return await fn();
+        } catch (e) {
+            lastError = e;
+            console.warn(`LLM Attempt ${i + 1} failed, retrying in ${delayMs}ms...`, e);
+            if (i < retries - 1) {
+                await new Promise(r => setTimeout(r, delayMs));
+                delayMs *= backoffFactor;
+            }
+        }
+    }
+    throw lastError;
+}
+
 export async function generateText(
     messages: { role: string; content: string }[],
     preset: LLMPreset,
     providerConfig: LLMProviderConfig
 ): Promise<string> {
-    try {
+    const doFetch = async () => {
         if (providerConfig.type === 'gemini') {
             // --- GEMINI NATIVE SDK ---
-            // Use configured API Key or fallback to process.env
             const apiKey = providerConfig.apiKey || process.env.API_KEY;
             if (!apiKey) return "Error: No API Key configured for Gemini.";
 
             const ai = new GoogleGenAI({ apiKey });
-
-            // Convert OpenAI-style messages to Gemini format
-            // Simplified: Just concat user/model or use chat history if strict
-            // For 2.5 Flash/Pro, we can use generateContent with history or just block text
-
-            // Extract System Prompt (usually index 0)
             let systemInstruction = "";
             let promptParts: string[] = [];
 
@@ -51,21 +67,18 @@ export async function generateText(
             return response.text || "";
 
         } else {
-            // --- OPENAI COMPATIBLE (DeepSeek, etc.) ---
+            // --- OPENAI COMPATIBLE ---
             if (!providerConfig.apiKey) return "Error: No API Key configured for this provider.";
 
             const baseUrl = providerConfig.baseUrl || "https://api.openai.com/v1";
-            // Ensure clean URL structure
             const url = baseUrl.endsWith('/') ? `${baseUrl}chat/completions` : `${baseUrl}/chat/completions`;
 
-            // Prepare base body
             const body: any = {
                 model: preset.modelId,
                 messages: messages,
                 temperature: 0.7
             };
 
-            // [Special Logic] Hard-lock "Deep Thinking" mode for DeepSeek v3.1 Terminus
             if (preset.modelId === 'deepseek-v3-1-terminus') {
                 body.thinking = { type: "enabled" };
             }
@@ -81,16 +94,21 @@ export async function generateText(
 
             if (!response.ok) {
                 const errorText = await response.text();
-                console.error(`LLM API Error (${providerConfig.name}):`, errorText);
-                return `Error: ${response.status} - ${response.statusText}`;
+                // Throw error to trigger retry
+                throw new Error(`LLM API Error (${providerConfig.name}): ${response.status} - ${errorText}`);
             }
 
             const data = await response.json();
             return data.choices?.[0]?.message?.content || "";
         }
+    };
+
+    try {
+        // Try up to 3 times, starting with 1s delay, doubling each time
+        return await withRetry(doFetch, 3, 1000, 2);
     } catch (e) {
-        console.error("LLM Fetch Error:", e);
-        return `Error connecting to AI service: ${e}`;
+        console.error("LLM Generation Failed after retries:", e);
+        return `Error: Service unavailable after multiple attempts. (${e})`;
     }
 }
 
