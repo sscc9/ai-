@@ -259,7 +259,7 @@ const SettingsView = () => {
 
                     <SectionHeader text="全局开关" />
                     <Card>
-                        <div className="flex items-center justify-between">
+                        <div className="flex items-center justify-between mb-4">
                             <div>
                                 <span className="text-base font-bold text-slate-800 block">启用语音 (TTS)</span>
                                 <span className="text-xs text-slate-500 block mt-0.5">需要配置 TTS 引擎的 API Key</span>
@@ -276,6 +276,28 @@ const SettingsView = () => {
                                         "pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out",
                                         config.enabled ? 'translate-x-5' : 'translate-x-0'
                                     )}
+                                />
+                            </div>
+                        </div>
+
+                        {/* TTS Speed Control */}
+                        <div className="flex items-center justify-between border-t border-slate-100 pt-4">
+                            <div>
+                                <span className="text-sm font-bold text-slate-800 block">朗读倍速</span>
+                                <span className="text-xs text-slate-500 block mt-0.5">调整所有语音播放的速度 (0.5x - 2.0x)</span>
+                            </div>
+                            <div className="flex items-center gap-3">
+                                <span className="text-xs font-mono font-bold text-indigo-600 bg-indigo-50 px-2 py-1 rounded min-w-[3rem] text-center">
+                                    {(config.ttsSpeed || 1.0).toFixed(1)}x
+                                </span>
+                                <input
+                                    type="range"
+                                    min="0.5"
+                                    max="2.0"
+                                    step="0.1"
+                                    value={config.ttsSpeed || 1.0}
+                                    onChange={(e) => setConfig(p => ({ ...p, ttsSpeed: parseFloat(e.target.value) }))}
+                                    className="w-24 accent-indigo-500 cursor-pointer"
                                 />
                             </div>
                         </div>

@@ -133,6 +133,7 @@ export interface ActorProfile {
 export interface GlobalApiConfig {
     enabled: boolean; // Audio enabled
     narratorActorId: string; // The actor used for the narrator
+    ttsSpeed?: number; // Global TTS Playback Rate (0.5x - 2.0x)
 }
 
 // "God's Notebook" - Tracks logic for the current night/turn

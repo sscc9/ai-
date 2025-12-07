@@ -252,7 +252,8 @@ export class AudioService {
         cacheKey: string,
         ttsPreset: TTSPreset,
         onPlayStart?: () => void,
-        onPlayEnd?: () => void
+        onPlayEnd?: () => void,
+        playbackSpeed: number = 1.0 // Default speed
     ): Promise<void> {
         if (!text) {
             return Promise.resolve();
@@ -303,6 +304,7 @@ export class AudioService {
 
                 const url = URL.createObjectURL(audioBlob);
                 const audio = new Audio(url);
+                audio.playbackRate = playbackSpeed; // Apply global speed preference
                 this.currentAudio = audio;
                 this.currentResolve = resolve;
 

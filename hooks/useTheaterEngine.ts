@@ -32,11 +32,20 @@ const detectDeath = (content: string): number[] => {
     });
 
     if (content.includes("死亡") || content.includes("倒牌")) {
-        const numberMatches = content.match(/(\d+)号/g);
-        if (numberMatches) {
-            numberMatches.forEach(m => {
-                const id = parseInt(m.replace('号', ''));
-                deadIds.push(id);
+        // Improved Regex: Capture patterns like "3号", "3、6号", "3,6号", "3和6号"
+        // 1. Find the "号" and look backwards for numbers
+        // Regex explanation:
+        // Match a group that ends with "号"
+        // Inside the group, match digits, optionally followed by separators (comma, pause, space, 'and'), then more digits
+        const groupMatches = content.match(/(\d+(?:[、，,和\s]+\d+)*)号/g);
+
+        if (groupMatches) {
+            groupMatches.forEach(target => {
+                // 'target' is like "3、6号"
+                const numbers = target.match(/\d+/g);
+                if (numbers) {
+                    numbers.forEach(n => deadIds.push(parseInt(n)));
+                }
             });
         }
     }
@@ -190,7 +199,7 @@ export const useTheaterEngine = () => {
                     const victims = detectDeath(log.content);
                     if (victims.length > 0) {
                         setPlayersAtom(prev => prev.map(p =>
-                            victims.includes(p.id) ? { ...p, status: PlayerStatus.DEAD_NIGHT } : p
+                            victims.includes(p.seatNumber) ? { ...p, status: PlayerStatus.DEAD_NIGHT } : p
                         ));
                     }
                 }
@@ -290,7 +299,9 @@ export const useTheaterEngine = () => {
                             voiceId,
                             audioKey,
                             ttsPreset,
-                            onPlayStart
+                            onPlayStart,
+                            undefined, // onPlayEnd
+                            globalConfig.ttsSpeed || 1.0 // Pass Global Speed
                         );
                     } else {
                         // Text-only delay (e.g. System logs without audio)
