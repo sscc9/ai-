@@ -669,8 +669,28 @@ JSON包含 "useCure": boolean, "poisonTarget": number | null。
                         // Vote
                         const results = await Promise.all(alive.map(async p => ({ voter: p.id, target: await getAiVote(p, alive.map(a => a.id)) })));
 
+                        // Count votes for logic
                         results.forEach(({ voter, target }) => { if (target) votes[target] = (votes[target] || 0) + 1; });
-                        const voteDetails = results.map(r => `${r.voter}号->${r.target || '弃'} `).join('\n');
+
+                        // Format for Display: Group by Target
+                        const voteMap: Record<number, number[]> = {};
+                        const abstained: number[] = [];
+
+                        results.forEach(({ voter, target }) => {
+                            if (target) {
+                                if (!voteMap[target]) voteMap[target] = [];
+                                voteMap[target].push(voter);
+                            } else {
+                                abstained.push(voter);
+                            }
+                        });
+
+                        const detailsLines = Object.entries(voteMap).map(([target, voters]) => {
+                            return `${target}号: ${voters.join('、')}`;
+                        });
+                        if (abstained.length > 0) detailsLines.push(`弃票: ${abstained.join('、')}`);
+
+                        const voteDetails = detailsLines.join('\n');
                         await addSystemLog(`投票结果:\n${voteDetails}`, undefined, "投票统计完毕。");
 
                         let max = -1, victims: number[] = [];

@@ -159,7 +159,7 @@ export const useTheaterEngine = () => {
     const actors = useAtomValue(actorProfilesAtom);
     const ttsPresets = useAtomValue(ttsPresetsAtom);
 
-    const perspective = useAtomValue(replayPerspectiveAtom);
+    const [perspective, setPerspective] = useAtom(replayPerspectiveAtom);
     const perspectiveRef = useRef(perspective);
     useEffect(() => { perspectiveRef.current = perspective; }, [perspective]);
 
@@ -194,13 +194,18 @@ export const useTheaterEngine = () => {
                     return [...prev, log];
                 });
 
-                // 3. Check for Deaths
+                // 3. Check for Deaths & Game Over
                 if (log.isSystem) {
                     const victims = detectDeath(log.content);
                     if (victims.length > 0) {
                         setPlayersAtom(prev => prev.map(p =>
                             victims.includes(p.seatNumber) ? { ...p, status: PlayerStatus.DEAD_NIGHT } : p
                         ));
+                    }
+
+                    // Auto-Switch to GOD view on Game End
+                    if (log.content.includes("游戏结束")) {
+                        setPerspective('GOD');
                     }
                 }
 
