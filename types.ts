@@ -108,7 +108,17 @@ export interface LLMPreset {
     modelId: string; // API Model String (e.g., gemini-2.5-flash)
 }
 
-// 2. TTS Definition (302.ai Format)
+// 2. TTS Definition (Edge TTS Format)
+export interface EdgeVoice {
+    Name: string;
+    ShortName: string;
+    Gender: string;
+    Locale: string;
+    SuggestedCodec: string;
+    FriendlyName: string;
+    Status: string;
+}
+
 export interface TTSPreset {
     id: string;
     name: string; // Nickname

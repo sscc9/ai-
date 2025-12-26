@@ -56,7 +56,7 @@ const App = () => {
                     className={clsx(
                         "relative highlight-white/5 transition-all duration-500 overflow-hidden",
                         isPortrait
-                            ? "h-full w-auto aspect-[9/16] shadow-2xl" // Constrain by height to fit screen, maintain 9:16
+                            ? "h-full max-h-full w-auto max-w-full aspect-[9/16] shadow-2xl mx-auto" // Robust 9:16 constraint
                             : "w-full h-full"
                     )}
                 >

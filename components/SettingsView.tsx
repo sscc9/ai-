@@ -2,7 +2,7 @@
 import React, { useState, useRef } from 'react';
 import { useAtom, useSetAtom, useAtomValue } from 'jotai';
 import { clsx } from 'clsx';
-import { appScreenAtom, globalApiConfigAtom, llmPresetsAtom, ttsPresetsAtom, actorProfilesAtom, gameArchivesAtom, gameArchivesLoadableAtom, llmProvidersAtom } from '../store';
+import { appScreenAtom, globalApiConfigAtom, llmPresetsAtom, ttsPresetsAtom, actorProfilesAtom, gameArchivesAtom, gameArchivesLoadableAtom, llmProvidersAtom, edgeTtsVoicesAtom } from '../store';
 import { LLMPreset, TTSPreset, ActorProfile, LLMProviderConfig } from '../types';
 import { AudioService } from '../audio';
 
@@ -73,10 +73,31 @@ const SettingsView = () => {
     const [llmProviders, setLlmProviders] = useAtom(llmProvidersAtom);
     const [ttsPresets, setTtsPresets] = useAtom(ttsPresetsAtom);
     const [actors, setActors] = useAtom(actorProfilesAtom);
+    const [voices, setVoices] = useAtom(edgeTtsVoicesAtom);
+    const [isSyncing, setIsSyncing] = useState(false);
 
     // Use Loadable for Archives to prevent suspense flash
     const archivesLoadable = useAtomValue(gameArchivesLoadableAtom);
     const setArchives = useSetAtom(gameArchivesAtom);
+
+    const syncVoices = async () => {
+        setIsSyncing(true);
+        try {
+            const resp = await fetch('/api/edge-tts-voices');
+            if (resp.ok) {
+                const data = await resp.json();
+                setVoices(data);
+                alert(`同步成功！已发现 ${data.length} 个音色。`);
+            } else {
+                alert('同步失败，请确保后端服务已启动。');
+            }
+        } catch (e) {
+            console.error(e);
+            alert('网络错误，请检查后端运行状态。');
+        } finally {
+            setIsSyncing(false);
+        }
+    };
 
     const archives = archivesLoadable.state === 'hasData' ? archivesLoadable.data : [];
     const isArchivesLoading = archivesLoadable.state === 'loading';
@@ -203,7 +224,14 @@ const SettingsView = () => {
     const updateTts = (id: string, updates: Partial<TTSPreset>) => setTtsPresets(p => p.map(i => i.id === id ? { ...i, ...updates } : i));
     const createTts = () => {
         const id = `tts-${Date.now()}`;
-        setTtsPresets(p => [...p, { id, name: '302.ai (Doubao)', provider: 'doubao', modelId: '', baseUrl: 'https://api.302.ai/302/tts/generate', apiKey: '' }]);
+        setTtsPresets(p => [...p, {
+            id,
+            name: 'Edge TTS (免费)',
+            provider: 'edge-tts',
+            modelId: '',
+            baseUrl: '/api/edge-tts',
+            apiKey: 'free'
+        }]);
         pushPage({ type: 'TTS_EDIT', id });
     };
     const deleteTts = (id: string) => { setTtsPresets(p => p.filter(i => i.id !== id)); popPage(); };
@@ -303,10 +331,10 @@ const SettingsView = () => {
                         </div>
                     </Card>
 
-                    <SectionHeader text="模型与语音库" />
+                    <SectionHeader text="模型与语音" />
                     <div className="space-y-0">
                         <ListItem label="AI 模型库" sub="管理 AI 供应商与模型" icon="🧠" onClick={() => pushPage({ type: 'LLM_LIST' })} />
-                        <ListItem label="TTS 语音引擎" sub="管理 302.ai 通用语音配置" icon="🗣️" onClick={() => pushPage({ type: 'TTS_LIST' })} />
+                        <ListItem label="TTS 语音设置" sub="管理 Edge TTS 基础配置" icon="🗣️" onClick={() => pushPage({ type: 'TTS_EDIT', id: 'tts-edge' })} />
                     </div>
 
                     <SectionHeader text="玩家与分身" />
@@ -484,50 +512,59 @@ const SettingsView = () => {
         );
     }
 
-    if (currentPage.type === 'TTS_LIST') {
-        return (
-            <div className="h-full w-full bg-[#f8fafc] flex flex-col relative overflow-hidden font-sans">
-                <Background />
-                <Header title="TTS 语音引擎" backLabel="设置" />
-                <div className="flex-1 overflow-y-auto custom-scrollbar p-4 relative z-10 max-w-3xl mx-auto w-full">
-                    <button onClick={createTts} className="w-full py-4 bg-purple-600 hover:bg-purple-700 text-white rounded-xl font-bold mb-6 shadow-lg shadow-purple-200 transition-all active:scale-95">+ 添加新引擎</button>
-                    <div className="space-y-3">
-                        {ttsPresets.map(tts => (
-                            <div key={tts.id} onClick={() => pushPage({ type: 'TTS_EDIT', id: tts.id })} className="bg-white/80 backdrop-blur-md p-5 rounded-xl border border-slate-200 shadow-sm hover:shadow-md hover:border-purple-300 transition-all cursor-pointer flex justify-between items-center group">
-                                <div>
-                                    <div className="font-bold text-slate-800 text-lg">{tts.name}</div>
-                                    <div className="text-xs font-mono mt-1.5 flex gap-2 items-center">
-                                        <span className="bg-purple-100 text-purple-600 px-2 py-0.5 rounded font-bold border border-purple-200">302.ai</span>
-                                        <span className="text-slate-500">{tts.provider}</span>
-                                    </div>
-                                </div>
-                                <svg className="w-5 h-5 text-slate-300 group-hover:text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            </div>
-        );
-    }
-
     if (currentPage.type === 'TTS_EDIT') {
-        const tts = ttsPresets.find(i => i.id === currentPage.id);
+        const tts = ttsPresets.find(i => i.id === currentPage.id) || ttsPresets[0];
         if (!tts) return null;
         return (
             <div className="h-full w-full bg-[#f8fafc] flex flex-col relative overflow-hidden font-sans">
                 <Background />
-                <Header title="编辑引擎" backLabel="TTS 列表" />
-                <div className="p-4 pt-8 relative z-10 max-w-2xl mx-auto w-full">
+                <Header title="Edge TTS 设置" backLabel="设置" />
+                <div className="flex-1 overflow-y-auto custom-scrollbar p-4 relative z-10 max-w-2xl mx-auto w-full pb-10">
                     <Card>
-                        <InputGroup label="引擎昵称" value={tts.name} onChange={(e: any) => updateTts(tts.id, { name: e.target.value })} />
-                        <InputGroup label="供应商 (Provider)" value={tts.provider} onChange={(e: any) => updateTts(tts.id, { provider: e.target.value })} placeholder="doubao, objcengine, openai..." sub="如使用火山引擎直连，请填 'volcengine'" />
-                        <InputGroup label="Base URL" value={tts.baseUrl || ''} onChange={(e: any) => updateTts(tts.id, { baseUrl: e.target.value })} placeholder={tts.provider === 'volcengine' ? "留空即可 (推荐)" : "https://api.302.ai/302/tts/generate"} />
-                        <InputGroup label="App ID (Volcengine Only)" value={tts.appId || ''} onChange={(e: any) => updateTts(tts.id, { appId: e.target.value })} placeholder="12345678" sub="火山引擎需要 App ID，其他服务留空" />
-                        <InputGroup type="password" label="API Key / Token" value={tts.apiKey || ''} onChange={(e: any) => updateTts(tts.id, { apiKey: e.target.value })} placeholder="sk-..." sub="302填API Key，火山引擎填Access Token" />
-                        <InputGroup label="Model ID (Optional)" value={tts.modelId} onChange={(e: any) => updateTts(tts.id, { modelId: e.target.value })} placeholder="tts-1" sub="Doubao 等不需要此参数" />
+                        <div className="bg-indigo-50/50 p-6 rounded-3xl border border-indigo-100 mb-8 mt-4 relative overflow-hidden">
+                            <div className="absolute top-0 right-0 p-4 text-indigo-200 pointer-events-none">
+                                <svg className="w-12 h-12" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z" /></svg>
+                            </div>
+                            <div className="flex items-center gap-3 mb-3">
+                                <div className="w-10 h-10 rounded-2xl bg-indigo-500 flex items-center justify-center text-white shadow-lg shadow-indigo-200">
+                                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+                                </div>
+                                <div>
+                                    <div className="font-black text-indigo-900 text-base">Python 核心驱动</div>
+                                    <div className="text-[10px] text-indigo-400 font-bold uppercase tracking-wider">Edge-TTS Engine Active</div>
+                                </div>
+                            </div>
+                            <p className="text-xs text-indigo-600 leading-relaxed font-medium mt-1">
+                                已切换至高性能 Python 后端。支持更稳定的语音合成、精细的语速调节以及全量微软音色库。
+                            </p>
+                        </div>
+
+                        <InputGroup label="后端地址" value={tts.baseUrl || ''} onChange={(e: any) => updateTts(tts.id, { baseUrl: e.target.value })} placeholder="/api/edge-tts-generate" sub="通常保持默认即可" />
 
                         <div className="mt-8">
-                            <button onClick={() => deleteTts(tts.id)} className="w-full py-3 text-red-600 border border-red-100 bg-red-50 hover:bg-red-100 rounded-xl font-bold transition-colors">删除引擎</button>
+                            <button
+                                onClick={syncVoices}
+                                disabled={isSyncing}
+                                className={clsx(
+                                    "w-full py-4 rounded-2xl font-black text-sm uppercase tracking-wider transition-all shadow-lg active:scale-95 flex items-center justify-center gap-2",
+                                    isSyncing ? "bg-slate-100 text-slate-400" : "bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-indigo-200"
+                                )}
+                            >
+                                {isSyncing ? (
+                                    <>
+                                        <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                                        同步中...
+                                    </>
+                                ) : (
+                                    <>
+                                        <svg className="w-5 h-5 font-bold" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+                                        同步云端音色库
+                                    </>
+                                )}
+                            </button>
+                            <p className="text-[10px] text-slate-400 mt-3 text-center px-4">
+                                点击同步将从 Python 后端获取最新的微软音色列表
+                            </p>
                         </div>
                     </Card>
                 </div>
@@ -624,19 +661,85 @@ const SettingsView = () => {
                         </div>
 
                         <div className="bg-indigo-50/50 p-5 rounded-xl border border-indigo-100 mb-8">
-                            <label className="block text-xs font-bold text-indigo-800 uppercase tracking-wide mb-2">音色 ID (Voice ID)</label>
-                            <div className="flex gap-3">
-                                <input value={actor.voiceId} onChange={e => updateActor(actor.id, { voiceId: e.target.value })} className="flex-1 bg-white border border-slate-200 rounded-xl p-3 font-mono text-sm text-slate-700 shadow-sm" />
+                            <label className="block text-xs font-bold text-indigo-800 uppercase tracking-wide mb-2">音色设置 (Voice)</label>
+
+                            {/* Full Voice Selector (If Synced) */}
+                            {voices.length > 0 && (
+                                <div className="mb-4">
+                                    <div className="relative">
+                                        <select
+                                            value={actor.voiceId}
+                                            onChange={e => updateActor(actor.id, { voiceId: e.target.value })}
+                                            className="w-full bg-white border border-slate-200 rounded-xl p-3 text-slate-800 appearance-none font-medium shadow-sm focus:ring-2 focus:ring-indigo-500/20 text-sm"
+                                        >
+                                            <option value="">-- 选择音色 --</option>
+                                            {/* Group by Locale */}
+                                            {Array.from(new Set(voices.map(v => v.Locale))).sort().map(locale => (
+                                                <optgroup key={locale} label={locale}>
+                                                    {voices.filter(v => v.Locale === locale).map(v => (
+                                                        <option key={v.ShortName} value={v.ShortName}>
+                                                            {v.FriendlyName.replace('Microsoft ', '').replace('Online (Natural) - ', '')} ({v.Gender})
+                                                        </option>
+                                                    ))}
+                                                </optgroup>
+                                            ))}
+                                        </select>
+                                        <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-slate-400">
+                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+                                        </div>
+                                    </div>
+                                    <p className="text-[9px] text-indigo-400 mt-1.5 ml-1 font-bold italic uppercase tracking-tighter">
+                                        Found {voices.length} voices from backend
+                                    </p>
+                                </div>
+                            )}
+
+                            <div className="flex gap-3 mb-3">
+                                <input
+                                    value={actor.voiceId}
+                                    onChange={e => updateActor(actor.id, { voiceId: e.target.value })}
+                                    className="flex-1 bg-white border border-slate-200 rounded-xl p-3 font-mono text-xs text-slate-700 shadow-sm"
+                                    placeholder="zh-CN-XiaoxiaoNeural"
+                                />
                                 <button
                                     onClick={async () => {
-                                        const tts = ttsPresets.find(t => t.id === actor.ttsPresetId);
-                                        if (tts) await AudioService.getInstance().playOrGenerate(`你好，我是${actor.name}`, actor.voiceId, `test-${Date.now()}`, tts);
+                                        const tts = ttsPresets.find(t => t.id === actor.ttsPresetId) || ttsPresets[0];
+                                        if (tts) await AudioService.getInstance().playOrGenerate(`你好，我是${actor.name}。很高兴见到大家。`, actor.voiceId, `test-${Date.now()}`, tts);
                                     }}
-                                    className="px-5 bg-purple-600 hover:bg-purple-700 text-white rounded-xl font-bold shadow-md shadow-purple-200 transition-all active:scale-95"
+                                    className="px-5 bg-purple-600 hover:bg-purple-700 text-white rounded-xl font-bold shadow-md shadow-purple-200 transition-all active:scale-95 text-xs"
                                 >试听</button>
                             </div>
-                            <p className="text-[10px] text-slate-500 mt-2 ml-1 leading-relaxed">
-                                {(tts?.provider === 'doubao' || tts?.provider === 'volcengine') ? "Doubao/Volc: 请输入火山引擎音色 ID，如 'zh_male_M392_conversation_wvae_bigtts'。" : `Provider: ${tts?.provider}. 请输入 Voice ID (如 OpenAI: alloy).`}
+
+                            <div className="mt-4">
+                                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wide mb-2">推荐音色</label>
+                                <div className="flex flex-wrap gap-2">
+                                    {[
+                                        { id: 'zh-CN-XiaoxiaoNeural', name: '晓晓 (女)' },
+                                        { id: 'zh-CN-YunxiNeural', name: '云希 (男)' },
+                                        { id: 'zh-CN-YunjianNeural', name: '云健 (男-稳重)' },
+                                        { id: 'zh-CN-XiaochenNeural', name: '晓辰 (女-知性)' },
+                                        { id: 'zh-CN-XiaoyiNeural', name: '晓伊 (女-资讯)' },
+                                        { id: 'zh-CN-YunyangNeural', name: '云扬 (男-新闻)' },
+                                        { id: 'en-US-AriaNeural', name: 'Aria (EN-F)' },
+                                    ].map(v => (
+                                        <button
+                                            key={v.id}
+                                            onClick={() => updateActor(actor.id, { voiceId: v.id })}
+                                            className={clsx(
+                                                "px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all border",
+                                                actor.voiceId === v.id
+                                                    ? "bg-indigo-100 border-indigo-300 text-indigo-700"
+                                                    : "bg-white border-slate-200 text-slate-500 hover:border-indigo-200"
+                                            )}
+                                        >
+                                            {v.name}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <p className="text-[10px] text-slate-500 mt-3 ml-1 leading-relaxed">
+                                使用微软 Edge TTS 引擎。同步后可选择全量音色。
                             </p>
                         </div>
 

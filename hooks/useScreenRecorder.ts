@@ -16,7 +16,21 @@ declare global {
 export const useScreenRecorder = () => {
     const [isRecording, setIsRecording] = useState(false);
     const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+    const streamRef = useRef<MediaStream | null>(null);
     const chunksRef = useRef<Blob[]>([]);
+
+    const stopRecording = useCallback(() => {
+        // 1. Stop Recorder
+        if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+            mediaRecorderRef.current.stop();
+        }
+
+        // 2. Stop All Tracks (This makes the recording actually end and triggers browser cleanup)
+        if (streamRef.current) {
+            streamRef.current.getTracks().forEach(track => track.stop());
+            streamRef.current = null;
+        }
+    }, []);
 
     const startRecording = useCallback(async (elementId: string) => {
         try {
@@ -26,8 +40,7 @@ export const useScreenRecorder = () => {
                 return;
             }
 
-            // 1. Get Display Media (User must select the current tab)
-            // Note: TS might complain about preferCurrentTab, casting to any or Custom types
+            // 1. Get Display Media
             const stream = await navigator.mediaDevices.getDisplayMedia({
                 video: {
                     frameRate: 60,
@@ -36,7 +49,9 @@ export const useScreenRecorder = () => {
                 preferCurrentTab: true,
             } as any);
 
-            // 2. Crop to specific element using Region Capture API
+            streamRef.current = stream;
+
+            // 2. Crop to specific element
             if (window.CropTarget && window.CropTarget.fromElement) {
                 try {
                     const cropTarget = await window.CropTarget.fromElement(element);
@@ -47,8 +62,6 @@ export const useScreenRecorder = () => {
                 } catch (e) {
                     console.warn("CropTarget failed", e);
                 }
-            } else {
-                console.warn('Region Capture API not supported/enabled. Recording full selected area.');
             }
 
             // 3. Setup MediaRecorder
@@ -70,7 +83,6 @@ export const useScreenRecorder = () => {
                 const blob = new Blob(chunksRef.current, { type: mimeType });
                 const url = URL.createObjectURL(blob);
 
-                // Auto download
                 const a = document.createElement('a');
                 a.style.display = 'none';
                 a.href = url;
@@ -82,32 +94,22 @@ export const useScreenRecorder = () => {
                     window.URL.revokeObjectURL(url);
                 }, 100);
 
-                // Stop all tracks
-                stream.getTracks().forEach(track => track.stop());
                 setIsRecording(false);
             };
 
             mediaRecorder.start();
             setIsRecording(true);
 
-            // Handle stream ended manually by user
+            // Handle stream ended manually by user (via browser UI)
             stream.getVideoTracks()[0].onended = () => {
-                if (mediaRecorder.state !== 'inactive') {
-                    mediaRecorder.stop();
-                }
+                stopRecording();
             };
 
         } catch (err) {
             console.error('Error starting recording:', err);
             setIsRecording(false);
         }
-    }, []);
-
-    const stopRecording = useCallback(() => {
-        if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'running') {
-            mediaRecorderRef.current.stop();
-        }
-    }, []);
+    }, [stopRecording]);
 
     return {
         isRecording,

@@ -13,10 +13,22 @@ export default defineConfig(({ mode }) => {
           target: 'https://openspeech.bytedance.com/api/v1/tts',
           changeOrigin: true,
           rewrite: (path) => path.replace(/^\/api\/volcengine/, '')
+        },
+        '/api/edge-tts-generate': {
+          target: 'http://localhost:8000',
+          changeOrigin: true,
+          rewrite: (path) => path.replace(/^\/api\/edge-tts-generate/, '/tts')
+        },
+        '/api/edge-tts-voices': {
+          target: 'http://localhost:8000',
+          changeOrigin: true,
+          rewrite: (path) => path.replace(/^\/api\/edge-tts-voices/, '/voices')
         }
       }
     },
-    plugins: [react()],
+    plugins: [
+      react()
+    ],
     define: {
       'process.env.API_KEY': JSON.stringify(env.GEMINI_API_KEY),
       'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY)

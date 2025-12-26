@@ -7,7 +7,7 @@ import {
     GameConfig, GamePhase, Player, GameLog, GameSnapshot, GodState, AgentMessage,
     PRESETS, DEFAULT_ROLE_PROMPTS, DEFAULT_PHASE_PROMPTS, TimelineEvent,
     TTSPreset, ActorProfile, GameArchive, LLMPreset, GlobalApiConfig, Role, PlayerStatus, ROLE_INFO,
-    Perspective, LLMProviderConfig
+    Perspective, LLMProviderConfig, EdgeVoice
 } from './types';
 
 // --- State Atoms ---
@@ -100,48 +100,41 @@ const defaultLlmPresets: LLMPreset[] = [
 
 const defaultTtsPresets: TTSPreset[] = [
     {
-        id: 'tts-1',
-        name: '302.ai (Doubao)',
-        provider: 'doubao',
+        id: 'tts-edge',
+        name: 'Edge TTS (内置服务)',
+        provider: 'edge-tts',
         modelId: '',
-        baseUrl: 'https://api.302.ai/302/tts/generate',
-        apiKey: ''
-    },
-    {
-        id: 'tts-2',
-        name: '302.ai (OpenAI)',
-        provider: 'openai',
-        modelId: 'tts-1',
-        baseUrl: 'https://api.302.ai/302/tts/generate',
-        apiKey: ''
+        baseUrl: '/api/edge-tts-generate',
+        apiKey: 'free'
     }
 ];
 
 const DEFAULT_ACTORS: ActorProfile[] = [
-    // Narrator: Gentle Female (Doubao Voice)
-    { id: 'n1', name: '上帝 (旁白)', llmPresetId: 'llm-1', ttsPresetId: 'tts-1', voiceId: 'zh_female_shentong_moon_bigtts', stylePrompt: '' },
+    // Narrator: Xiaoxiao (Gentle)
+    { id: 'n1', name: '上帝 (旁白)', llmPresetId: 'llm-1', ttsPresetId: 'tts-edge', voiceId: 'zh-CN-XiaoxiaoNeural', stylePrompt: '' },
 
-    // Gemini Clones (Using various high-quality Doubao voices)
-    { id: 'a1', name: 'Gemini 3 Pro', llmPresetId: 'llm-1', ttsPresetId: 'tts-1', voiceId: 'zh_male_yuanbo_moon_bigtts', stylePrompt: '' },
-    { id: 'a2', name: 'Gemini 3 Pro (Clone 1)', llmPresetId: 'llm-1', ttsPresetId: 'tts-1', voiceId: 'zh_female_shuangkuai_hongliang_common_bigtts', stylePrompt: '' },
-    { id: 'a3', name: 'Gemini 3 Pro (Clone 2)', llmPresetId: 'llm-1', ttsPresetId: 'tts-1', voiceId: 'zh_male_quanshen_moon_bigtts', stylePrompt: '' },
+    // Various Edge Voices
+    { id: 'a1', name: 'Gemini 3 Pro', llmPresetId: 'llm-1', ttsPresetId: 'tts-edge', voiceId: 'zh-CN-YunxiNeural', stylePrompt: '' },
+    { id: 'a2', name: 'Gemini 3 Pro (Clone 1)', llmPresetId: 'llm-1', ttsPresetId: 'tts-edge', voiceId: 'zh-CN-XiaoyiNeural', stylePrompt: '' },
+    { id: 'a3', name: 'Gemini 3 Pro (Clone 2)', llmPresetId: 'llm-1', ttsPresetId: 'tts-edge', voiceId: 'zh-CN-YunjianNeural', stylePrompt: '' },
 
     // DeepSeek Clones
-    { id: 'a4', name: 'DeepSeek Chat', llmPresetId: 'llm-3', ttsPresetId: 'tts-1', voiceId: 'zh_female_zhixing_moon_bigtts', stylePrompt: '' },
-    { id: 'a5', name: 'DeepSeek R1', llmPresetId: 'llm-4', ttsPresetId: 'tts-1', voiceId: 'zh_male_yibo_moon_bigtts', stylePrompt: '' },
+    { id: 'a4', name: 'DeepSeek Chat', llmPresetId: 'llm-3', ttsPresetId: 'tts-edge', voiceId: 'zh-CN-XiaochenNeural', stylePrompt: '' },
+    { id: 'a5', name: 'DeepSeek R1', llmPresetId: 'llm-4', ttsPresetId: 'tts-edge', voiceId: 'zh-CN-YunyangNeural', stylePrompt: '' },
 
     // Fillers
-    { id: 'a8', name: '路人甲', llmPresetId: 'llm-1', ttsPresetId: 'tts-1', voiceId: 'zh_male_chunhou_moon_bigtts', stylePrompt: '' },
-    { id: 'a9', name: '路人乙', llmPresetId: 'llm-1', ttsPresetId: 'tts-1', voiceId: 'zh_female_qingshang_moon_bigtts', stylePrompt: '' },
-    { id: 'a10', name: '路人丙', llmPresetId: 'llm-1', ttsPresetId: 'tts-1', voiceId: 'zh_male_adong_moon_bigtts', stylePrompt: '' },
-    { id: 'a11', name: '路人丁', llmPresetId: 'llm-1', ttsPresetId: 'tts-1', voiceId: 'zh_female_ruqi_moon_bigtts', stylePrompt: '' },
-    { id: 'a12', name: '路人戊', llmPresetId: 'llm-1', ttsPresetId: 'tts-1', voiceId: 'zh_male_qinqie_moon_bigtts', stylePrompt: '' },
+    { id: 'a8', name: '路人甲', llmPresetId: 'llm-1', ttsPresetId: 'tts-edge', voiceId: 'zh-CN-YunxiNeural', stylePrompt: '' },
+    { id: 'a9', name: '路人乙', llmPresetId: 'llm-1', ttsPresetId: 'tts-edge', voiceId: 'zh-CN-XiaoxiaoNeural', stylePrompt: '' },
+    { id: 'a10', name: '路人丙', llmPresetId: 'llm-1', ttsPresetId: 'tts-edge', voiceId: 'zh-CN-YunjianNeural', stylePrompt: '' },
+    { id: 'a11', name: '路人丁', llmPresetId: 'llm-1', ttsPresetId: 'tts-edge', voiceId: 'zh-CN-XiaoyiNeural', stylePrompt: '' },
+    { id: 'a12', name: '路人戊', llmPresetId: 'llm-1', ttsPresetId: 'tts-edge', voiceId: 'zh-CN-YunyangNeural', stylePrompt: '' },
 ];
 
 export const llmProvidersAtom = atomWithStorage<LLMProviderConfig[]>('werewolf-llmProviders', defaultLlmProviders);
 export const llmPresetsAtom = atomWithStorage<LLMPreset[]>('werewolf-llmPresets', defaultLlmPresets);
-export const ttsPresetsAtom = atomWithStorage<TTSPreset[]>('werewolf-ttsPresets-v2', defaultTtsPresets);
-export const actorProfilesAtom = atomWithStorage<ActorProfile[]>('werewolf-actorProfiles', DEFAULT_ACTORS);
+export const ttsPresetsAtom = atomWithStorage<TTSPreset[]>('werewolf-ttsPresets-v3', defaultTtsPresets); // Bumped version to v3
+export const actorProfilesAtom = atomWithStorage<ActorProfile[]>('werewolf-actorProfiles-v2', DEFAULT_ACTORS); // Bumped version
+export const edgeTtsVoicesAtom = atomWithStorage<EdgeVoice[]>('werewolf-edgeTtsVoices', []);
 export const globalApiConfigAtom = atomWithStorage<GlobalApiConfig>('werewolf-globalApiConfig', {
     enabled: false,
     narratorActorId: 'n1'
