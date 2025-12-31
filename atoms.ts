@@ -1,8 +1,6 @@
-
-import { atom } from 'jotai';
+import { atom, type WritableAtom, type PrimitiveAtom } from 'jotai';
 import { atomWithStorage, loadable } from 'jotai/utils';
-import { get, set, del } from 'idb-keyval';
-import type { PrimitiveAtom } from 'jotai';
+import { get as idbGetVal, set as idbSetVal, del as idbDelVal } from 'idb-keyval';
 import {
     GameConfig, GamePhase, Player, GameLog, GameSnapshot, GodState, AgentMessage,
     PRESETS, DEFAULT_ROLE_PROMPTS, DEFAULT_PHASE_PROMPTS, TimelineEvent,
@@ -10,8 +8,21 @@ import {
     Perspective, LLMProviderConfig, EdgeVoice
 } from './types';
 
-// --- State Atoms ---
+// Define IndexedDB storage adapter
+const idbStorage = {
+    getItem: async (key: string, initialValue: any) => {
+        const val = await idbGetVal(key);
+        return val === undefined ? initialValue : val;
+    },
+    setItem: async (key: string, newValue: any) => {
+        await idbSetVal(key, newValue);
+    },
+    removeItem: async (key: string) => {
+        await idbDelVal(key);
+    },
+};
 
+// --- State Atoms ---
 export const appScreenAtom = atom<'HOME' | 'GAME' | 'SETTINGS' | 'AGENT' | 'HISTORY'>('HOME');
 
 export const gameConfigAtom = atom<GameConfig>({
@@ -22,107 +33,31 @@ export const gameConfigAtom = atom<GameConfig>({
     globalAiInstructions: "你正在参与一场高水平的狼人杀对局。请使用简短、口语化的中文发言。不要复述规则，直接表达观点。逻辑要清晰，符合你的身份视角。"
 });
 
-// Define IndexedDB storage adapter
-const idbStorage = {
-    getItem: async (key: string, initialValue: any) => {
-        const val = await get(key);
-        // if there is no value, return initialValue
-        return val === undefined ? initialValue : val;
-    },
-    setItem: async (key: string, newValue: any) => {
-        await set(key, newValue);
-    },
-    removeItem: async (key: string) => {
-        await del(key);
-    },
-};
-
-
-// --- Hierarchical Settings Atoms (with Persistence) ---
-
-// --- Default Data ---
-
 const defaultLlmProviders: LLMProviderConfig[] = [
-    {
-        id: 'provider-gemini',
-        name: 'Google Gemini',
-        type: 'gemini',
-        apiKey: '' // User to fill
-    },
-    {
-        id: 'provider-deepseek',
-        name: 'DeepSeek',
-        type: 'openai',
-        baseUrl: 'https://api.deepseek.com',
-        apiKey: '' // User to fill
-    },
-    {
-        id: 'provider-volc',
-        name: 'Volcengine (DeepSeek)',
-        type: 'openai',
-        baseUrl: 'https://ark.cn-beijing.volces.com/api/v3',
-        apiKey: ''
-    }
+    { id: 'provider-gemini', name: 'Google Gemini', type: 'gemini', apiKey: '' },
+    { id: 'provider-deepseek', name: 'DeepSeek', type: 'openai', baseUrl: 'https://api.deepseek.com', apiKey: '' },
+    { id: 'provider-volc', name: 'Volcengine (DeepSeek)', type: 'openai', baseUrl: 'https://ark.cn-beijing.volces.com/api/v3', apiKey: '' }
 ];
 
 const defaultLlmPresets: LLMPreset[] = [
-    {
-        id: 'llm-1',
-        name: 'Gemini 2.5 Flash',
-        providerId: 'provider-gemini',
-        modelId: 'gemini-2.5-flash',
-    },
-    {
-        id: 'llm-2',
-        name: 'Gemini 2.5 Pro',
-        providerId: 'provider-gemini',
-        modelId: 'gemini-2.5-pro',
-    },
-    {
-        id: 'llm-3',
-        name: 'DeepSeek Chat',
-        providerId: 'provider-deepseek',
-        modelId: 'deepseek-chat',
-    },
-    {
-        id: 'llm-4',
-        name: 'DeepSeek R1',
-        providerId: 'provider-deepseek',
-        modelId: 'deepseek-reasoner',
-    },
-    {
-        id: 'llm-deepseek-v3.1',
-        name: 'DeepSeek v3.1 (Terminus)',
-        providerId: 'provider-volc',
-        modelId: 'deepseek-v3-1-terminus',
-    },
+    { id: 'llm-1', name: 'Gemini 3 Flash', providerId: 'provider-gemini', modelId: 'gemini-3-flash-preview' },
+    { id: 'llm-2', name: 'Gemini 3 Pro', providerId: 'provider-gemini', modelId: 'gemini-3-pro-preview' },
+    { id: 'llm-3', name: 'DeepSeek Chat', providerId: 'provider-deepseek', modelId: 'deepseek-chat' },
+    { id: 'llm-4', name: 'DeepSeek R1', providerId: 'provider-deepseek', modelId: 'deepseek-reasoner' },
+    { id: 'llm-deepseek-v3.1', name: 'DeepSeek v3.1 (Terminus)', providerId: 'provider-volc', modelId: 'deepseek-v3-1-terminus' },
 ];
 
 const defaultTtsPresets: TTSPreset[] = [
-    {
-        id: 'tts-edge',
-        name: 'Edge TTS (内置服务)',
-        provider: 'edge-tts',
-        modelId: '',
-        baseUrl: '/api/edge-tts-generate',
-        apiKey: 'free'
-    }
+    { id: 'tts-edge', name: 'Edge TTS (内置服务)', provider: 'edge-tts', modelId: '', baseUrl: '/api/edge-tts-generate', apiKey: 'free' }
 ];
 
 const DEFAULT_ACTORS: ActorProfile[] = [
-    // Narrator: Xiaoxiao (Gentle)
     { id: 'n1', name: '上帝 (旁白)', llmPresetId: 'llm-1', ttsPresetId: 'tts-edge', voiceId: 'zh-CN-XiaoxiaoNeural', stylePrompt: '' },
-
-    // Various Edge Voices
     { id: 'a1', name: 'Gemini 3 Pro', llmPresetId: 'llm-1', ttsPresetId: 'tts-edge', voiceId: 'zh-CN-YunxiNeural', stylePrompt: '' },
     { id: 'a2', name: 'Gemini 3 Pro (Clone 1)', llmPresetId: 'llm-1', ttsPresetId: 'tts-edge', voiceId: 'zh-CN-XiaoyiNeural', stylePrompt: '' },
     { id: 'a3', name: 'Gemini 3 Pro (Clone 2)', llmPresetId: 'llm-1', ttsPresetId: 'tts-edge', voiceId: 'zh-CN-YunjianNeural', stylePrompt: '' },
-
-    // DeepSeek Clones
     { id: 'a4', name: 'DeepSeek Chat', llmPresetId: 'llm-3', ttsPresetId: 'tts-edge', voiceId: 'zh-CN-XiaochenNeural', stylePrompt: '' },
     { id: 'a5', name: 'DeepSeek R1', llmPresetId: 'llm-4', ttsPresetId: 'tts-edge', voiceId: 'zh-CN-YunyangNeural', stylePrompt: '' },
-
-    // Fillers
     { id: 'a8', name: '路人甲', llmPresetId: 'llm-1', ttsPresetId: 'tts-edge', voiceId: 'zh-CN-YunxiNeural', stylePrompt: '' },
     { id: 'a9', name: '路人乙', llmPresetId: 'llm-1', ttsPresetId: 'tts-edge', voiceId: 'zh-CN-XiaoxiaoNeural', stylePrompt: '' },
     { id: 'a10', name: '路人丙', llmPresetId: 'llm-1', ttsPresetId: 'tts-edge', voiceId: 'zh-CN-YunjianNeural', stylePrompt: '' },
@@ -132,34 +67,29 @@ const DEFAULT_ACTORS: ActorProfile[] = [
 
 export const llmProvidersAtom = atomWithStorage<LLMProviderConfig[]>('werewolf-llmProviders', defaultLlmProviders);
 export const llmPresetsAtom = atomWithStorage<LLMPreset[]>('werewolf-llmPresets', defaultLlmPresets);
-export const ttsPresetsAtom = atomWithStorage<TTSPreset[]>('werewolf-ttsPresets-v3', defaultTtsPresets); // Bumped version to v3
-export const actorProfilesAtom = atomWithStorage<ActorProfile[]>('werewolf-actorProfiles-v2', DEFAULT_ACTORS); // Bumped version
+export const ttsPresetsAtom = atomWithStorage<TTSPreset[]>('werewolf-ttsPresets-v3', defaultTtsPresets);
+export const actorProfilesAtom = atomWithStorage<ActorProfile[]>('werewolf-actorProfiles-v2', DEFAULT_ACTORS);
 export const edgeTtsVoicesAtom = atomWithStorage<EdgeVoice[]>('werewolf-edgeTtsVoices', []);
-export const globalApiConfigAtom = atomWithStorage<GlobalApiConfig>('werewolf-globalApiConfig', {
-    enabled: false,
-    narratorActorId: 'n1'
-});
+export const globalApiConfigAtom = atomWithStorage<GlobalApiConfig>('werewolf-globalApiConfig', { enabled: false, narratorActorId: 'n1' });
 export const gameArchivesAtom = atomWithStorage<GameArchive[]>('werewolf-gameArchives', [], idbStorage);
-// Wrap async atom with loadable to prevent Suspense fallback on full app
 export const gameArchivesLoadableAtom = loadable(gameArchivesAtom);
 
 export const timelineAtom = atom<TimelineEvent[]>([]);
 export const replaySourceLogsAtom = atom<GameLog[]>([]);
-
 export const isPlayingAudioAtom = atom<boolean>(false);
 export const isTheaterModeAtom = atom<boolean>(false);
-
 export const gamePhaseAtom = atom<GamePhase>(GamePhase.SETUP);
 export const turnCountAtom = atom(1);
-
 export const isAutoPlayAtom = atom<boolean>(false);
 export const isProcessingAtom = atom<boolean>(false);
 export const isReplayModeAtom = atom<boolean>(false);
 export const isPortraitModeAtom = atom<boolean>(false);
 export const areRolesVisibleAtom = atom<boolean>(true);
-
-// New atom for replay perspective
 export const replayPerspectiveAtom = atom<Perspective>('GOOD');
+
+export const isHumanModeAtom = atom<boolean>(false);
+export const humanPlayerSeatAtom = atom<number>(1);
+export const userInputAtom = atom<any>(null);
 
 export const godStateAtom = atom<GodState>({
     wolfTarget: null,
@@ -172,12 +102,9 @@ export const godStateAtom = atom<GodState>({
 
 export const playersAtom = atom<Player[]>([]);
 export const logsAtom = atom<GameLog[]>([]);
-export const summariesAtom = atom<string[]>([]);
 export const gameHistoryAtom = atom<GameSnapshot[]>([]);
-
 export const speakingQueueAtom = atom<number[]>([]);
 export const currentSpeakerIdAtom = atom<number | null>(null);
-
 export const agentMessagesAtom = atom<AgentMessage[]>([
     { id: 'welcome', role: 'model', content: '你好！我是狼人杀上帝助手。我可以协助你控制游戏流程。', timestamp: Date.now() }
 ]);

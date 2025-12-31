@@ -22,6 +22,7 @@ import { useGameEngine } from '../hooks/useGameEngine';
 import { useTheaterEngine } from '../hooks/useTheaterEngine';
 import PlayerCard from './PlayerCard';
 import { AutoScrollLog } from './GameLogs';
+import HumanInputPanel from './HumanInputPanel';
 
 const GameRoomView = () => {
     const players = useAtomValue(playersAtom);
@@ -170,7 +171,8 @@ const GameRoomView = () => {
                                 "text-xs font-bold px-3 py-1 rounded-full transition-colors shadow-sm",
                                 isDay ? "bg-orange-100 text-orange-700" : "bg-indigo-100 text-indigo-700"
                             )}>
-                                {PHASE_LABELS[phase]}
+                                {perspective === 'GOD' ? PHASE_LABELS[phase] : (isDay ? "白天" : "夜晚")}
+
                             </span>
                         </div>
                         <div className="flex items-center gap-2">
@@ -215,6 +217,8 @@ const GameRoomView = () => {
                     {bottomRowSeats.map(i => <PlayerCard key={i} seat={i} isTop={false} />)}
                 </div>
             </div>
+
+            <HumanInputPanel />
         </div>
     );
 }

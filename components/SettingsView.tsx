@@ -619,34 +619,32 @@ const SettingsView = () => {
                     <Card>
                         <InputGroup label={isNarrator ? "旁白称呼" : "玩家名称"} value={actor.name} onChange={(e: any) => updateActor(actor.id, { name: e.target.value })} />
 
-                        <div className={clsx("grid gap-5 mb-6", isNarrator ? "grid-cols-1" : "grid-cols-2")}>
-                            {!isNarrator && (
-                                <div>
-                                    <label className="block text-xs font-bold text-indigo-500 uppercase tracking-wide mb-1.5 ml-1">基础模型 (Brain)</label>
-                                    <div className="relative">
-                                        <select value={actor.llmPresetId} onChange={e => updateActor(actor.id, { llmPresetId: e.target.value })} className="w-full bg-white border border-slate-200 rounded-xl p-3.5 text-slate-800 appearance-none font-medium shadow-sm focus:ring-2 focus:ring-indigo-500/20">
-                                            {llmProviders.map(provider => (
-                                                <optgroup key={provider.id} label={provider.name}>
-                                                    {llmPresets.filter(p => p.providerId === provider.id).map(p => (
-                                                        <option key={p.id} value={p.id}>{p.name}</option>
-                                                    ))}
-                                                </optgroup>
-                                            ))}
-                                            {/* Handle orphaned presets if any */}
-                                            {llmPresets.filter(p => !llmProviders.find(prov => prov.id === p.providerId)).length > 0 && (
-                                                <optgroup label="其他">
-                                                    {llmPresets.filter(p => !llmProviders.find(prov => prov.id === p.providerId)).map(p => (
-                                                        <option key={p.id} value={p.id}>{p.name}</option>
-                                                    ))}
-                                                </optgroup>
-                                            )}
-                                        </select>
-                                        <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-slate-500">
-                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
-                                        </div>
+                        <div className="grid grid-cols-2 gap-5 mb-6">
+                            <div>
+                                <label className="block text-xs font-bold text-indigo-500 uppercase tracking-wide mb-1.5 ml-1">基础模型 (Brain)</label>
+                                <div className="relative">
+                                    <select value={actor.llmPresetId} onChange={e => updateActor(actor.id, { llmPresetId: e.target.value })} className="w-full bg-white border border-slate-200 rounded-xl p-3.5 text-slate-800 appearance-none font-medium shadow-sm focus:ring-2 focus:ring-indigo-500/20">
+                                        {llmProviders.map(provider => (
+                                            <optgroup key={provider.id} label={provider.name}>
+                                                {llmPresets.filter(p => p.providerId === provider.id).map(p => (
+                                                    <option key={p.id} value={p.id}>{p.name}</option>
+                                                ))}
+                                            </optgroup>
+                                        ))}
+                                        {/* Handle orphaned presets if any */}
+                                        {llmPresets.filter(p => !llmProviders.find(prov => prov.id === p.providerId)).length > 0 && (
+                                            <optgroup label="其他">
+                                                {llmPresets.filter(p => !llmProviders.find(prov => prov.id === p.providerId)).map(p => (
+                                                    <option key={p.id} value={p.id}>{p.name}</option>
+                                                ))}
+                                            </optgroup>
+                                        )}
+                                    </select>
+                                    <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-slate-500">
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
                                     </div>
                                 </div>
-                            )}
+                            </div>
                             <div>
                                 <label className="block text-xs font-bold text-purple-500 uppercase tracking-wide mb-1.5 ml-1">TTS 引擎 (Mouth)</label>
                                 <div className="relative">

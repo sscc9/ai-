@@ -17,7 +17,6 @@ import {
     godStateAtom,
     speakingQueueAtom,
     turnCountAtom,
-    summariesAtom,
     timelineAtom,
     globalApiConfigAtom,
     actorProfilesAtom,
@@ -26,7 +25,8 @@ import {
     llmProvidersAtom,
     isPlayingAudioAtom,
     isTheaterModeAtom,
-    areRolesVisibleAtom
+    areRolesVisibleAtom,
+    userInputAtom
 } from '../atoms';
 import { GamePhase, ROLE_INFO, PlayerStatus, PHASE_LABELS, Role, Player, GOD_ROLES, VILLAGER_ROLES } from '../types';
 import { AudioService } from '../audio';
@@ -34,17 +34,16 @@ import { generateText, parseLLMResponse, buildSystemPrompt } from '../services/l
 
 // --- AI Logic Hook (The God Engine) ---
 export const useGameEngine = () => {
-    const [phase, setPhase] = useAtom(gamePhaseAtom);
-    const [players, setPlayers] = useAtom(playersAtom);
-    const [logs, setLogs] = useAtom(logsAtom);
-    const [isAuto, setIsAuto] = useAtom(isAutoPlayAtom);
-    const [isProcessing, setIsProcessing] = useAtom(isProcessingAtom);
-    const setSpeaker = useSetAtom(currentSpeakerIdAtom);
-    const saveSnapshot = useSetAtom(saveSnapshotAtom);
-    const [godState, setGodState] = useAtom(godStateAtom);
+    const [phase, setPhase] = useAtom(gamePhaseAtom) as any;
+    const [players, setPlayers] = useAtom(playersAtom) as any;
+    const [logs, setLogs] = useAtom(logsAtom) as any;
+    const [isAuto, setIsAuto] = useAtom(isAutoPlayAtom) as any;
+    const [isProcessing, setIsProcessing] = useAtom(isProcessingAtom) as any;
+    const setSpeaker = useSetAtom(currentSpeakerIdAtom) as any;
+    const saveSnapshot = useSetAtom(saveSnapshotAtom) as any;
+    const [godState, setGodState] = useAtom(godStateAtom) as any;
     const [speakingQueue, setSpeakingQueue] = useAtom(speakingQueueAtom);
     const [turnCount, setTurnCount] = useAtom(turnCountAtom);
-    const [summaries, setSummaries] = useAtom(summariesAtom);
     const isReplay = useAtomValue(isReplayModeAtom);
     const config = useAtomValue(gameConfigAtom);
 
@@ -61,6 +60,10 @@ export const useGameEngine = () => {
     const [isPlayingAudio, setIsPlayingAudio] = useAtom(isPlayingAudioAtom);
     const isTheater = useAtomValue(isTheaterModeAtom);
     const isDaytime = useAtomValue(isDaytimeAtom);
+
+    const [userInput, setUserInput] = useAtom(userInputAtom) as any;
+    const userInputRef = useRef(userInput);
+    useEffect(() => { userInputRef.current = userInput; }, [userInput]);
 
     // Monotonic counter to ensure absolute uniqueness for logs within a session
     const logIdCounter = useRef(0);
@@ -162,22 +165,6 @@ export const useGameEngine = () => {
         }
     }, [phase, turnCount, setLogs, setTimeline, globalConfig, isReplay, isTheater, setIsPlayingAudio, getActorConfig]);
 
-    // --- Summarizer ---
-    const summarizeTurn = useCallback(async (targetTurn: number) => {
-        try {
-            const logsToSummarize = logs.filter(l => l.turn === targetTurn && !l.visibleTo);
-            if (logsToSummarize.length < 2) return;
-            const logText = logsToSummarize.map(l => `${l.speakerId ? l.speakerId + '号' : '系统'}: ${l.content}`).join('\n');
-
-            const messages = [{ role: 'user', content: `总结以下狼人杀游戏【第 ${targetTurn} 天】的发生的关键事件。\n${logText}` }];
-
-            // Use narrator's LLM for summarizing or a default
-            const { llm, provider } = getActorConfig(globalConfig.narratorActorId);
-            const summary = await generateText(messages, llm, provider);
-
-            if (summary) setSummaries(prev => [...prev, summary.trim()]);
-        } catch (e) { console.error("Summary failed", e); }
-    }, [logs, setSummaries, globalConfig, getActorConfig]);
 
     // --- 辅助：获取板子配置描述 ---
     const getRoleConfigStr = useCallback(() => {
@@ -187,11 +174,27 @@ export const useGameEngine = () => {
         return `${count}人局：${roleList}。`;
     }, [config]);
 
+    // --- Human Input Waiter ---
+    const waitForHumanInput = useCallback(async () => {
+        while (!userInputRef.current) {
+            await new Promise(r => setTimeout(r, 500));
+        }
+        const input = userInputRef.current;
+        setUserInput(null);
+        return input;
+    }, [setUserInput]);
+
     // --- Vote Logic ---
     const getAiVote = useCallback(async (player: Player, validTargets: number[]): Promise<number | null> => {
         try {
-            const memoryText = summaries.length > 0 ? `### 往期记忆\n${summaries.join('\n')}` : "";
-            const currentTurnLogs = logs.filter(l => l.turn === turnCount && (!l.visibleTo || l.visibleTo.includes(player.id)));
+            if (player.isHuman) {
+                setSpeaker(player.id);
+                const result = await waitForHumanInput();
+                setSpeaker(null);
+                return result?.actionTarget && validTargets.includes(result.actionTarget) ? result.actionTarget : null;
+            }
+
+            const currentTurnLogs = logs.filter(l => l.turn <= turnCount && (!l.visibleTo || l.visibleTo.includes(player.id)));
             const currentTurnText = currentTurnLogs.map(l => l.isSystem ? `[系统]: ${l.content}` : `[${l.speakerId}号]: ${l.content}`).join('\n');
 
             const { llm, provider } = getActorConfig(player.actorId);
@@ -215,7 +218,6 @@ export const useGameEngine = () => {
             const userPrompt = `
 # 投票阶段 (Voting Phase)
 目前存活：${validTargets.join(', ')}。
-${memoryText}
 
 ### 本轮公聊记录 (Transcript)
 ${currentTurnText || "(暂无发言)"}
@@ -240,9 +242,8 @@ ${voteOverride}
             if (result && result.actionTarget && validTargets.includes(result.actionTarget)) return result.actionTarget;
             return null;
         } catch (e) { return null; }
-    }, [logs, turnCount, summaries, players, globalConfig, getActorConfig, getRoleConfigStr]);
+    }, [logs, turnCount, players, globalConfig, getActorConfig, getRoleConfigStr, waitForHumanInput]);
 
-    // --- Generate Logic & TTS ---
     const generateTurn = useCallback(async (
         player: Player,
         actionInstruction?: string,
@@ -253,125 +254,118 @@ ${voteOverride}
         setSpeaker(player.id);
 
         try {
-            const alivePlayers = players.filter(p => p.status === PlayerStatus.ALIVE);
-            const aliveList = alivePlayers.map(p => `${p.id}号`).join(', ');
-            const memoryText = summaries.length > 0 ? `### 往期记忆\n${summaries.join('\n')}` : "";
-            const currentTurnLogs = logs.filter(l => l.turn === turnCount && (!l.visibleTo || l.visibleTo.includes(player.id)));
-            // 明确时间顺序
-            const currentTurnText = currentTurnLogs.map(l => l.isSystem ? `[系统]: ${l.content}` : `[${l.speakerId}号]: ${l.content}`).join('\n');
+            const { actor, tts, llm, provider } = getActorConfig(player.actorId);
+            let result: any = null;
 
-            let privateContext = '';
+            if (player.isHuman) {
+                // Wait for human
+                result = await waitForHumanInput();
+            } else {
+                const alivePlayers = players.filter(p => p.status === PlayerStatus.ALIVE);
+                const aliveList = alivePlayers.map(p => `${p.id}号`).join(', ');
+                const currentTurnLogs = logs.filter(l => l.turn <= turnCount && (!l.visibleTo || l.visibleTo.includes(player.id)));
+                // 明确时间顺序
+                const currentTurnText = currentTurnLogs.map(l => l.isSystem ? `[系统]: ${l.content}` : `[${l.speakerId}号]: ${l.content}`).join('\n');
 
-            // --- 狼人增强逻辑 (保持不变，但变量名统一归入 privateContext) ---
-            if (player.role === Role.WEREWOLF) {
-                const allWolves = players.filter(p => p.role === Role.WEREWOLF);
-                const teammateStatusStr = allWolves
-                    .filter(p => p.id !== player.id)
-                    .map(p => `${p.id}号(${p.status === PlayerStatus.ALIVE ? '存活' : '已出局'})`)
-                    .join('，');
+                let privateContext = '';
 
-                privateContext += `\n[狼人视野] 你的队友状态：${teammateStatusStr || '无 (你是孤狼)'}。`;
+                // --- 狼人增强逻辑 (保持不变，但变量名统一归入 privateContext) ---
+                if (player.role === Role.WEREWOLF) {
+                    const allWolves = players.filter(p => p.role === Role.WEREWOLF);
+                    const teammateStatusStr = allWolves
+                        .filter(p => p.id !== player.id)
+                        .map(p => `${p.id}号(${p.status === PlayerStatus.ALIVE ? '存活' : '已出局'})`)
+                        .join('，');
 
-                const pastNightLogs = logs.filter(l =>
-                    l.phase === GamePhase.WEREWOLF_ACTION &&
-                    l.turn < turnCount &&
-                    !l.isSystem &&
-                    (l.visibleTo && l.visibleTo.includes(player.id))
-                );
+                    privateContext += `\n[狼人视野] 你的队友状态：${teammateStatusStr || '无 (你是孤狼)'}。`;
 
-                if (pastNightLogs.length > 0) {
-                    const nightHistoryStr = pastNightLogs.map(l => `[第${l.turn}夜] ${l.speakerId}号: ${l.content}`).join('\n');
-                    privateContext += `\n\n### 过往夜晚对话记忆\n${nightHistoryStr}`;
-                }
+                    const pastNightLogs = logs.filter(l =>
+                        l.phase === GamePhase.WEREWOLF_ACTION &&
+                        l.turn < turnCount &&
+                        !l.isSystem &&
+                        (l.visibleTo && l.visibleTo.includes(player.id))
+                    );
 
-                if (phase === GamePhase.DAY_DISCUSSION || phase === GamePhase.DAY_ANNOUNCE) {
-                    if (godState.wolfTarget) {
-                        const targetId = godState.wolfTarget;
-                        const targetPlayer = players.find(p => p.id === targetId);
-                        const isTargetAlive = targetPlayer?.status === PlayerStatus.ALIVE;
+                    if (pastNightLogs.length > 0) {
+                        const nightHistoryStr = pastNightLogs.map(l => `[第${l.turn}夜] ${l.speakerId}号: ${l.content}`).join('\n');
+                        privateContext += `\n\n### 过往夜晚对话记忆\n${nightHistoryStr}`;
+                    }
 
-                        privateContext += `\n[狼人隐秘视野] 昨晚你们袭击了 ${targetId}号。`;
-                        if (isTargetAlive) {
-                            privateContext += `\n结果：平安夜（他没死）。好人不知道刀口是 ${targetId}号。`;
-                        } else {
-                            privateContext += `\n结果：他死了。`;
+                    if (phase === GamePhase.DAY_DISCUSSION || phase === GamePhase.DAY_ANNOUNCE) {
+                        if (godState.wolfTarget) {
+                            const targetId = godState.wolfTarget;
+                            const targetPlayer = players.find(p => p.id === targetId);
+                            const isTargetAlive = targetPlayer?.status === PlayerStatus.ALIVE;
+
+                            privateContext += `\n[狼人隐秘视野] 昨晚你们袭击了 ${targetId}号。`;
+                            if (isTargetAlive) {
+                                privateContext += `\n结果：平安夜（他没死）。好人不知道刀口是 ${targetId}号。`;
+                            } else {
+                                privateContext += `\n结果：他死了。`;
+                            }
                         }
                     }
                 }
-            }
 
-            // --- 预言家记忆逻辑 (NEW) ---
-            if (player.role === Role.SEER) {
-                // 获取过往的查验结果 (系统私聊给预言家的)
-                // 筛选条件: 
-                // 1. phase 是 PROPHET/SEER_ACTION (上帝回复通常在这里)
-                // 2. visibleTo 包含自己
-                // 3. isSystem = true (上帝说的话)
-                // 4. turn < turnCount (以前的夜晚)
-                const pastCheckLogs = logs.filter(l =>
-                    l.phase === GamePhase.SEER_ACTION &&
-                    l.turn < turnCount &&
-                    l.isSystem &&
-                    l.visibleTo?.includes(player.id)
-                );
+                // --- 预言家记忆逻辑 (NEW) ---
+                if (player.role === Role.SEER) {
+                    const pastCheckLogs = logs.filter(l =>
+                        l.phase === GamePhase.SEER_ACTION &&
+                        l.turn < turnCount &&
+                        l.isSystem &&
+                        l.visibleTo?.includes(player.id)
+                    );
 
-                if (pastCheckLogs.length > 0) {
-                    const checkHistoryStr = pastCheckLogs.map(l => `[第${l.turn}夜] ${l.content}`).join('\n');
-                    privateContext += `\n\n### 【关键】过往查验记录\n${checkHistoryStr}`;
-                }
-            }
-
-            // --- 女巫记忆逻辑 (NEW) ---
-            if (player.role === Role.WITCH) {
-                if (player.potions) {
-                    privateContext += `\n[身份信息] 剩余药水：解药=${player.potions.cure ? '有' : '无'}，毒药=${player.potions.poison ? '有' : '无'}。`;
+                    if (pastCheckLogs.length > 0) {
+                        const checkHistoryStr = pastCheckLogs.map(l => `[第${l.turn}夜] ${l.content}`).join('\n');
+                        privateContext += `\n\n### 【关键】过往查验记录\n${checkHistoryStr}`;
+                    }
                 }
 
-                // 获取过往的操作记录 (上帝私聊的反馈)
-                const pastWitchLogs = logs.filter(l =>
-                    l.phase === GamePhase.WITCH_ACTION &&
-                    l.turn < turnCount &&
-                    l.isSystem &&
-                    l.visibleTo?.includes(player.id)
-                );
+                // --- 女巫记忆逻辑 (NEW) ---
+                if (player.role === Role.WITCH) {
+                    if (player.potions) {
+                        privateContext += `\n[身份信息] 剩余药水：解药=${player.potions.cure ? '有' : '无'}，毒药=${player.potions.poison ? '有' : '无'}。`;
+                    }
 
-                if (pastWitchLogs.length > 0) {
-                    const witchHistoryStr = pastWitchLogs.map(l => `[第${l.turn}夜] ${l.content}`).join('\n');
-                    privateContext += `\n\n### 【关键】过往用药记录\n${witchHistoryStr}`;
+                    const pastWitchLogs = logs.filter(l =>
+                        l.phase === GamePhase.WITCH_ACTION &&
+                        l.turn < turnCount &&
+                        l.isSystem &&
+                        l.visibleTo?.includes(player.id)
+                    );
+
+                    if (pastWitchLogs.length > 0) {
+                        const witchHistoryStr = pastWitchLogs.map(l => `[第${l.turn}夜] ${l.content}`).join('\n');
+                        privateContext += `\n\n### 【关键】过往用药记录\n${witchHistoryStr}`;
+                    }
                 }
-            }
 
+                // --- WOLF DOMINANCE CHECK ---
+                let dominancePrompt = "";
 
-            // --- WOLF DOMINANCE CHECK ---
-            let dominancePrompt = "";
+                if (isDaytime && player.role === Role.WEREWOLF) {
+                    const aliveWolves = alivePlayers.filter(p => p.role === Role.WEREWOLF).length;
+                    const aliveGood = alivePlayers.length - aliveWolves;
 
-            if (isDaytime && player.role === Role.WEREWOLF) {
-                const aliveWolves = alivePlayers.filter(p => p.role === Role.WEREWOLF).length;
-                const aliveGood = alivePlayers.length - aliveWolves;
-
-                if (aliveWolves >= aliveGood) {
-                    // Neutral Info Only
-                    dominancePrompt = `\n【当前局势提醒】\n目前存活：狼人${aliveWolves}人，好人${aliveGood}人。\n狼人票数已占优。`;
+                    if (aliveWolves >= aliveGood) {
+                        dominancePrompt = `\n【当前局势提醒】\n目前存活：狼人${aliveWolves}人，好人${aliveGood}人。\n狼人票数已占优。`;
+                    }
                 }
-            }
 
-            // --- 白天发言顺序提示 ---
-            let speakingOrderStr = "";
-            if (phase === GamePhase.DAY_DISCUSSION) {
-                speakingOrderStr = "\n【发言规则】当前为按座位号顺序发言。**本次公聊只有一轮发言，每位玩家在本轮只有一次发言机会**。";
-            }
+                // --- 白天发言顺序提示 ---
+                let speakingOrderStr = "";
+                if (phase === GamePhase.DAY_DISCUSSION) {
+                    speakingOrderStr = "\n【发言规则】当前为按座位号顺序发言。**本次公聊只有一轮发言，每位玩家在本轮只有一次发言机会**。";
+                }
 
-            const { actor, llm, provider, tts } = getActorConfig(player.actorId);
+                const systemPrompt = buildSystemPrompt(player, alivePlayers, getRoleConfigStr());
 
-            // 修改：传入 roleConfig
-            const systemPrompt = buildSystemPrompt(player, alivePlayers, getRoleConfigStr());
-
-            const userPrompt = `
+                const userPrompt = `
 # 公共视野 (Public Information)
 游戏阶段：${PHASE_LABELS[phase]}
 ${speakingOrderStr}
 存活玩家：${aliveList}
-${memoryText}
 
 ### 本轮公聊记录 (Transcript)
 ${currentTurnText || "(暂无发言)"}
@@ -385,19 +379,18 @@ ${actionInstruction || "分析场上局势，然后发言。目的是为了让�
 ${dominancePrompt}
 `.trim();
 
-            const messages = [
-                { role: 'system', content: systemPrompt },
-                { role: 'user', content: userPrompt }
-            ];
-            const responseText = await generateText(messages, llm, provider);
+                const messages = [
+                    { role: 'system', content: systemPrompt },
+                    { role: 'user', content: userPrompt }
+                ];
+                const responseText = await generateText(messages, llm, provider);
+                result = parseLLMResponse(responseText || "{}");
+            }
 
-            const result = parseLLMResponse(responseText || "{}");
-            const speech = result.speak || result.speech || "...";
-
+            const speech = result?.speak || result?.speech || "...";
 
             // FIX: Generate Shared ID with stronger UUID and monotonic counter
             const uniqueSuffix = `${Date.now()}-${logIdCounter.current++}-${Math.random().toString(36).slice(2)}`;
-
             const sharedId = `msg-T${turnCount}-${phase}-${player.id}-${uniqueSuffix}`;
 
             // Add Log
@@ -432,8 +425,8 @@ ${dominancePrompt}
             setPlayers(prev => prev.map(p => p.id === player.id ? { ...p, isSpeaking: true } : p));
             setIsPlayingAudio(true);
 
-            // TTS Call
-            if (globalConfig.enabled) {
+            // TTS Call (Only for AI, human already typed/spoke it)
+            if (globalConfig.enabled && !player.isHuman) {
                 await AudioService.getInstance().playOrGenerate(
                     speech,
                     actor.voiceId,
@@ -441,7 +434,7 @@ ${dominancePrompt}
                     tts
                 );
             } else {
-                // Simulation delay for reading if no audio
+                // Simulation delay for reading if no audio or human
                 await new Promise(r => setTimeout(r, 1500));
             }
 
@@ -458,7 +451,7 @@ ${dominancePrompt}
         } finally {
             setIsProcessing(false);
         }
-    }, [logs, phase, isProcessing, isReplay, players, turnCount, summaries, globalConfig, isTheater, setLogs, setTimeline, setPlayers, setSpeaker, saveSnapshot, setIsPlayingAudio, getActorConfig, isDaytime, getRoleConfigStr, godState]);
+    }, [logs, phase, isProcessing, isReplay, players, turnCount, globalConfig, isTheater, setLogs, setTimeline, setPlayers, setSpeaker, saveSnapshot, setIsPlayingAudio, getActorConfig, isDaytime, getRoleConfigStr, godState]);
 
 
     // --- The GOD Loop ---
@@ -477,12 +470,17 @@ ${dominancePrompt}
                     setIsProcessing(true);
                     try {
                         await addSystemLog("天黑请闭眼。");
+                        // Delay before wolves
+                        await new Promise(r => setTimeout(r, Math.random() * 2000 + 1500));
+
                         setPhase(GamePhase.WEREWOLF_ACTION);
                         setGodState({ wolfTarget: null, seerCheck: null, witchSave: false, witchPoison: null, guardProtect: null, deathsTonight: [] });
                         saveSnapshot();
-                        // Split logic: Log the next phase start within this block, forcing the phase ID
-                        await addSystemLog("狼人请睁眼。", undefined, undefined, GamePhase.WEREWOLF_ACTION);
+
+                        const wolves = players.filter(p => p.role === Role.WEREWOLF);
+                        await addSystemLog("狼人请睁眼。", wolves.map(w => w.id), undefined, GamePhase.WEREWOLF_ACTION);
                     } finally {
+
                         setIsProcessing(false);
                     }
                     break;
@@ -516,12 +514,22 @@ ${dominancePrompt}
                             await generateTurn(nextWolf, wolfNightPrompt + "\n目前是讨论阶段，JSON 的 actionTarget 请填 null。", wolves.map(w => w.id));
                         }
                     } else {
+                        // Delay before closing eyes
+                        await new Promise(r => setTimeout(r, Math.random() * 1500 + 1000));
+
                         setIsProcessing(true);
                         try {
-                            await addSystemLog("狼人请闭眼。");
+                            const wolves = players.filter(p => p.role === Role.WEREWOLF);
+                            await addSystemLog("狼人请闭眼。", wolves.map(w => w.id));
+
+                            // Delay before Seer
+                            await new Promise(r => setTimeout(r, Math.random() * 2000 + 1500));
+
                             setPhase(GamePhase.SEER_ACTION);
                             saveSnapshot();
-                            await addSystemLog("预言家请睁眼。", undefined, undefined, GamePhase.SEER_ACTION);
+
+                            const seer = players.find(p => p.role === Role.SEER);
+                            await addSystemLog("预言家请睁眼。", seer ? [seer.id] : [], undefined, GamePhase.SEER_ACTION);
                         } finally {
                             setIsProcessing(false);
                         }
@@ -599,9 +607,17 @@ JSON包含 "useCure": boolean, "poisonTarget": number | null。
                         }
                     }
 
+                    // Delay before closing eyes
+                    await new Promise(r => setTimeout(r, Math.random() * 1500 + 1000));
+
                     setIsProcessing(true);
                     try {
-                        await addSystemLog("女巫请闭眼。");
+                        const witch = players.find(p => p.role === Role.WITCH);
+                        await addSystemLog("女巫请闭眼。", witch ? [witch.id] : []);
+
+                        // Small delay before sunrise
+                        await new Promise(r => setTimeout(r, 2000));
+
                         setPhase(GamePhase.DAY_ANNOUNCE);
                         saveSnapshot();
                     } finally {
@@ -609,6 +625,7 @@ JSON包含 "useCure": boolean, "poisonTarget": number | null。
                     }
                     break;
                 }
+
 
                 case GamePhase.DAY_ANNOUNCE: {
                     setIsProcessing(true);
@@ -776,13 +793,16 @@ JSON包含 "useCure": boolean, "poisonTarget": number | null。
                             let hunterPrompt = '';
 
                             if (wasVotedOut) {
-                                hunterPrompt = `你被投票出局了。请发表你的【遗言】，并在发言末尾发动技能带走一名玩家。可选目标: [${targetIds.join(', ')}]. JSON 中必须包含 "actionTarget"`;
+                                hunterPrompt = `你被投票出局了。请发表你的【遗言】，并在发言末尾发动技能带走一名玩家。此外，你也可以选择放弃开枪（压枪）。
+可选目标: [${targetIds.join(', ')}]. 如果不想开枪，请将 JSON 中的 "actionTarget" 设为 null。`;
                             } else { // Died at night
-                                hunterPrompt = `你出局了，发动猎人技能带走一人。**策略**：带走场上狼面最大的玩家，为好人追回轮次。可选: [${targetIds.join(', ')}]. JSON 包含 "actionTarget": number`;
+                                hunterPrompt = `你出局了，发动猎人技能带走一人。此外，你也可以选择放弃开枪（压枪）。
+**策略**：带走场上狼面最大的玩家，为好人追回轮次。可选: [${targetIds.join(', ')}]. 如果不想开枪，请将 JSON 中的 "actionTarget" 设为 null。`;
                             }
 
                             const result = await generateTurn(hunter, hunterPrompt);
-                            const shotTargetId = result?.actionTarget && targetIds.includes(result.actionTarget) ? result.actionTarget : targetIds[Math.floor(Math.random() * targetIds.length)];
+                            const shotTargetId = result?.actionTarget && targetIds.includes(result.actionTarget) ? result.actionTarget : null;
+
 
                             if (shotTargetId) {
                                 setIsProcessing(true);
@@ -804,7 +824,6 @@ JSON包含 "useCure": boolean, "poisonTarget": number | null。
 
                                     if (wasVotedOut) {
                                         await addSystemLog(`猎人遗言并发动技能后，本轮结束。`);
-                                        await summarizeTurn(turnCount);
                                         setTurnCount(t => t + 1);
                                         setPhase(GamePhase.NIGHT_START);
                                         await addSystemLog(`--- 第 ${turnCount + 1} 天 ---`);
@@ -820,7 +839,28 @@ JSON包含 "useCure": boolean, "poisonTarget": number | null。
                                 } finally {
                                     setIsProcessing(false);
                                 }
+                            } else {
+                                // SKIP SHOOTING
+                                setIsProcessing(true);
+                                try {
+                                    await addSystemLog("猎人选择不开枪。");
+                                    if (wasVotedOut) {
+                                        setTurnCount(t => t + 1);
+                                        setPhase(GamePhase.NIGHT_START);
+                                        await addSystemLog(`--- 第 ${turnCount + 1} 天 ---`);
+                                    } else {
+                                        const aliveForDiscussion = players.filter(p => p.status === PlayerStatus.ALIVE);
+                                        const startIdx = Math.floor(Math.random() * aliveForDiscussion.length);
+                                        const queue = [...aliveForDiscussion.slice(startIdx), ...aliveForDiscussion.slice(0, startIdx)].map(p => p.id);
+                                        setSpeakingQueue(queue);
+                                        await addSystemLog(`从 ${queue[0]}号 开始发言。`);
+                                        setPhase(GamePhase.DAY_DISCUSSION);
+                                    }
+                                } finally {
+                                    setIsProcessing(false);
+                                }
                             }
+
                         }
                     }
                     saveSnapshot();
@@ -836,7 +876,6 @@ JSON包含 "useCure": boolean, "poisonTarget": number | null。
                     } else {
                         setIsProcessing(true);
                         try {
-                            await summarizeTurn(turnCount);
                             setTurnCount(t => t + 1);
                             setPhase(GamePhase.NIGHT_START);
                             await addSystemLog(`--- 第 ${turnCount + 1} 天 ---`);
@@ -857,7 +896,7 @@ JSON包含 "useCure": boolean, "poisonTarget": number | null。
         }, 1000);
 
         return () => clearTimeout(loopTimeout);
-    }, [isAuto, isProcessing, phase, players, generateTurn, isReplay, logs, turnCount, godState, speakingQueue, isPlayingAudio, isTheater, addSystemLog, summarizeTurn, getAiVote, setPhase, setPlayers, setGodState, setSpeakingQueue, saveSnapshot, setIsProcessing, setIsAuto, checkWinCondition, saveGameArchive, setAreRolesVisible]);
+    }, [isAuto, isProcessing, phase, players, generateTurn, isReplay, logs, turnCount, godState, speakingQueue, isPlayingAudio, isTheater, addSystemLog, getAiVote, setPhase, setPlayers, setGodState, setSpeakingQueue, saveSnapshot, setIsProcessing, setIsAuto, checkWinCondition, saveGameArchive, setAreRolesVisible]);
 
     return { generateTurn };
 };

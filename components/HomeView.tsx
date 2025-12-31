@@ -1,13 +1,14 @@
 
 import React, { useState } from 'react';
-import { useSetAtom } from 'jotai';
+import { useSetAtom, useAtom } from 'jotai';
 import { clsx } from 'clsx';
-import { initGameAtom, appScreenAtom } from '../store';
+import { initGameAtom, appScreenAtom, isHumanModeAtom } from '../store';
 
 const HomeView = () => {
     const initGame = useSetAtom(initGameAtom);
     const setScreen = useSetAtom(appScreenAtom);
     const [selectedMode, setSelectedMode] = useState<9 | 12>(12);
+    const [isHumanMode, setIsHumanMode] = useAtom(isHumanModeAtom);
 
     return (
         <div className="h-full w-full bg-[#f8fafc] text-slate-800 flex flex-col items-center justify-center relative overflow-hidden font-sans selection:bg-indigo-100">
@@ -69,6 +70,30 @@ const HomeView = () => {
                         <span className="text-[10px] text-slate-400 mt-1 font-medium bg-slate-100 px-2 py-0.5 rounded-full">女猎守</span>
                         {selectedMode === 12 && <div className="absolute top-2 right-2 w-2 h-2 bg-indigo-600 rounded-full"></div>}
                     </button>
+                </div>
+                {/* Human Mode Toggle */}
+                <div className="w-full flex items-center justify-between p-4 bg-white/60 backdrop-blur-sm border border-slate-200 rounded-2xl shadow-sm">
+                    <div className="flex items-center gap-3">
+                        <span className="text-xl">🧑‍💻</span>
+                        <div>
+                            <span className="text-sm font-bold text-slate-800 block">人类玩家参与</span>
+                            <span className="text-[10px] text-slate-400 font-medium">你将作为一名玩家随机加入游戏</span>
+                        </div>
+                    </div>
+                    <div
+                        onClick={() => setIsHumanMode(!isHumanMode)}
+                        className={clsx(
+                            "relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none",
+                            isHumanMode ? 'bg-indigo-500' : 'bg-slate-300'
+                        )}
+                    >
+                        <span
+                            className={clsx(
+                                "pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out",
+                                isHumanMode ? 'translate-x-5' : 'translate-x-0'
+                            )}
+                        />
+                    </div>
                 </div>
 
                 {/* Buttons */}

@@ -24,6 +24,7 @@ const PlayerCard: React.FC<PlayerCardProps> = ({ seat, isTop }) => {
     const animationClass = isTop ? 'animate-fly-in-top' : 'animate-fly-in-bottom';
 
     const player = players.find(p => p.seatNumber === seat);
+    const humanPlayer = players.find(p => p.isHuman);
 
     useEffect(() => {
         setImgLoaded(false);
@@ -34,7 +35,27 @@ const PlayerCard: React.FC<PlayerCardProps> = ({ seat, isTop }) => {
     const actor = actors.find(p => p.id === player.actorId);
 
     const isDead = player.status !== PlayerStatus.ALIVE;
-    const isSpeaking = currentSpeakerId === player.id;
+    const isSpeakingRaw = currentSpeakerId === player.id;
+
+    // --- Night Stealth Logic ---
+    // In many phases (Seer, Witch), the speaker/actor should be hidden from those who don't share the perspective.
+    const isNightPhase = phase === GamePhase.WEREWOLF_ACTION || phase === GamePhase.SEER_ACTION || phase === GamePhase.WITCH_ACTION || phase === GamePhase.GUARD_ACTION;
+    let canSeeSpeaker = true;
+
+    if (isNightPhase && !isReplayMode && humanPlayer) {
+        if (phase === GamePhase.WEREWOLF_ACTION) {
+            canSeeSpeaker = humanPlayer.role === Role.WEREWOLF;
+        } else if (phase === GamePhase.SEER_ACTION) {
+            canSeeSpeaker = humanPlayer.role === Role.SEER;
+        } else if (phase === GamePhase.WITCH_ACTION) {
+            canSeeSpeaker = humanPlayer.role === Role.WITCH;
+        } else if (phase === GamePhase.GUARD_ACTION) {
+            canSeeSpeaker = humanPlayer.role === Role.GUARD;
+        } else {
+            canSeeSpeaker = false; // Hide by default at night if human
+        }
+    }
+    const isSpeaking = isSpeakingRaw && canSeeSpeaker;
 
     // --- Visibility Logic ---
     let shouldShowRole = false;
@@ -45,18 +66,25 @@ const PlayerCard: React.FC<PlayerCardProps> = ({ seat, isTop }) => {
     if (isGameOver) {
         shouldShowRole = true;
     } else if (isReplayMode) {
-        // Replay Mode: Stricter rules. 
-        // Dead players do NOT automatically reveal unless it's Game Over.
+        // Replay Mode: Use perspective switcher
         if (perspective === 'GOD') {
             shouldShowRole = true;
         } else if (perspective === 'WOLF') {
             shouldShowRole = player.role === Role.WEREWOLF;
         } else {
-            // GOOD perspective: Only see known info (usually nothing specific in replay unless self, skipping for simplicity)
+            shouldShowRole = player.isHuman || false;
+        }
+    } else if (humanPlayer) {
+        // Live Game with Human: Only show what the human knows
+        if (player.id === humanPlayer.id) {
+            shouldShowRole = true;
+        } else if (humanPlayer.role === Role.WEREWOLF && player.role === Role.WEREWOLF) {
+            shouldShowRole = true;
+        } else {
             shouldShowRole = false;
         }
     } else {
-        // Live Game
+        // Live Game (Pure AI): Show everything if configured
         shouldShowRole = showRolesGlobal;
     }
 
@@ -215,7 +243,15 @@ const PlayerCard: React.FC<PlayerCardProps> = ({ seat, isTop }) => {
                 )}
                 {/* No spacer div here anymore to remove empty gap */}
 
-                {actor && (
+                {player.isHuman ? (
+                    <div className="flex flex-col items-center">
+                        <span className={clsx(
+                            "text-[8px] sm:text-[9px] md:text-[10px] font-bold px-1.5 sm:px-2 py-0.5 text-indigo-700 bg-indigo-50 backdrop-blur-sm rounded-md shadow-sm border border-indigo-200"
+                        )}>
+                            人类
+                        </span>
+                    </div>
+                ) : actor && (
                     <div className="flex flex-col items-center opacity-90">
                         <span className={clsx(
                             "text-[8px] sm:text-[9px] md:text-[10px] truncate max-w-[3.5rem] sm:max-w-[5rem] font-semibold px-1 sm:px-1.5 py-0.5 text-slate-700 bg-white/70 backdrop-blur-sm rounded-md shadow-sm border border-white/40"

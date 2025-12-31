@@ -86,6 +86,7 @@ export interface Player {
         cure: boolean;
         poison: boolean;
     };
+    isHuman?: boolean;
 }
 
 // --- New Settings Structure ---
@@ -210,7 +211,6 @@ export interface GameSnapshot {
     logs: GameLog[];
     turn: number;
     godState: GodState;
-    summaries: string[];
 }
 
 // --- Archive Structure for History ---

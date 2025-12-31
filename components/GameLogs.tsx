@@ -58,8 +58,30 @@ const LogItemComponent: React.FC<LogItemProps> = ({ log, viewerId, isPortrait = 
             }
         }
     } else {
-        // Live Mode
-        if (log.visibleTo && viewerId && !log.visibleTo.includes(viewerId)) {
+        // Live Mode (including with Human Player)
+        const humanPlayer = players.find(p => p.isHuman);
+
+        if (humanPlayer) {
+            // 1. Private Messages visibility
+            if (log.visibleTo && !log.visibleTo.includes(humanPlayer.id)) {
+                isVisible = false;
+            }
+
+            // 2. System Messages (Phases) filtering for Human
+            if (log.isSystem && isVisible) {
+                const p = log.phase;
+                if (humanPlayer.role !== Role.WEREWOLF) {
+                    if (p === GamePhase.WEREWOLF_ACTION) isVisible = false;
+                }
+                // Good people (including Seer/Witch) don't see each other's actions
+                if (p === GamePhase.SEER_ACTION && humanPlayer.role !== Role.SEER) isVisible = false;
+                if (p === GamePhase.WITCH_ACTION && humanPlayer.role !== Role.WITCH) isVisible = false;
+                if (p === GamePhase.GUARD_ACTION && humanPlayer.role !== Role.GUARD) isVisible = false;
+
+                // Special case: "xxx 请睁眼" should be visible only to that role
+                // But usually we just filter the whole phase's system logs for non-roles.
+            }
+        } else if (log.visibleTo && viewerId && !log.visibleTo.includes(viewerId)) {
             isVisible = false;
         }
     }
