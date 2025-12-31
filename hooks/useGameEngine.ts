@@ -213,16 +213,22 @@ export const useGameEngine = () => {
 
             // Improved Voting Prompt
             const userPrompt = `
-# 投票阶段
+# 投票阶段 (Voting Phase)
 目前存活：${validTargets.join(', ')}。
 ${memoryText}
-### 本轮发言（按时间先后）
-${currentTurnText}
+
+### 本轮公聊记录 (Transcript)
+${currentTurnText || "(暂无发言)"}
+
 ${voteOverride}
 
-# 任务指令
+# 任务指令 (Task)
 请做出投票决定。
-必须输出 JSON: { "speak": "...", "actionTarget": 目标ID }`;
+你需要：
+1. **回顾发言**：谁的发言逻辑有漏洞？谁在跟风？
+2. **独立判断**：不要盲目跟随前置位，除非他们的逻辑无懈可击。
+3. **输出**：必须输出 JSON: { "speak": "简短投票理由", "actionTarget": 目标ID }
+`.trim();
 
             const messages = [
                 { role: 'system', content: systemPrompt },
@@ -360,7 +366,24 @@ ${voteOverride}
             // 修改：传入 roleConfig
             const systemPrompt = buildSystemPrompt(player, alivePlayers, getRoleConfigStr());
 
-            const userPrompt = `游戏阶段：${PHASE_LABELS[phase]}\n存活：${aliveList}${privateContext}\n${memoryText}\n### 本轮发言（按时间先后）\n${currentTurnText}\n${speakingOrderStr}\n\n${actionInstruction || "分析场上局势，然后发言。目的是为了让你的阵营获胜。"}${dominancePrompt}`;
+            const userPrompt = `
+# 公共视野 (Public Information)
+游戏阶段：${PHASE_LABELS[phase]}
+${speakingOrderStr}
+存活玩家：${aliveList}
+${memoryText}
+
+### 本轮公聊记录 (Transcript)
+${currentTurnText || "(暂无发言)"}
+
+# 你的隐秘视野 (Your Private Secret)
+${privateContext}
+*注意：以上信息只有你（和你的队友）知道。其他玩家并不知情，不要预设他们知道这些。*
+
+# 思考与行动 (Thinking & Action)
+${actionInstruction || "分析场上局势，然后发言。目的是为了让你的阵营获胜。"}
+${dominancePrompt}
+`.trim();
 
             const messages = [
                 { role: 'system', content: systemPrompt },
