@@ -221,8 +221,7 @@ ${currentTurnText}
 ${voteOverride}
 
 # 任务指令
-请做出投票决定。
-必须输出 JSON: { "speak": "...", "actionTarget": 目标ID }`;
+请做出投票决定。必须针对当前局势给出你的理由。`;
 
             const messages = [
                 { role: 'system', content: systemPrompt },
@@ -360,7 +359,7 @@ ${voteOverride}
             // 修改：传入 roleConfig
             const systemPrompt = buildSystemPrompt(player, alivePlayers, getRoleConfigStr());
 
-            const userPrompt = `游戏阶段：${PHASE_LABELS[phase]}\n存活：${aliveList}${privateContext}\n${memoryText}\n### 本轮发言（按时间先后）\n${currentTurnText}\n${speakingOrderStr}\n\n${actionInstruction || "分析场上局势，然后发言。目的是为了让你的阵营获胜。"}${dominancePrompt}`;
+            const userPrompt = `游戏阶段：${PHASE_LABELS[phase]}\n${memoryText}\n### 本轮发言（按时间先后）\n${currentTurnText}\n${speakingOrderStr}\n\n${actionInstruction || "分析当前局势并行动。目标是为己方阵营获胜。"}${dominancePrompt}`;
 
             const messages = [
                 { role: 'system', content: systemPrompt },
@@ -467,7 +466,7 @@ ${voteOverride}
                 case GamePhase.WEREWOLF_ACTION: {
                     const wolves = players.filter(p => p.status === PlayerStatus.ALIVE && p.role === Role.WEREWOLF);
 
-                    const wolfNightPrompt = `**狼人行动阶段**\n你是狼人。你的目标是准确刀中关键神职或做高自己身份。请与队友进行战术沟通。\n**注意：本次夜间讨论只有一轮发言，每位玩家在本轮只有一次说话机会**。speak 字段是你对队友说的话。`;
+                    const wolfNightPrompt = `你是狼人。准确刀中关键神职或做高自己身份。请与队友进行战术沟通（本轮只有一次发言机会）。`;
 
                     const nextWolf = getNextSpeaker(wolves);
 
@@ -477,7 +476,7 @@ ${voteOverride}
                         if (isLastSpeaker) {
                             // ALLOW SELF KILL: Removed restriction on targets
                             const targets = players.filter(p => p.status === PlayerStatus.ALIVE).map(t => t.id);
-                            const finalPrompt = `${wolfNightPrompt}\n**最终决策**：你是最后一个发言的狼人。请在 speak 中总结并给出最终决定，且必须在 **actionTarget** 中填入今晚要杀的玩家ID (数字)。`;
+                            const finalPrompt = `${wolfNightPrompt}\n**最终决策**：你是最后一个发言的狼人。请给出最终刀人决定。`;
 
                             const result = await generateTurn(nextWolf, finalPrompt, wolves.map(w => w.id));
 
@@ -513,8 +512,7 @@ ${voteOverride}
 
                     if (seer && !hasSpoken) {
                         const targetIds = players.filter(p => p.status === PlayerStatus.ALIVE && p.id !== seer.id).map(t => t.id);
-                        const seerPrompt = `请选择查验对象。**策略**：基于逻辑寻找狼人坑位，或验证关键位置玩家的身份定义。JSON包含 "actionTarget": number。
-**重要**：在 "speak" 字段中，请用简短的一句话描述你的心理活动（例如："3号发言很划水，我要查查他"），绝不要只输出省略号。`;
+                        const seerPrompt = `请选择今晚查验的对象。基于逻辑寻找狼人或验证关键身份。请在 speak 中简述你的心理活动。`;
                         const result = await generateTurn(seer, seerPrompt, [seer.id]);
 
                         if (result?.actionTarget) {
@@ -549,10 +547,7 @@ ${voteOverride}
 
                     if (witch && !hasSpoken) {
                         const dyingId = godState.wolfTarget;
-                        const witchPrompt = `女巫行动。${dyingId}号被杀了。请基于收益计算（EV）决定是否使用药水。
-状态: 解药=${witch.potions?.cure}, 毒药=${witch.potions?.poison}。
-JSON包含 "useCure": boolean, "poisonTarget": number | null。
-**重要**：在 "speak" 字段中，请用简短的一句话描述你的心理活动（例如："这瓶毒药先留着" 或 "今晚必须救人"），绝不要只输出省略号。`;
+                        const witchPrompt = `女巫行动。当前 ${dyingId}号 被杀。请决定是否使用药水（解药/毒药情况见私聊信息）。请在 speak 中简述你的心理活动。`;
 
                         const result = await generateTurn(witch, witchPrompt, [witch.id]);
 
