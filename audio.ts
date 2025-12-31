@@ -22,6 +22,15 @@ export class AudioService {
     }
 
     /**
+     * Cleans text for TTS by removing content in parentheses.
+     */
+    private cleanTextForTTS(text: string): string {
+        if (!text) return "";
+        // Remove content in (...) and （...）
+        return text.replace(/\(.*?\)|（.*?）/g, '').trim();
+    }
+
+    /**
      * Fetch from Edge TTS (Python Backend)
      */
     private async fetchFromEdge(text: string, voiceId: string, speed: number = 1.0): Promise<Blob | null> {
@@ -95,7 +104,10 @@ export class AudioService {
             const cached = await get(cacheKey);
             if (cached) return 'CACHED';
 
-            const audioBlob = await this.fetchTTS(text, voiceId);
+            const cleanText = this.cleanTextForTTS(text);
+            if (!cleanText) return 'FAILED';
+
+            const audioBlob = await this.fetchTTS(cleanText, voiceId);
 
             if (!audioBlob) return 'FAILED';
 
@@ -130,7 +142,10 @@ export class AudioService {
             if (this.playbackId !== myId) return Promise.resolve();
 
             if (!audioBlob) {
-                audioBlob = await this.fetchTTS(text, voiceId, playbackSpeed);
+                const cleanText = this.cleanTextForTTS(text);
+                if (!cleanText) return Promise.resolve();
+
+                audioBlob = await this.fetchTTS(cleanText, voiceId, playbackSpeed);
 
                 if (this.playbackId !== myId) return Promise.resolve();
 
