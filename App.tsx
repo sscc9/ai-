@@ -11,6 +11,8 @@ import AgentView from './components/AgentView';
 import HistoryView from './components/HistoryView';
 import ScreenControls from './components/ScreenControls';
 import StateHydrator from './components/StateHydrator';
+import PodcastConfigView from './components/PodcastConfigView';
+import PodcastRoomView from './components/PodcastRoomView';
 
 
 const App = () => {
@@ -32,6 +34,10 @@ const App = () => {
                 return <AgentView />;
             case 'HISTORY':
                 return <HistoryView />;
+            case 'PODCAST_CONFIG':
+                return <PodcastConfigView />;
+            case 'PODCAST_ROOM':
+                return <PodcastRoomView />;
             default:
                 return <HomeView />;
         }

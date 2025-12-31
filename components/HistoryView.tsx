@@ -202,7 +202,7 @@ const HistoryView = () => {
                         return (
                             <div
                                 key={game.id}
-                                onClick={() => !isDownloading && loadGame(game)}
+                                onClick={() => !isDownloading && loadGame(game as any)}
                                 className={clsx(
                                     "bg-white/80 backdrop-blur-md rounded-2xl border border-slate-200 p-4 transition-all duration-300 group relative",
                                     isDownloading ? "cursor-wait opacity-90" : "cursor-pointer hover:bg-white hover:shadow-lg hover:border-indigo-200"
@@ -212,19 +212,28 @@ const HistoryView = () => {
                                     {/* Left Side: Info */}
                                     <div className="flex flex-col gap-1.5 min-w-0">
                                         <div className="text-xl font-black text-slate-800 tracking-tight leading-none flex flex-col sm:flex-row sm:items-end gap-1 sm:gap-2">
-                                            <span>{new Date(game.timestamp).toLocaleString('zh-CN', { month: 'short', day: 'numeric' })}</span>
+                                            <span>{(game as any).type === 'PODCAST' ? '🎙️ 播客节目' : new Date(game.timestamp).toLocaleString('zh-CN', { month: 'short', day: 'numeric' })}</span>
                                             <span className="text-sm font-bold text-slate-400 mb-0.5">{new Date(game.timestamp).toLocaleString('zh-CN', { hour: '2-digit', minute: '2-digit' })}</span>
                                         </div>
                                         <div className="text-slate-500 text-xs font-bold flex items-center gap-2 font-mono">
-                                            <div className="flex items-center gap-1">
-                                                <span className="opacity-70">👤</span>
-                                                <span>{game.playerCount}</span>
-                                            </div>
-                                            <div className="w-0.5 h-0.5 rounded-full bg-slate-300"></div>
-                                            <div className="flex items-center gap-1">
-                                                <span className="opacity-70">🔄</span>
-                                                <span>{game.turnCount}天</span>
-                                            </div>
+                                            {(game as any).type === 'PODCAST' ? (
+                                                <div className="flex items-center gap-1">
+                                                    <span className="opacity-70">💬</span>
+                                                    <span className="truncate max-w-[200px]">主题: {(game as any).topic}</span>
+                                                </div>
+                                            ) : (
+                                                <>
+                                                    <div className="flex items-center gap-1">
+                                                        <span className="opacity-70">👤</span>
+                                                        <span>{game.playerCount}</span>
+                                                    </div>
+                                                    <div className="w-0.5 h-0.5 rounded-full bg-slate-300"></div>
+                                                    <div className="flex items-center gap-1">
+                                                        <span className="opacity-70">🔄</span>
+                                                        <span>{game.turnCount}天</span>
+                                                    </div>
+                                                </>
+                                            )}
                                             <div className="w-0.5 h-0.5 rounded-full bg-slate-300"></div>
                                             <div className="flex items-center gap-1">
                                                 <span className="opacity-70">💬</span>
@@ -233,15 +242,17 @@ const HistoryView = () => {
                                         </div>
                                     </div>
 
+
                                     {/* Right Side: Actions & Status */}
                                     <div className="flex flex-col items-end gap-2">
                                         <div className="flex items-center gap-2 flex-wrap justify-end">
                                             {/* Winner Badge moved here */}
                                             <span className={clsx("px-2 py-1.5 rounded-lg text-[10px] font-bold border shadow-sm whitespace-nowrap",
-                                                game.winner === 'GOOD' ? "bg-blue-50 text-blue-600 border-blue-100" :
-                                                    game.winner === 'WOLF' ? "bg-red-50 text-red-600 border-red-100" : "bg-slate-50 text-slate-500 border-slate-100"
+                                                (game as any).type === 'PODCAST' ? "bg-indigo-50 text-indigo-600 border-indigo-100" :
+                                                    game.winner === 'GOOD' ? "bg-blue-50 text-blue-600 border-blue-100" :
+                                                        game.winner === 'WOLF' ? "bg-red-50 text-red-600 border-red-100" : "bg-slate-50 text-slate-500 border-slate-100"
                                             )}>
-                                                {game.winner === 'GOOD' ? '好人胜利' : game.winner === 'WOLF' ? '狼人胜利' : '未知结果'}
+                                                {(game as any).type === 'PODCAST' ? '播客对谈' : (game.winner === 'GOOD' ? '好人胜利' : game.winner === 'WOLF' ? '狼人胜利' : '未知结果')}
                                             </span>
 
                                             {isDownloading ? (
@@ -301,13 +312,17 @@ const HistoryView = () => {
                                 </div>
 
                                 <div className="mt-3 pt-3 border-t border-slate-100 flex flex-wrap gap-1.5">
-                                    {game.players.map(p => (
-                                        <div key={p.id} className="relative w-8 h-8 rounded-full overflow-hidden ring-2 ring-white shadow-sm" title={`${p.seatNumber}号 ${ROLE_INFO[p.role].label}`}>
-                                            <img src={`https://picsum.photos/seed/${p.avatarSeed}/50`} className="w-full h-full object-cover" />
-                                            <div className="absolute bottom-0 right-0 bg-slate-900/80 text-[8px] text-white px-1 font-bold">{p.seatNumber}</div>
-                                            {p.role === Role.WEREWOLF && <div className="absolute top-0 right-0 text-[8px] bg-red-500/80 rounded-bl p-0.5">🐺</div>}
-                                        </div>
-                                    ))}
+                                    {(game as any).type === 'PODCAST' ? (
+                                        <div className="text-[10px] font-bold text-slate-400">参与者: 主持人, 1号嘉宾, 2号嘉宾</div>
+                                    ) : (
+                                        game.players.map(p => (
+                                            <div key={p.id} className="relative w-8 h-8 rounded-full overflow-hidden ring-2 ring-white shadow-sm" title={`${p.seatNumber}号 ${ROLE_INFO[p.role].label}`}>
+                                                <img src={`https://picsum.photos/seed/${p.avatarSeed}/50`} className="w-full h-full object-cover" />
+                                                <div className="absolute bottom-0 right-0 bg-slate-900/80 text-[8px] text-white px-1 font-bold">{p.seatNumber}</div>
+                                                {p.role === Role.WEREWOLF && <div className="absolute top-0 right-0 text-[8px] bg-red-500/80 rounded-bl p-0.5">🐺</div>}
+                                            </div>
+                                        ))
+                                    )}
                                 </div>
 
                                 {!isDownloading && (

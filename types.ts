@@ -47,6 +47,15 @@ export enum GamePhase {
     GAME_REVIEW = 'GAME_REVIEW' // Post-game chat
 }
 
+export enum PodcastPhase {
+    CONFIG = 'CONFIG',
+    INTRO = 'INTRO',
+    HOST_SPEAK = 'HOST_SPEAK',
+    GUEST_SPEAK = 'GUEST_SPEAK',
+    OUTRO = 'OUTRO',
+    FINISHED = 'FINISHED'
+}
+
 export const PHASE_LABELS: Record<GamePhase, string> = {
     [GamePhase.SETUP]: '游戏设置',
     [GamePhase.NIGHT_START]: '入夜',
@@ -163,6 +172,7 @@ export interface GameLog {
     turn: number;
     phase: GamePhase;
     speakerId?: number; // Null if system message
+    speakerName?: string; // Optional override for podcast/custom modes
     content: string; // markdown supported
     thought?: string; // The internal monologue (CoT)
     timestamp: number;
@@ -211,6 +221,34 @@ export interface GameSnapshot {
     logs: GameLog[];
     turn: number;
     godState: GodState;
+}
+
+// --- Podcast Specific ---
+export interface PodcastConfig {
+    topic: string;
+
+    // Host Config
+    hostName: string;
+    hostSystemPrompt: string;
+    hostLlmPresetId?: string;
+    hostTtsPresetId?: string;
+    hostVoiceId?: string;
+
+    // Guest Config
+    guest1Name: string;
+    guest1SystemPrompt: string;
+    guest1LlmPresetId?: string;
+    guest1TtsPresetId?: string;
+    guest1VoiceId?: string;
+}
+
+export interface PodcastArchive extends Omit<GameArchive, 'winner' | 'roles' | 'playerCount'> {
+    type: 'PODCAST';
+    topic: string;
+    hostName: string;
+    hostSystemPrompt: string;
+    guest1Name: string;
+    guest1SystemPrompt: string;
 }
 
 // --- Archive Structure for History ---

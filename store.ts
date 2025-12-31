@@ -7,13 +7,15 @@ import {
     timelineAtom, replaySourceLogsAtom, isReplayModeAtom, areRolesVisibleAtom,
     gameArchivesAtom, isProcessingAtom, agentMessagesAtom,
     llmPresetsAtom, ttsPresetsAtom,
-    isHumanModeAtom, humanPlayerSeatAtom, userInputAtom
+    isHumanModeAtom, humanPlayerSeatAtom, userInputAtom,
+    podcastPhaseAtom, podcastConfigAtom, podcastLogsAtom
 } from './atoms';
 
 import {
     GamePhase, Player, GameLog, GameSnapshot,
     PRESETS, Role, PlayerStatus, ROLE_INFO, GameArchive,
-    DEFAULT_PHASE_PROMPTS
+    DEFAULT_PHASE_PROMPTS,
+    PodcastPhase, PodcastConfig, PodcastArchive
 } from './types';
 
 // Re-export everything from atoms
@@ -134,8 +136,33 @@ export const initGameAtom = atom(null, (get, set, playerCount: 9 | 12) => {
     set(appScreenAtom, 'GAME');
 
     // Save Initial Snapshot
-    set(saveSnapshotAtom);
+    set(saveSnapshotAtom as any);
 });
+
+export const initPodcastAtom = atom(null, (get, set) => {
+    const config = get(podcastConfigAtom);
+    const actors = get(actorProfilesAtom);
+    const narratorId = get(globalApiConfigAtom).narratorActorId;
+
+    // Reset Podcast State
+    set(podcastPhaseAtom as any, PodcastPhase.INTRO);
+    set(podcastLogsAtom as any, [{
+        id: 'pod-init',
+        turn: 1,
+        phase: GamePhase.SETUP, // Reuse GamePhase for compatibility with logger if needed, or mapped
+        content: `播客节目开始。\n主题：${config.topic}`,
+        timestamp: Date.now(),
+        isSystem: true
+    }]);
+
+    // Reset general playback state
+    set(timelineAtom as any, []);
+    set(isReplayModeAtom as any, false);
+    set(isTheaterModeAtom as any, false);
+    set(isAutoPlayAtom as any, true); // Auto play by default for podcast
+    set(appScreenAtom as any, 'PODCAST_ROOM');
+});
+
 
 export const exitGameAtom = atom(null, (get, set) => {
     set(appScreenAtom, 'HOME');
@@ -178,6 +205,33 @@ export const saveGameArchiveAtom = atom(null, async (get, set, winner: 'GOOD' | 
     console.log("Game Archived:", archive.id);
 });
 
+export const savePodcastArchiveAtom = atom(null, async (get, set) => {
+    const logs = get(podcastLogsAtom);
+    if (logs.length === 0) return;
+
+    const config = get(podcastConfigAtom);
+
+    const archive: PodcastArchive & { id: string } = {
+        id: `podcast-${Date.now()}`,
+        type: 'PODCAST',
+        timestamp: Date.now(),
+        duration: 0,
+        topic: config.topic,
+        hostName: config.hostName,
+        hostSystemPrompt: config.hostSystemPrompt,
+        guest1Name: config.guest1Name,
+        guest1SystemPrompt: config.guest1SystemPrompt,
+        logs: JSON.parse(JSON.stringify(logs)),
+        timeline: JSON.parse(JSON.stringify(get(timelineAtom))),
+        players: [], // Not used for podcast archive but for type compatibility in list
+        turnCount: 1
+    };
+
+    const archives = await get(gameArchivesAtom);
+    set(gameArchivesAtom, [...(Array.isArray(archives) ? archives : []), archive as any]);
+});
+
+
 export const loadGameArchiveAtom = atom(null, (get, set, archive: GameArchive) => {
     // 1. Reset Players to ALIVE state to allow for a true "Replay"
     const initialPlayers: Player[] = archive.players.map(p => ({
@@ -209,7 +263,7 @@ export const loadGameArchiveAtom = atom(null, (get, set, archive: GameArchive) =
     set(areRolesVisibleAtom, true); // Reveal roles for replay
 
     // Navigate
-    set(appScreenAtom, 'GAME');
+    set(appScreenAtom as any, 'GAME');
 });
 
 export const restoreSnapshotAtom = atom(null, (get, set, snapshot: GameSnapshot) => {

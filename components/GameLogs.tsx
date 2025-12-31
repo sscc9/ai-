@@ -121,7 +121,7 @@ const LogItemComponent: React.FC<LogItemProps> = ({ log, viewerId, isPortrait = 
                             "opacity-50 mb-1 flex items-center gap-2",
                             isPortrait ? "text-[10px]" : "text-xs"
                         )}>
-                            <span>{log.speakerId}号玩家</span>
+                            <span>{log.speakerName ? log.speakerName : `${log.speakerId}号玩家`}</span>
                             {log.visibleTo && <span className="text-purple-400 text-[10px]">[私聊]</span>}
                         </div>
                         <div className={clsx(

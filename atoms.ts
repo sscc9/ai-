@@ -5,7 +5,7 @@ import {
     GameConfig, GamePhase, Player, GameLog, GameSnapshot, GodState, AgentMessage,
     PRESETS, DEFAULT_ROLE_PROMPTS, DEFAULT_PHASE_PROMPTS, TimelineEvent,
     TTSPreset, ActorProfile, GameArchive, LLMPreset, GlobalApiConfig, Role, PlayerStatus, ROLE_INFO,
-    Perspective, LLMProviderConfig, EdgeVoice
+    Perspective, LLMProviderConfig, EdgeVoice, PodcastPhase, PodcastConfig
 } from './types';
 
 // Define IndexedDB storage adapter
@@ -23,7 +23,7 @@ const idbStorage = {
 };
 
 // --- State Atoms ---
-export const appScreenAtom = atom<'HOME' | 'GAME' | 'SETTINGS' | 'AGENT' | 'HISTORY'>('HOME');
+export const appScreenAtom = atom<'HOME' | 'GAME' | 'SETTINGS' | 'AGENT' | 'HISTORY' | 'PODCAST_CONFIG' | 'PODCAST_ROOM'>('HOME');
 
 export const gameConfigAtom = atom<GameConfig>({
     playerCount: 12,
@@ -108,3 +108,25 @@ export const currentSpeakerIdAtom = atom<number | null>(null);
 export const agentMessagesAtom = atom<AgentMessage[]>([
     { id: 'welcome', role: 'model', content: '你好！我是狼人杀上帝助手。我可以协助你控制游戏流程。', timestamp: Date.now() }
 ]);
+
+// --- Podcast Atoms ---
+export const podcastPhaseAtom = atom<PodcastPhase>(PodcastPhase.CONFIG);
+export const podcastConfigAtom = atomWithStorage<PodcastConfig>('werewolf-podcastConfig', {
+    topic: '人工智能的未来会影响人类的创造力吗？',
+
+    // Host defaults
+    hostName: '主持人',
+    hostSystemPrompt: '你是一档热门播客节目的主持人。你谈吐得体、幽默，擅长引导话题并调节气氛。',
+    hostLlmPresetId: 'llm-1',
+    hostTtsPresetId: 'tts-edge',
+    hostVoiceId: 'zh-CN-YunxiNeural',
+
+    // Guest defaults
+    guest1Name: '嘉宾',
+    guest1SystemPrompt: '你是一名科幻作家，对新技术充满热情和好奇，经常引用科幻电影。',
+    guest1LlmPresetId: 'llm-1',
+    guest1TtsPresetId: 'tts-edge',
+    guest1VoiceId: 'zh-CN-XiaoxiaoNeural'
+});
+export const podcastLogsAtom = atom<GameLog[]>([]);
+

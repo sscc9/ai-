@@ -130,6 +130,14 @@ const HomeView = () => {
                             <span>助手</span>
                         </button>
                     </div>
+
+                    <button
+                        onClick={() => setScreen('PODCAST_CONFIG')}
+                        className="w-full py-4 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white rounded-xl font-bold text-lg shadow-lg shadow-purple-200 transform transition-all active:scale-[0.98] flex items-center justify-center gap-2"
+                    >
+                        <span className="text-xl">🎙️</span>
+                        <span>讨论模式 (播客)</span>
+                    </button>
                 </div>
             </div>
 
