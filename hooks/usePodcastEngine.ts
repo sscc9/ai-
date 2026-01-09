@@ -149,7 +149,7 @@ export const usePodcastEngine = () => {
         try {
             switch (phase) {
                 case PodcastPhase.INTRO: {
-                    const hostActorId = globalConfig.narratorActorId;
+                    const hostActorId = 'host';
                     const { llm, provider } = getActorConfig(hostActorId);
 
                     const systemPrompt = `你正在参与播客节目，你的身份是主持人。
@@ -159,8 +159,11 @@ export const usePodcastEngine = () => {
 
 你的系统指令：${config.hostSystemPrompt}
 
-今天的播客主题是：“${config.topic}”。
-请为这期节目写一段开场白，正式介绍你自己和嘉宾（${config.guest1Name}），并引出主题。
+节目主题：“${config.topic}”
+节目大纲（请务必严格按照此流程推进）：
+${config.outline}
+
+任务：请为这期节目写一段开场白，正式介绍你自己和嘉宾（${config.guest1Name}），并根据大纲引出第一个话题。
 要求：热情、专业感强、吸引人。直接输出开场白内容。`;
 
                     const response = await generateText([{ role: 'system', content: systemPrompt }], llm, provider);
@@ -170,7 +173,7 @@ export const usePodcastEngine = () => {
                 }
 
                 case PodcastPhase.GUEST_SPEAK: {
-                    const actorId = config.guest1ActorId;
+                    const actorId = 'guest1';
                     const myName = config.guest1Name;
                     const myPrompt = config.guest1SystemPrompt;
                     const { llm, provider } = getActorConfig(actorId);
@@ -192,6 +195,8 @@ export const usePodcastEngine = () => {
 你的系统指令：${myPrompt}
 
 请始终保持你的人设，通过自然的对话表达观点。
+节目大纲：
+${config.outline}
 `;
                     const userPrompt = `目前谈话背景（最近几句发言）：
 ${history}
@@ -210,8 +215,9 @@ ${history}
 
                     await addLog(actorId, response, myName);
 
+                    // Always return control to host to decide flow, unless safety limit reached
                     const totalTurns = logs.filter(l => !l.isSystem).length;
-                    if (totalTurns >= 8) { // End after ~8 total turns
+                    if (totalTurns >= 50) {
                         setPhase(PodcastPhase.OUTRO);
                     } else {
                         setPhase(PodcastPhase.HOST_SPEAK);
@@ -220,7 +226,7 @@ ${history}
                 }
 
                 case PodcastPhase.HOST_SPEAK: {
-                    const hostActorId = globalConfig.narratorActorId;
+                    const hostActorId = 'host';
                     const { llm, provider } = getActorConfig(hostActorId);
 
                     const history = logs
@@ -230,33 +236,52 @@ ${history}
                             const name = event ? event.speakerName : '未知';
                             return `${name}: ${l.content}`;
                         })
-                        .slice(-6)
+                        .slice(-10) // Provide more context for flow control
                         .join('\n');
 
                     const systemPrompt = `你正在参与播客节目，你的身份是主持人（${config.hostName}）。
 嘉宾：${config.guest1Name}
 你的系统指令：${config.hostSystemPrompt}
-主题：“${config.topic}”`;
 
-                    const userPrompt = `目前谈话背景：
+节目主题：“${config.topic}”
+节目大纲（必须严格执行）：
+${config.outline}
+
+【核心控场原则：深度优先，拒绝流水账】
+1. **不要急于推进大纲**：每个大纲点至少需要与嘉宾进行 2-3 轮的深入互谈（Unless 嘉宾明确表示无话可说）。
+2. **要像好奇宝宝一样追问**：当嘉宾抛出一个观点时，不要直接说“好的，下一个话题”。要针对他的观点进行追问、反驳、举例或要求详述。
+    - 例如：“除此之外呢？”“具体是指什么？”“这是否意味着……”
+3. **保持对话的自然流动**：不要让对话显得像在完成任务清单。过渡要自然。
+
+【判断逻辑】
+- **当前话题刚开始/聊得正嗨** -> 继续追问，挖掘细节，提出有趣的延伸问题。
+- **当前话题已聊透（双方都已充分表达观点，且重复）** -> 优雅地做一个小总结，然后自然地引出大纲的下一个环节。
+- **大纲所有内容均已聊完** -> 输出 [PODCAST_END] 并结束语。`;
+
+                    const userPrompt = `目前对话历史：
 ${history}
 
-你是主持人 ${config.hostName}，请接话。
-要求：
-1. 承接嘉宾的观点，进行追问、总结或转换角度。
-2. 保持主持人控场的感觉，引导话题深入。
-3. 幽默风趣。
+你是主持人 ${config.hostName}。
+请判断当前话题的讨论深度。
+- 如果还能聊，请务必追问或发表独特见解（不要急着换话题！）。
+- 如果真的聊干了，再推进到下一个大纲点。
+
 直接输出你的发言内容。`;
 
-                    const response = await generateText([
+                    let response = await generateText([
                         { role: 'system', content: systemPrompt },
                         { role: 'user', content: userPrompt }
                     ], llm, provider);
 
+                    const shouldEnd = response.includes('[PODCAST_END]');
+                    response = response.replace('[PODCAST_END]', '').trim(); // Remove tag from display
+
                     await addLog(hostActorId, response, config.hostName);
 
+                    // Safety limit check
                     const totalTurns = logs.filter(l => !l.isSystem).length;
-                    if (totalTurns >= 8) {
+
+                    if (shouldEnd || totalTurns >= 50) {
                         setPhase(PodcastPhase.OUTRO);
                     } else {
                         setPhase(PodcastPhase.GUEST_SPEAK);

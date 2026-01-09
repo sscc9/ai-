@@ -34,6 +34,17 @@ const PodcastConfigView = () => {
                         />
                     </div>
 
+                    <div className="space-y-2">
+                        <label className="text-sm font-bold text-slate-400 ml-1">节目大纲 / 讨论流程</label>
+                        <textarea
+                            value={config.outline}
+                            onChange={(e) => setConfig({ ...config, outline: e.target.value })}
+                            className="w-full bg-slate-800 border border-white/10 rounded-2xl p-4 text-white focus:ring-2 focus:ring-indigo-500 outline-none transition-all resize-none h-32 font-mono text-sm leading-relaxed"
+                            placeholder={"1. 开场：...\n2. 话题一：...\n3. 话题二：...\n4. 总结：..."}
+                        />
+                        <p className="text-xs text-slate-500 ml-1">主持人会根据大纲推进流程，当所有话题讨论完毕后自动结束。</p>
+                    </div>
+
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                         {/* Host Config */}
                         <RoleConfigPanel

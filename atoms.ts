@@ -126,7 +126,9 @@ export const podcastConfigAtom = atomWithStorage<PodcastConfig>('werewolf-podcas
     guest1SystemPrompt: '你是一名科幻作家，对新技术充满热情和好奇，经常引用科幻电影。',
     guest1LlmPresetId: 'llm-1',
     guest1TtsPresetId: 'tts-edge',
-    guest1VoiceId: 'zh-CN-XiaoxiaoNeural'
+    guest1VoiceId: 'zh-CN-XiaoxiaoNeural',
+
+    outline: '1. 开场寒暄：介绍嘉宾背景\n2. 核心话题：AI能否拥有真正的创造力？\n3. 延伸讨论：人机协作的未来模式\n4. 总结与结束：对听众的寄语'
 });
 export const podcastLogsAtom = atom<GameLog[]>([]);
 

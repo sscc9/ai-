@@ -240,6 +240,9 @@ export interface PodcastConfig {
     guest1LlmPresetId?: string;
     guest1TtsPresetId?: string;
     guest1VoiceId?: string;
+
+    // Flow Control
+    outline: string;
 }
 
 export interface PodcastArchive extends Omit<GameArchive, 'winner' | 'roles' | 'playerCount'> {
