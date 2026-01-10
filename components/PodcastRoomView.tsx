@@ -6,23 +6,36 @@ import {
     podcastPhaseAtom,
     isAutoPlayAtom,
     actorProfilesAtom,
-    appScreenAtom
+    appScreenAtom,
+    isReplayModeAtom,
+    logsAtom
 } from '../atoms';
 import { exitGameAtom } from '../store';
 import { usePodcastEngine } from '../hooks/usePodcastEngine';
+import { useTheaterEngine } from '../hooks/useTheaterEngine';
 import { AutoScrollLog } from './GameLogs';
 import { clsx } from 'clsx';
 
 const PodcastRoomView = () => {
-    const logs = useAtomValue(podcastLogsAtom);
+    const liveLogs = useAtomValue(podcastLogsAtom);
+    const replayLogs = useAtomValue(logsAtom); // From Theater Engine
+    const isReplay = useAtomValue(isReplayModeAtom);
+
+    // Choose logs source based on mode
+    const logs = isReplay ? replayLogs : liveLogs;
+
     const config = useAtomValue(podcastConfigAtom);
     const phase = useAtomValue(podcastPhaseAtom);
     const actors = useAtomValue(actorProfilesAtom);
     const [isAuto, setIsAuto] = useAtom(isAutoPlayAtom);
+    // const isReplay = useAtomValue(isReplayModeAtom); // Already defined
     const exit = useSetAtom(exitGameAtom);
 
     // Inject engine
     const { runTurn } = usePodcastEngine();
+
+    // Inject theater engine for replay support
+    useTheaterEngine();
 
     const hostActor = { id: 'host-mock', name: config.hostName };
     const guest1Actor = { id: 'guest1-mock', name: config.guest1Name };
@@ -51,22 +64,38 @@ const PodcastRoomView = () => {
                 </div>
 
                 <div className="flex items-center gap-2">
-                    <button
-                        onClick={() => setIsAuto(!isAuto)}
-                        className={clsx(
-                            "px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 border",
-                            isAuto ? "bg-indigo-500 text-white border-indigo-400" : "bg-white/5 text-slate-400 border-white/10"
-                        )}
-                    >
-                        {isAuto ? '正在自动录制' : '暂停录制'}
-                    </button>
-                    {!isAuto && (
-                        <button
-                            onClick={runTurn}
-                            className="px-4 py-2 rounded-xl text-xs font-bold bg-white text-black hover:bg-slate-200 transition-all active:scale-95"
-                        >
-                            下一位发言
-                        </button>
+                    {isReplay ? (
+                        <div className="flex items-center gap-3">
+                            <span className="px-3 py-1.5 rounded-lg bg-amber-500/20 text-amber-400 text-[10px] font-bold border border-amber-500/30 uppercase tracking-widest">
+                                正在进行回放
+                            </span>
+                            <button
+                                onClick={exit}
+                                className="px-4 py-2 rounded-xl text-xs font-bold bg-white/10 text-white hover:bg-white/20 transition-all border border-white/10"
+                            >
+                                退出回放
+                            </button>
+                        </div>
+                    ) : (
+                        <>
+                            <button
+                                onClick={() => setIsAuto(!isAuto)}
+                                className={clsx(
+                                    "px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 border",
+                                    isAuto ? "bg-indigo-500 text-white border-indigo-400" : "bg-white/5 text-slate-400 border-white/10"
+                                )}
+                            >
+                                {isAuto ? '正在自动录制' : '暂停录制'}
+                            </button>
+                            {!isAuto && (
+                                <button
+                                    onClick={runTurn}
+                                    className="px-4 py-2 rounded-xl text-xs font-bold bg-white text-black hover:bg-slate-200 transition-all active:scale-95"
+                                >
+                                    下一位发言
+                                </button>
+                            )}
+                        </>
                     )}
                 </div>
             </div>
