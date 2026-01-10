@@ -102,7 +102,7 @@ const PlayerCard: React.FC<PlayerCardProps> = ({ seat, isTop }) => {
         <div
             className={clsx(
                 "flex flex-col items-center justify-start transition-all duration-500 relative group shrink-0", // Added shrink-0 to prevent squeezing
-                isPortrait ? "mx-1" : "mx-0.5 md:mx-1.5 lg:mx-3", // Tighter margins in portrait
+                isPortrait ? "mx-0" : "mx-0.5 md:mx-1.5 lg:mx-3", // Tighter margins in portrait
                 animationClass,
                 isDead ? "grayscale opacity-60" : "cursor-pointer",
                 isSpeaking

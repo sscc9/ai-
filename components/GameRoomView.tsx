@@ -142,11 +142,11 @@ const GameRoomView = () => {
             {/* Using flex, we need to ensure it stacks properly. pt-20 accounts for top controls */}
             <div className={clsx(
                 "z-20 w-full flex justify-center items-end pointer-events-none",
-                isPortrait ? "pt-24 pb-1 px-1" : "pt-20 pb-2 px-4"
+                isPortrait ? "pt-24 pb-1 px-0.5" : "pt-20 pb-2 px-4"
             )}>
                 <div className={clsx(
                     "pointer-events-auto flex flex-nowrap justify-center w-full max-w-7xl",
-                    isPortrait ? "gap-1" : "gap-1 md:gap-3"
+                    isPortrait ? "gap-0.5" : "gap-1 md:gap-3"
                 )}>
                     {topRowSeats.map(i => <PlayerCard key={i} seat={i} isTop={true} />)}
                 </div>
@@ -208,11 +208,13 @@ const GameRoomView = () => {
             {/* --- Bottom Player Row --- */}
             <div className={clsx(
                 "z-20 w-full flex justify-center items-start pointer-events-none",
-                isPortrait ? "pt-1 pb-10 px-1" : "pt-2 pb-6 px-4"
-            )}>
+                isPortrait ? "pt-1 px-0.5" : "pt-2 pb-6 px-4"
+            )}
+                style={isPortrait ? { paddingBottom: 'calc(2.5rem + var(--safe-area-inset-bottom))' } : undefined}
+            >
                 <div className={clsx(
                     "pointer-events-auto flex flex-nowrap justify-center w-full max-w-7xl",
-                    isPortrait ? "gap-1" : "gap-1 md:gap-3"
+                    isPortrait ? "gap-0.5" : "gap-1 md:gap-3"
                 )}>
                     {bottomRowSeats.map(i => <PlayerCard key={i} seat={i} isTop={false} />)}
                 </div>

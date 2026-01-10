@@ -16,14 +16,14 @@ const PodcastConfigView = () => {
     const initPodcast = useSetAtom(initPodcastAtom);
 
     return (
-        <div className="h-full w-full bg-slate-950 text-white flex flex-col items-center justify-center p-6 overflow-y-auto font-sans">
-            <div className="max-w-4xl w-full space-y-8 py-10">
+        <div className="h-full w-full bg-slate-950 text-white flex flex-col items-center justify-start p-0 sm:p-6 overflow-y-auto font-sans scrollbar-hide pb-6">
+            <div className="max-w-4xl w-full space-y-6 sm:space-y-8 py-6 sm:py-10 px-4 sm:px-0">
                 <div className="space-y-2 text-center">
-                    <h1 className="text-4xl font-black tracking-tight bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent">播客节目设置</h1>
-                    <p className="text-slate-400 font-medium">设定你的讨论主题与嘉宾人设</p>
+                    <h1 className="text-3xl sm:text-4xl font-black tracking-tight bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent">播客节目设置</h1>
+                    <p className="text-slate-400 text-sm sm:text-base font-medium">设定你的讨论主题与嘉宾人设</p>
                 </div>
 
-                <div className="space-y-6 bg-slate-900/50 backdrop-blur-xl border border-white/10 p-8 rounded-3xl shadow-2xl">
+                <div className="space-y-6 sm:bg-slate-900/50 sm:backdrop-blur-xl sm:border sm:border-white/10 p-0 sm:p-8 sm:rounded-3xl sm:shadow-2xl">
                     <div className="space-y-2">
                         <label className="text-sm font-bold text-slate-400 ml-1">讨论主题</label>
                         <textarea
@@ -73,7 +73,7 @@ const PodcastConfigView = () => {
                         />
                     </div>
 
-                    <div className="pt-4 flex gap-4">
+                    <div className="pt-4 pb-10 flex gap-4">
                         <button
                             onClick={() => setScreen('HOME')}
                             className="flex-1 bg-slate-800 hover:bg-slate-700 text-white font-bold py-4 rounded-2xl transition-all active:scale-95 border border-white/5"
@@ -139,7 +139,7 @@ const RoleConfigPanel = ({
     };
 
     return (
-        <div className={`space-y-5 p-6 rounded-3xl bg-${color}-500/5 border border-${color}-500/10`}>
+        <div className={`space-y-4 sm:space-y-5 p-4 sm:p-6 rounded-3xl bg-${color}-500/10 sm:bg-${color}-500/5 border border-${color}-500/20 sm:border-${color}-500/10`}>
             <div className="flex items-center gap-3">
                 <div className={`w-10 h-10 rounded-xl bg-${color}-500 flex items-center justify-center shadow-lg shadow-${color}-500/20`}>
                     <span className="text-xl">🎙️</span>

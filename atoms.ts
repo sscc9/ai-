@@ -26,8 +26,8 @@ const idbStorage = {
 export const appScreenAtom = atom<'HOME' | 'GAME' | 'SETTINGS' | 'AGENT' | 'HISTORY' | 'PODCAST_CONFIG' | 'PODCAST_ROOM'>('HOME');
 
 export const gameConfigAtom = atom<GameConfig>({
-    playerCount: 12,
-    roles: PRESETS[12].roles,
+    playerCount: 9,
+    roles: PRESETS[9].roles,
     phasePrompts: { ...DEFAULT_PHASE_PROMPTS },
     rolePrompts: { ...DEFAULT_ROLE_PROMPTS },
     globalAiInstructions: "你正在参与一场高水平的狼人杀对局。请使用简短、口语化的中文发言。不要复述规则，直接表达观点。逻辑要清晰，符合你的身份视角。"

@@ -10,11 +10,19 @@ body,
     padding: 0;
     width: 100%;
     height: 100%;
+    height: 100dvh;
+    /* Modern mobile viewport height */
     font-family: 'Inter', sans-serif;
     background-color: #0f172a;
     color: #1e293b;
     overflow: hidden;
-    /* Prevent scroll on body, handle in specific views */
+    position: fixed;
+    /* Lock body scroll on mobile */
+    inset: 0;
+}
+
+:root {
+    --safe-area-inset-bottom: env(safe-area-inset-bottom, 0px);
 }
 
 /* Custom Scrollbar */
@@ -38,4 +46,17 @@ body,
 .custom-scrollbar {
     scrollbar-width: thin;
     scrollbar-color: rgba(0, 0, 0, 0.2) rgba(0, 0, 0, 0.05);
+}
+
+/* Hide scrollbar for Chrome, Safari and Opera */
+.scrollbar-hide::-webkit-scrollbar {
+    display: none;
+}
+
+/* Hide scrollbar for IE, Edge and Firefox */
+.scrollbar-hide {
+    -ms-overflow-style: none;
+    /* IE and Edge */
+    scrollbar-width: none;
+    /* Firefox */
 }

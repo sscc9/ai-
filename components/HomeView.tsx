@@ -7,11 +7,11 @@ import { initGameAtom, appScreenAtom, isHumanModeAtom } from '../store';
 const HomeView = () => {
     const initGame = useSetAtom(initGameAtom);
     const setScreen = useSetAtom(appScreenAtom);
-    const [selectedMode, setSelectedMode] = useState<9 | 12>(12);
+    const [selectedMode, setSelectedMode] = useState<9 | 12>(9);
     const [isHumanMode, setIsHumanMode] = useAtom(isHumanModeAtom);
 
     return (
-        <div className="h-full w-full bg-[#f8fafc] text-slate-800 flex flex-col items-center justify-center relative overflow-hidden font-sans selection:bg-indigo-100">
+        <div className="h-full w-full bg-[#f8fafc] text-slate-800 flex flex-col items-center justify-start sm:justify-center relative overflow-y-auto font-sans selection:bg-indigo-100 pt-6 pb-12 sm:py-0 scrollbar-hide">
             {/* Background Elements - Light & Harmonious */}
             <div className="absolute inset-0 overflow-hidden pointer-events-none">
                 <div className="absolute top-[-10%] left-[-10%] w-[600px] h-[600px] bg-indigo-200/30 rounded-full blur-[120px] animate-pulse-slow mix-blend-multiply"></div>
@@ -19,10 +19,10 @@ const HomeView = () => {
                 <div className="absolute top-[20%] right-[10%] w-32 h-32 bg-purple-200/30 rounded-full blur-[60px] mix-blend-multiply"></div>
             </div>
 
-            <div className="z-10 flex flex-col items-center space-y-10 w-full max-w-md px-6 animate-fade-in-up">
+            <div className="z-10 flex flex-col items-center space-y-6 sm:space-y-10 w-full max-w-md px-6 animate-fade-in-up">
                 {/* Title Section */}
                 <div className="text-center space-y-2">
-                    <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white border border-slate-200 shadow-sm mb-4">
+                    <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white border border-slate-200 shadow-sm mb-2">
                         <span className="relative flex h-2 w-2">
                             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
                             <span className="relative inline-flex rounded-full h-2 w-2 bg-indigo-500"></span>
@@ -107,6 +107,14 @@ const HomeView = () => {
                     </button>
 
                     <button
+                        onClick={() => setScreen('PODCAST_CONFIG')}
+                        className="w-full py-4 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white rounded-xl font-bold text-lg shadow-lg shadow-purple-200 transform transition-all active:scale-[0.98] flex items-center justify-center gap-2"
+                    >
+                        <span className="text-xl">🎙️</span>
+                        <span>讨论模式 (播客)</span>
+                    </button>
+
+                    <button
                         onClick={() => setScreen('HISTORY')}
                         className="w-full py-3.5 bg-white hover:bg-slate-50 border border-slate-200 hover:border-slate-300 text-slate-600 rounded-xl font-bold shadow-sm transition-all flex items-center justify-center gap-2 group"
                     >
@@ -130,19 +138,11 @@ const HomeView = () => {
                             <span>助手</span>
                         </button>
                     </div>
-
-                    <button
-                        onClick={() => setScreen('PODCAST_CONFIG')}
-                        className="w-full py-4 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white rounded-xl font-bold text-lg shadow-lg shadow-purple-200 transform transition-all active:scale-[0.98] flex items-center justify-center gap-2"
-                    >
-                        <span className="text-xl">🎙️</span>
-                        <span>讨论模式 (播客)</span>
-                    </button>
                 </div>
             </div>
 
-            {/* Footer Copyright */}
-            <div className="absolute bottom-4 text-slate-300 text-[10px]">
+            {/* Footer Copyright - Balanced spacing with safe area */}
+            <div className="mt-4 pb-[calc(1rem+var(--safe-area-inset-bottom))] text-slate-400 text-[10px] w-full text-center sm:absolute sm:bottom-4 sm:mt-0 sm:pb-0">
                 Powered by Google Gemini & Jotai
             </div>
         </div>
