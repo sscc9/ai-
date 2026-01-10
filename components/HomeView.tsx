@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useSetAtom, useAtom } from 'jotai';
 import { clsx } from 'clsx';
 import { initGameAtom, appScreenAtom, isHumanModeAtom } from '../store';
@@ -10,8 +10,62 @@ const HomeView = () => {
     const [selectedMode, setSelectedMode] = useState<9 | 12>(9);
     const [isHumanMode, setIsHumanMode] = useAtom(isHumanModeAtom);
 
+    // Detect fullscreen mode to fix mobile scrolling issue
+    const [isFullscreen, setIsFullscreen] = useState(false);
+    useEffect(() => {
+        const handleFsChange = () => {
+            // Check both standard and webkit prefixed fullscreen element
+            const fsElement = document.fullscreenElement || (document as any).webkitFullscreenElement;
+            setIsFullscreen(!!fsElement);
+        };
+        // Listen to both standard and webkit events for Android Chrome compatibility
+        document.addEventListener('fullscreenchange', handleFsChange);
+        document.addEventListener('webkitfullscreenchange', handleFsChange);
+        // Check initial state
+        handleFsChange();
+        return () => {
+            document.removeEventListener('fullscreenchange', handleFsChange);
+            document.removeEventListener('webkitfullscreenchange', handleFsChange);
+        };
+    }, []);
+
+    const toggleFullscreen = () => {
+        if (!document.fullscreenElement && !(document as any).webkitFullscreenElement) {
+            const docElm = document.documentElement;
+            if (docElm.requestFullscreen) {
+                docElm.requestFullscreen();
+            } else if ((docElm as any).webkitRequestFullscreen) {
+                (docElm as any).webkitRequestFullscreen();
+            }
+        } else {
+            if (document.exitFullscreen) {
+                document.exitFullscreen();
+            } else if ((document as any).webkitExitFullscreen) {
+                (document as any).webkitExitFullscreen();
+            }
+        }
+    };
+
     return (
-        <div className="h-full w-full bg-[#f8fafc] text-slate-800 flex flex-col items-center justify-start sm:justify-center relative overflow-y-auto font-sans selection:bg-indigo-100 pt-6 pb-12 sm:py-0 scrollbar-hide">
+        <div className={clsx(
+            "h-full w-full bg-[#f8fafc] text-slate-800 flex flex-col items-center relative font-sans selection:bg-indigo-100 scrollbar-hide",
+            isFullscreen
+                ? "justify-center overflow-hidden"
+                : "justify-start sm:justify-center overflow-y-auto pt-6 pb-12 sm:py-0"
+        )}>
+            {/* Top Right Controls - Only show in mobile or if not fullscreen */}
+            <div className="absolute top-4 right-4 z-50">
+                <button
+                    onClick={toggleFullscreen}
+                    className="bg-white/20 hover:bg-white/40 text-slate-700 backdrop-blur-md border border-white/30 shadow-sm rounded-full p-2.5 transition-all active:scale-95"
+                    title="全屏切换"
+                >
+                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+                    </svg>
+                </button>
+            </div>
+
             {/* Background Elements - Light & Harmonious */}
             <div className="absolute inset-0 overflow-hidden pointer-events-none">
                 <div className="absolute top-[-10%] left-[-10%] w-[600px] h-[600px] bg-indigo-200/30 rounded-full blur-[120px] animate-pulse-slow mix-blend-multiply"></div>
@@ -142,7 +196,12 @@ const HomeView = () => {
             </div>
 
             {/* Footer Copyright - Balanced spacing with safe area */}
-            <div className="mt-4 pb-[calc(1rem+var(--safe-area-inset-bottom))] text-slate-400 text-[10px] w-full text-center sm:absolute sm:bottom-4 sm:mt-0 sm:pb-0">
+            <div className={clsx(
+                "text-slate-400 text-[10px] w-full text-center",
+                isFullscreen
+                    ? "absolute bottom-4 pb-[var(--safe-area-inset-bottom)]"
+                    : "mt-4 pb-[calc(1rem+var(--safe-area-inset-bottom))] sm:absolute sm:bottom-4 sm:mt-0 sm:pb-0"
+            )}>
                 Powered by Google Gemini & Jotai
             </div>
         </div>

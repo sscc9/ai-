@@ -131,11 +131,7 @@ const GameRoomView = () => {
                     </div>
                 )}
 
-                <button onClick={toggleFullscreen} className="bg-white/20 hover:bg-white/40 text-slate-700 backdrop-blur-md border border-white/30 shadow-sm rounded-full p-2.5 transition-all active:scale-95" title="全屏切换">
-                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
-                    </svg>
-                </button>
+
             </div>
 
             {/* --- Top Player Row --- */}
