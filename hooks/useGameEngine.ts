@@ -30,7 +30,10 @@ import {
 } from '../atoms';
 import { GamePhase, ROLE_INFO, PlayerStatus, PHASE_LABELS, Role, Player, GOD_ROLES, VILLAGER_ROLES } from '../types';
 import { AudioService } from '../audio';
-import { generateText, parseLLMResponse, buildSystemPrompt } from '../services/llm';
+import { generateText, parseLLMResponse } from '../services/llm';
+import { WerewolfSkill } from '../services/skills/werewolf/WerewolfSkill';
+
+const werewolfSkill = new WerewolfSkill(); // Singleton skill instance
 
 // --- AI Logic Hook (The God Engine) ---
 export const useGameEngine = () => {
@@ -159,7 +162,10 @@ export const useGameEngine = () => {
                 textForAudio,
                 actor.voiceId,
                 audioKey,
-                tts
+                tts,
+                undefined,
+                undefined,
+                globalConfig.ttsSpeed || 1.0
             );
             setIsPlayingAudio(false);
         }
@@ -200,42 +206,19 @@ export const useGameEngine = () => {
             const { llm, provider } = getActorConfig(player.actorId);
             const alivePlayers = players.filter(p => p.status === PlayerStatus.ALIVE);
 
-            // --- WOLF DOMINANCE CHECK (VOTING) ---
-            const aliveWolves = alivePlayers.filter(p => p.role === Role.WEREWOLF).length;
-            const aliveGood = alivePlayers.length - aliveWolves;
-            let voteOverride = "";
+            // --- SKILL INTEGRATION (VOTING) ---
+            const context = {
+                phase: GamePhase.VOTING,
+                turnCount,
+                players,
+                logs,
+                roleConfigStr: getRoleConfigStr(),
+                godState,
+                alivePlayers,
+                currentTurnLogs
+            };
 
-            if (player.role === Role.WEREWOLF && aliveWolves >= aliveGood) {
-                // Neutral Info Only
-                voteOverride = `\n【局势提醒】目前狼人控场（${aliveWolves}狼 vs ${aliveGood}好人）。狼人票数已占优。`;
-            }
-            // -------------------------------------
-
-            // 修改：传入 roleConfig
-            const systemPrompt = buildSystemPrompt(player, alivePlayers, getRoleConfigStr());
-
-            // Improved Voting Prompt
-            const userPrompt = `
-# 投票阶段 (Voting Phase)
-目前存活：${validTargets.join(', ')}。
-
-### 本轮公聊记录 (Transcript)
-${currentTurnText || "(暂无发言)"}
-
-${voteOverride}
-
-# 任务指令 (Task)
-请做出投票决定。
-你需要：
-1. **回顾发言**：谁的发言逻辑有漏洞？谁在跟风？
-2. **独立判断**：不要盲目跟随前置位，除非他们的逻辑无懈可击。
-3. **输出**：必须输出 JSON: { "speak": "简短投票理由", "actionTarget": 目标ID }
-`.trim();
-
-            const messages = [
-                { role: 'system', content: systemPrompt },
-                { role: 'user', content: userPrompt }
-            ];
+            const messages = await werewolfSkill.generatePrompts(player, context);
             const responseText = await generateText(messages, llm, provider);
             const result = parseLLMResponse(responseText || "{}");
 
@@ -262,127 +245,21 @@ ${voteOverride}
                 result = await waitForHumanInput();
             } else {
                 const alivePlayers = players.filter(p => p.status === PlayerStatus.ALIVE);
-                const aliveList = alivePlayers.map(p => `${p.id}号`).join(', ');
                 const currentTurnLogs = logs.filter(l => l.turn <= turnCount && (!l.visibleTo || l.visibleTo.includes(player.id)));
-                // 明确时间顺序
-                const currentTurnText = currentTurnLogs.map(l => l.isSystem ? `[系统]: ${l.content}` : `[${l.speakerId}号]: ${l.content}`).join('\n');
 
-                let privateContext = '';
+                // --- SKILL INTEGRATION (GENERAL) ---
+                const context = {
+                    phase,
+                    turnCount,
+                    players,
+                    logs,
+                    roleConfigStr: getRoleConfigStr(),
+                    godState,
+                    alivePlayers,
+                    currentTurnLogs
+                };
 
-                // --- 狼人增强逻辑 (保持不变，但变量名统一归入 privateContext) ---
-                if (player.role === Role.WEREWOLF) {
-                    const allWolves = players.filter(p => p.role === Role.WEREWOLF);
-                    const teammateStatusStr = allWolves
-                        .filter(p => p.id !== player.id)
-                        .map(p => `${p.id}号(${p.status === PlayerStatus.ALIVE ? '存活' : '已出局'})`)
-                        .join('，');
-
-                    privateContext += `\n[狼人视野] 你的队友状态：${teammateStatusStr || '无 (你是孤狼)'}。`;
-
-                    const pastNightLogs = logs.filter(l =>
-                        l.phase === GamePhase.WEREWOLF_ACTION &&
-                        l.turn < turnCount &&
-                        !l.isSystem &&
-                        (l.visibleTo && l.visibleTo.includes(player.id))
-                    );
-
-                    if (pastNightLogs.length > 0) {
-                        const nightHistoryStr = pastNightLogs.map(l => `[第${l.turn}夜] ${l.speakerId}号: ${l.content}`).join('\n');
-                        privateContext += `\n\n### 过往夜晚对话记忆\n${nightHistoryStr}`;
-                    }
-
-                    if (phase === GamePhase.DAY_DISCUSSION || phase === GamePhase.DAY_ANNOUNCE) {
-                        if (godState.wolfTarget) {
-                            const targetId = godState.wolfTarget;
-                            const targetPlayer = players.find(p => p.id === targetId);
-                            const isTargetAlive = targetPlayer?.status === PlayerStatus.ALIVE;
-
-                            privateContext += `\n[狼人隐秘视野] 昨晚你们袭击了 ${targetId}号。`;
-                            if (isTargetAlive) {
-                                privateContext += `\n结果：平安夜（他没死）。好人不知道刀口是 ${targetId}号。`;
-                            } else {
-                                privateContext += `\n结果：他死了。`;
-                            }
-                        }
-                    }
-                }
-
-                // --- 预言家记忆逻辑 (NEW) ---
-                if (player.role === Role.SEER) {
-                    const pastCheckLogs = logs.filter(l =>
-                        l.phase === GamePhase.SEER_ACTION &&
-                        l.turn < turnCount &&
-                        l.isSystem &&
-                        l.visibleTo?.includes(player.id)
-                    );
-
-                    if (pastCheckLogs.length > 0) {
-                        const checkHistoryStr = pastCheckLogs.map(l => `[第${l.turn}夜] ${l.content}`).join('\n');
-                        privateContext += `\n\n### 【关键】过往查验记录\n${checkHistoryStr}`;
-                    }
-                }
-
-                // --- 女巫记忆逻辑 (NEW) ---
-                if (player.role === Role.WITCH) {
-                    if (player.potions) {
-                        privateContext += `\n[身份信息] 剩余药水：解药=${player.potions.cure ? '有' : '无'}，毒药=${player.potions.poison ? '有' : '无'}。`;
-                    }
-
-                    const pastWitchLogs = logs.filter(l =>
-                        l.phase === GamePhase.WITCH_ACTION &&
-                        l.turn < turnCount &&
-                        l.isSystem &&
-                        l.visibleTo?.includes(player.id)
-                    );
-
-                    if (pastWitchLogs.length > 0) {
-                        const witchHistoryStr = pastWitchLogs.map(l => `[第${l.turn}夜] ${l.content}`).join('\n');
-                        privateContext += `\n\n### 【关键】过往用药记录\n${witchHistoryStr}`;
-                    }
-                }
-
-                // --- WOLF DOMINANCE CHECK ---
-                let dominancePrompt = "";
-
-                if (isDaytime && player.role === Role.WEREWOLF) {
-                    const aliveWolves = alivePlayers.filter(p => p.role === Role.WEREWOLF).length;
-                    const aliveGood = alivePlayers.length - aliveWolves;
-
-                    if (aliveWolves >= aliveGood) {
-                        dominancePrompt = `\n【当前局势提醒】\n目前存活：狼人${aliveWolves}人，好人${aliveGood}人。\n狼人票数已占优。`;
-                    }
-                }
-
-                // --- 白天发言顺序提示 ---
-                let speakingOrderStr = "";
-                if (phase === GamePhase.DAY_DISCUSSION) {
-                    speakingOrderStr = "\n【发言规则】当前为按座位号顺序发言。**本次公聊只有一轮发言，每位玩家在本轮只有一次发言机会**。";
-                }
-
-                const systemPrompt = buildSystemPrompt(player, alivePlayers, getRoleConfigStr());
-
-                const userPrompt = `
-# 公共视野 (Public Information)
-游戏阶段：${PHASE_LABELS[phase]}
-${speakingOrderStr}
-存活玩家：${aliveList}
-
-### 本轮公聊记录 (Transcript)
-${currentTurnText || "(暂无发言)"}
-
-# 你的隐秘视野 (Your Private Secret)
-${privateContext}
-*注意：以上信息只有你（和你的队友）知道。其他玩家并不知情，不要预设他们知道这些。*
-
-# 思考与行动 (Thinking & Action)
-${actionInstruction || "分析场上局势，然后发言。目的是为了让你的阵营获胜。"}
-${dominancePrompt}
-`.trim();
-
-                const messages = [
-                    { role: 'system', content: systemPrompt },
-                    { role: 'user', content: userPrompt }
-                ];
+                const messages = await werewolfSkill.generatePrompts(player, context, actionInstruction);
                 const responseText = await generateText(messages, llm, provider);
                 result = parseLLMResponse(responseText || "{}");
             }
@@ -400,6 +277,7 @@ ${dominancePrompt}
                 phase: phase,
                 speakerId: player.id,
                 content: speech,
+                thought: result?.thought, // Capture thought
                 timestamp: Date.now(),
                 isSystem: false,
                 visibleTo: visibleTo
@@ -431,7 +309,10 @@ ${dominancePrompt}
                     speech,
                     actor.voiceId,
                     audioKey,
-                    tts
+                    tts,
+                    undefined,
+                    undefined,
+                    globalConfig.ttsSpeed || 1.0
                 );
             } else {
                 // Simulation delay for reading if no audio or human
@@ -488,7 +369,8 @@ ${dominancePrompt}
                 case GamePhase.WEREWOLF_ACTION: {
                     const wolves = players.filter(p => p.status === PlayerStatus.ALIVE && p.role === Role.WEREWOLF);
 
-                    const wolfNightPrompt = `**狼人行动阶段**\n你是狼人。你的目标是准确刀中关键神职或做高自己身份。请与队友进行战术沟通。\n**注意：本次夜间讨论只有一轮发言，每位玩家在本轮只有一次说话机会**。speak 字段是你对队友说的话。`;
+
+                    const wolfNightPrompt = `目前是讨论阶段，JSON 的 actionTarget 请填 null。`;
 
                     const nextWolf = getNextSpeaker(wolves);
 
@@ -498,7 +380,7 @@ ${dominancePrompt}
                         if (isLastSpeaker) {
                             // ALLOW SELF KILL: Removed restriction on targets
                             const targets = players.filter(p => p.status === PlayerStatus.ALIVE).map(t => t.id);
-                            const finalPrompt = `${wolfNightPrompt}\n**最终决策**：你是最后一个发言的狼人。请在 speak 中总结并给出最终决定，且必须在 **actionTarget** 中填入今晚要杀的玩家ID (数字)。`;
+                            const finalPrompt = `**最终决策**：你是最后一个发言的狼人。请在 speak 中总结并给出最终决定，且必须在 **actionTarget** 中填入今晚要杀的玩家ID (数字)。`;
 
                             const result = await generateTurn(nextWolf, finalPrompt, wolves.map(w => w.id));
 
@@ -511,7 +393,7 @@ ${dominancePrompt}
                                 setGodState(prev => ({ ...prev, wolfTarget: targetId }));
                             }
                         } else {
-                            await generateTurn(nextWolf, wolfNightPrompt + "\n目前是讨论阶段，JSON 的 actionTarget 请填 null。", wolves.map(w => w.id));
+                            await generateTurn(nextWolf, wolfNightPrompt, wolves.map(w => w.id));
                         }
                     } else {
                         // Delay before closing eyes
@@ -544,8 +426,7 @@ ${dominancePrompt}
 
                     if (seer && !hasSpoken) {
                         const targetIds = players.filter(p => p.status === PlayerStatus.ALIVE && p.id !== seer.id).map(t => t.id);
-                        const seerPrompt = `请选择查验对象。**策略**：基于逻辑寻找狼人坑位，或验证关键位置玩家的身份定义。JSON包含 "actionTarget": number。
-**重要**：在 "speak" 字段中，请用简短的一句话描述你的心理活动（例如："3号发言很划水，我要查查他"），绝不要只输出省略号。`;
+                        const seerPrompt = `请选择查验对象。`;
                         const result = await generateTurn(seer, seerPrompt, [seer.id]);
 
                         if (result?.actionTarget) {
@@ -580,10 +461,7 @@ ${dominancePrompt}
 
                     if (witch && !hasSpoken) {
                         const dyingId = godState.wolfTarget;
-                        const witchPrompt = `女巫行动。${dyingId}号被杀了。请基于收益计算（EV）决定是否使用药水。
-状态: 解药=${witch.potions?.cure}, 毒药=${witch.potions?.poison}。
-JSON包含 "useCure": boolean, "poisonTarget": number | null。
-**重要**：在 "speak" 字段中，请用简短的一句话描述你的心理活动（例如："这瓶毒药先留着" 或 "今晚必须救人"），绝不要只输出省略号。`;
+                        const witchPrompt = `女巫行动。`;
 
                         const result = await generateTurn(witch, witchPrompt, [witch.id]);
 
@@ -793,11 +671,9 @@ JSON包含 "useCure": boolean, "poisonTarget": number | null。
                             let hunterPrompt = '';
 
                             if (wasVotedOut) {
-                                hunterPrompt = `你被投票出局了。请发表你的【遗言】，并在发言末尾发动技能带走一名玩家。此外，你也可以选择放弃开枪（压枪）。
-可选目标: [${targetIds.join(', ')}]. 如果不想开枪，请将 JSON 中的 "actionTarget" 设为 null。`;
+                                hunterPrompt = `你被投票出局了。请发表你的【遗言】，并在发言末尾发动技能带走一名玩家。此外，你也可以选择放弃开枪（压枪）。`;
                             } else { // Died at night
-                                hunterPrompt = `你出局了，发动猎人技能带走一人。此外，你也可以选择放弃开枪（压枪）。
-**策略**：带走场上狼面最大的玩家，为好人追回轮次。可选: [${targetIds.join(', ')}]. 如果不想开枪，请将 JSON 中的 "actionTarget" 设为 null。`;
+                                hunterPrompt = `你出局了，发动猎人技能带走一人。此外，你也可以选择放弃开枪（压枪）。`;
                             }
 
                             const result = await generateTurn(hunter, hunterPrompt);

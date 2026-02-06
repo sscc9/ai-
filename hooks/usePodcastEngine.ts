@@ -130,7 +130,10 @@ export const usePodcastEngine = () => {
                     content,
                     actor.voiceId,
                     audioKey,
-                    tts
+                    tts,
+                    undefined,
+                    undefined,
+                    globalConfig.ttsSpeed || 1.0
                 );
             } catch (e) {
                 console.error("Audio Playback Error:", e);

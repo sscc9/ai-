@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { useAtom, useSetAtom, useAtomValue } from 'jotai';
-import { podcastConfigAtom, appScreenAtom, llmPresetsAtom, llmProvidersAtom, ttsPresetsAtom, edgeTtsVoicesAtom } from '../atoms';
+import { podcastConfigAtom, appScreenAtom, llmPresetsAtom, llmProvidersAtom, ttsPresetsAtom, edgeTtsVoicesAtom, globalApiConfigAtom } from '../atoms';
 import { initPodcastAtom } from '../store';
 import { clsx } from 'clsx';
 import { AudioService } from '../audio';
@@ -130,7 +130,16 @@ const RoleConfigPanel = ({
             const tts = ttsPresets.find(t => t.id === (config[ttsKey] || 'tts-edge')) || ttsPresets[0];
             const voiceId = config[voiceKey] || (voices.find(v => v.ShortName.startsWith('zh-CN'))?.ShortName || 'zh-CN-XiaoxiaoNeural');
             const text = `你好，我是${config[nameKey]}。这是一段声音测试。`;
-            await AudioService.getInstance().playOrGenerate(text, voiceId, `test-${Date.now()}`, tts);
+            const globalConfig = useAtomValue(globalApiConfigAtom);
+            await AudioService.getInstance().playOrGenerate(
+                text,
+                voiceId,
+                `test-${Date.now()}`,
+                tts,
+                undefined,
+                undefined,
+                globalConfig.ttsSpeed || 1.0
+            );
         } catch (e) {
             console.error(e);
         } finally {

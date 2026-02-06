@@ -701,8 +701,15 @@ const SettingsView = () => {
                                 />
                                 <button
                                     onClick={async () => {
-                                        const tts = ttsPresets.find(t => t.id === actor.ttsPresetId) || ttsPresets[0];
-                                        if (tts) await AudioService.getInstance().playOrGenerate(`你好，我是${actor.name}。很高兴见到大家。`, actor.voiceId, `test-${Date.now()}`, tts);
+                                        if (tts) await AudioService.getInstance().playOrGenerate(
+                                            `你好，我是${actor.name}。很高兴见到大家。`,
+                                            actor.voiceId,
+                                            `test-${Date.now()}`,
+                                            tts,
+                                            undefined,
+                                            undefined,
+                                            config.ttsSpeed || 1.0
+                                        );
                                     }}
                                     className="px-5 bg-purple-600 hover:bg-purple-700 text-white rounded-xl font-bold shadow-md shadow-purple-200 transition-all active:scale-95 text-xs"
                                 >试听</button>

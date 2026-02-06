@@ -154,7 +154,7 @@ export class AudioService {
                 const audio = new Audio(url);
                 // We handle speed in the backend now for better quality, 
                 // but setting playbackRate here as a fallback or for fine-tuning.
-                audio.playbackRate = 1.0;
+                audio.playbackRate = playbackSpeed;
                 this.currentAudio = audio;
                 this.currentResolve = resolve;
 
