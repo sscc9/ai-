@@ -4,13 +4,13 @@ import { Player, Role, GamePhase, ROLE_INFO, PlayerStatus, PHASE_LABELS } from '
 const SYSTEM_PROMPT = "You are a master strategist playing the game of Werewolf. Your goal is to win for your team.";
 
 const INSTRUCTION_TEMPLATE = `
-#### CURRENT GAME STATE
+#### CURRENT STATE
 {gameState}
 
-#### HISTORY / LOGS
+#### MEMORY & VISION
 {history}
 
-#### YOUR ROLE
+#### ROLE
 {roleInfo}
 
 #### TASK
@@ -18,19 +18,17 @@ const INSTRUCTION_TEMPLATE = `
 
 #### CONSTRAINTS
 - Output strictly in JSON format.
-{additionalConstraints}
+- **IMPORTANT**: The "speak" field must be in Simplified Chinese.
+{constraints}
 `.trim();
 
 const GAME_RULES = `
-1. **胜负条件**：
-   - **狼人胜利**：屠边（杀光所有村民 OR 杀光所有神职）。
-   - **好人胜利**：放逐所有狼人。
-2. **角色技能**：
-   - **预言家**：每晚查验一人身份。
-   - **女巫**：一瓶解药（救人）和一瓶毒药（杀人）。全场各用一次。同晚不能双药。
-   - **猎人**：死亡时（除被毒）可开枪带走一人。
-   - **守卫**：每晚守护一人。不可连续两晚守同一人。
-3. **夜间结算**：守卫 > 女巫 > 狼人。同守同救 = 奶穿（死）。
+- Werewolves: Kill all Villagers OR all Gods.
+- Seer: Inspect 1 player per night.
+- Witch: Use 1 Heal and 1 Poison potion per game.
+- Hunter: Shoot 1 player when dead (not poisoned).
+- Guard: Protect 1 player per night (cannot repeat).
+- Priority: Guard > Heal > Kill. (Guard + Heal = Death).
 `.trim();
 
 export class WerewolfSkill implements Skill {
@@ -59,7 +57,7 @@ export class WerewolfSkill implements Skill {
             .replace('{history}', history)
             .replace('{roleInfo}', roleInfo)
             .replace('{task}', task)
-            .replace('{additionalConstraints}', constraints);
+            .replace('{constraints}', constraints);
 
         return [
             { role: 'system', content: SYSTEM_PROMPT },
