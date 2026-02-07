@@ -102,7 +102,7 @@ const PlayerCard: React.FC<PlayerCardProps> = ({ seat, isTop }) => {
         <div
             className={clsx(
                 "flex flex-col items-center justify-start transition-all duration-500 relative group shrink-0", // Added shrink-0 to prevent squeezing
-                isPortrait ? "mx-0" : "mx-0.5 md:mx-1.5 lg:mx-3", // Tighter margins in portrait
+                isPortrait ? "mx-0" : "mx-0.5 md:mx-1.5 lg:mx-3", // Normal margins in portrait
                 animationClass,
                 isDead ? "grayscale opacity-60" : "cursor-pointer",
                 isSpeaking
@@ -234,7 +234,7 @@ const PlayerCard: React.FC<PlayerCardProps> = ({ seat, isTop }) => {
             <div className="mt-1 sm:mt-2 flex flex-col items-center space-y-0.5">
                 {displayLabel && (
                     <span className={clsx(
-                        "text-[9px] sm:text-[10px] md:text-xs font-bold px-1.5 sm:px-2 py-0.5 rounded shadow-sm backdrop-blur-md border border-white/20",
+                        isPortrait ? "text-[8px] px-1 py-0.5" : "text-[9px] sm:text-[10px] md:text-xs px-1.5 sm:px-2 py-0.5",
                         displayColor,
                         "bg-slate-900/90"
                     )}>
@@ -254,7 +254,8 @@ const PlayerCard: React.FC<PlayerCardProps> = ({ seat, isTop }) => {
                 ) : actor && (
                     <div className="flex flex-col items-center opacity-90">
                         <span className={clsx(
-                            "text-[8px] sm:text-[9px] md:text-[10px] truncate max-w-[3.5rem] sm:max-w-[5rem] font-semibold px-1 sm:px-1.5 py-0.5 text-slate-700 bg-white/70 backdrop-blur-sm rounded-md shadow-sm border border-white/40"
+                            "truncate font-semibold text-slate-700 bg-white/70 backdrop-blur-sm rounded-md shadow-sm border border-white/40",
+                            isPortrait ? "text-[8px] max-w-[3rem] px-1 py-0.5" : "text-[8px] sm:text-[9px] md:text-[10px] max-w-[3.5rem] sm:max-w-[5rem] px-1 sm:px-1.5 py-0.5"
                         )}>
                             {actor.name}
                         </span>
