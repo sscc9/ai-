@@ -9,7 +9,8 @@ import {
     loadGameArchiveAtom,
     globalApiConfigAtom,
     actorProfilesAtom,
-    ttsPresetsAtom
+    ttsPresetsAtom,
+    isPortraitModeAtom
 } from '../store';
 import { Role, ROLE_INFO, TTSPreset } from '../types';
 import { AudioService, PrefetchResult } from '../audio';
@@ -22,6 +23,7 @@ const HistoryView = () => {
     const setArchives = useSetAtom(gameArchivesAtom);
     const archives = archivesLoadable.state === 'hasData' ? archivesLoadable.data : [];
     const isArchivesLoading = archivesLoadable.state === 'loading';
+    const isPortrait = useAtomValue(isPortraitModeAtom);
 
     const loadGame = useSetAtom(loadGameArchiveAtom);
 
@@ -172,7 +174,10 @@ const HistoryView = () => {
                 <div className="absolute bottom-[10%] right-[-10%] w-[600px] h-[600px] bg-blue-100/50 rounded-full blur-[100px] mix-blend-multiply"></div>
             </div>
 
-            <div className="flex items-center h-16 bg-white/70 backdrop-blur-md border-b border-slate-200 px-6 sticky top-0 z-20 shadow-sm">
+            <div className={clsx(
+                "flex items-center h-16 bg-white/70 backdrop-blur-md border-b border-slate-200 sticky top-0 z-20 shadow-sm",
+                isPortrait ? "px-8" : "px-6"
+            )}>
                 <button onClick={() => setScreen('HOME')} className="flex items-center text-indigo-600 font-bold hover:text-indigo-700 transition-colors">
                     <svg className="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" /></svg>
                     主页
@@ -180,7 +185,10 @@ const HistoryView = () => {
                 <div className="absolute left-1/2 transform -translate-x-1/2 text-lg font-black text-slate-800 tracking-tight">历史对局</div>
             </div>
 
-            <div className="flex-1 overflow-y-auto custom-scrollbar p-4 relative z-10 max-w-4xl mx-auto w-full space-y-4">
+            <div className={clsx(
+                "flex-1 overflow-y-auto custom-scrollbar relative z-10 max-w-4xl mx-auto w-full space-y-4",
+                isPortrait ? "px-8 py-4" : "p-4"
+            )}>
                 {isArchivesLoading ? (
                     <div className="flex flex-col items-center justify-center mt-20 gap-4">
                         <div className="w-10 h-10 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin"></div>

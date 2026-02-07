@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { Suspense } from 'react';
 import { useAtomValue } from 'jotai';
 import { clsx } from 'clsx';
 import { appScreenAtom, isPortraitModeAtom } from './store';
@@ -71,7 +71,9 @@ const App = () => {
             </div>
 
             {/* Force hydration of persistent atoms */}
-            <StateHydrator />
+            <Suspense fallback={null}>
+                <StateHydrator />
+            </Suspense>
 
             {/* Global Controls - Outside the recorded area */}
             <ScreenControls targetId={APP_CONTENT_ID} />

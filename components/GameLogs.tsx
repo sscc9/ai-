@@ -93,7 +93,7 @@ const LogItemComponent: React.FC<LogItemProps> = ({ log, viewerId, isPortrait = 
 
     return (
         <div className={clsx(
-            "animate-fade-in-up mb-4",
+            "mb-4",
             log.isSystem ? "text-center my-6" : "text-left",
             log.visibleTo ? "opacity-80 border-l-2 border-purple-500 pl-3" : ""
         )}>
@@ -111,8 +111,6 @@ const LogItemComponent: React.FC<LogItemProps> = ({ log, viewerId, isPortrait = 
                         <img
                             src={`https://picsum.photos/seed/${log.speakerId ? log.speakerId + 100 : 0}/50`}
                             className="w-full h-full object-cover"
-                            loading="lazy"
-                            decoding="async"
                             alt={`Player ${log.speakerId}`}
                         />
                     </div>
