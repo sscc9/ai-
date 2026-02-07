@@ -234,7 +234,7 @@ const PlayerCard: React.FC<PlayerCardProps> = ({ seat, isTop }) => {
             <div className="mt-1 sm:mt-2 flex flex-col items-center space-y-0.5">
                 {displayLabel && (
                     <span className={clsx(
-                        isPortrait ? "text-[8px] px-1 py-0.5" : "text-[9px] sm:text-[10px] md:text-xs px-1.5 sm:px-2 py-0.5",
+                        "text-[9px] sm:text-[10px] md:text-xs font-bold px-1.5 sm:px-2 py-0.5 rounded shadow-sm backdrop-blur-md border border-white/20",
                         displayColor,
                         "bg-slate-900/90"
                     )}>
