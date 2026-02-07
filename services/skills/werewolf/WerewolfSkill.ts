@@ -177,15 +177,11 @@ ${privateMemory || "None"}
             let wolfInfo = "";
             if (player.role === Role.WEREWOLF && godState?.wolfTarget) {
                 const target = players.find(p => p.id === godState.wolfTarget);
-                wolfInfo = ` [Secret] Last night you attacked ${godState.wolfTarget}, result: ${target?.status === PlayerStatus.ALIVE ? 'Saved' : 'Dead'}.`;
+                wolfInfo = `[Secret] Last night you attacked ${godState.wolfTarget}. Result: ${target?.status === PlayerStatus.ALIVE ? 'Saved (Peace Night)' : 'Dead'}.`;
             }
 
-            const objective = player.role === Role.WEREWOLF
-                ? "mislead the villagers to trust you and misguidedly vote out a good player."
-                : "identify werewolves and convince others to vote them out.";
-
             return {
-                task: `Speak to win the game. Your goal is to ${objective}${wolfInfo}${instruction ? ` ${instruction}` : ""}`,
+                task: `Your goal is to win the game as a team. Discuss with other players to decide who to vote out. Formulate a "speak" message to persuade others. ${wolfInfo} ${instruction || ""}`,
                 constraints: `- If you have nothing new to add, be concise (e.g., "I agree with X" or "Pass").
 - JSON Schema: { "thought": "strategy", "speak": "public message" }`
             };
