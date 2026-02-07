@@ -173,21 +173,19 @@ ${privateMemory || "None"}
 
         // --- 6. Day Discussion ---
         if (phase === GamePhase.DAY_DISCUSSION || phase === GamePhase.LAST_WORDS || phase === GamePhase.DAY_ANNOUNCE) {
-            // Role specific guidance
-            let roleGuidance = "";
-            if (player.role === Role.SEER) {
-                roleGuidance = "As the Seer, you MUST PERSUADE others that you are real. Use your check results as evidence, explain your checking logic, and actively guide the village to vote correctly.";
-            }
-
             // Wolf Special Vision
             let wolfInfo = "";
             if (player.role === Role.WEREWOLF && godState?.wolfTarget) {
                 const target = players.find(p => p.id === godState.wolfTarget);
-                wolfInfo = `[Secret] Last night you attacked ${godState.wolfTarget}. Result: ${target?.status === PlayerStatus.ALIVE ? 'Saved (Peace Night)' : 'Dead'}. `;
+                wolfInfo = ` [Secret] Last night you attacked ${godState.wolfTarget}, result: ${target?.status === PlayerStatus.ALIVE ? 'Saved' : 'Dead'}.`;
             }
 
+            const objective = player.role === Role.WEREWOLF
+                ? "mislead the villagers to trust you and misguidedly vote out a good player."
+                : "identify werewolves and convince others to vote them out.";
+
             return {
-                task: `${roleGuidance} Analyze the situation and speak. ${wolfInfo} ${instruction || "Speak now."}`,
+                task: `Speak to win the game. Your goal is to ${objective}${wolfInfo}${instruction ? ` ${instruction}` : ""}`,
                 constraints: `- If you have nothing new to add, be concise (e.g., "I agree with X" or "Pass").
 - JSON Schema: { "thought": "strategy", "speak": "public message" }`
             };
