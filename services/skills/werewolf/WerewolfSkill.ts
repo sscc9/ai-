@@ -181,7 +181,7 @@ ${privateMemory || "None"}
             }
 
             return {
-                task: `Discuss with other players to decide who to vote out. Formulate a "message" to persuade others. ${wolfInfo} ${instruction || ""}`,
+                task: `Analyze the situation and speak. ${wolfInfo} ${instruction || "Speak now."}`,
                 constraints: `- If you have nothing new to add, be concise (e.g., "I agree with X" or "Pass").
 - JSON Schema: { "thought": "strategy", "speak": "public message" }`
             };
