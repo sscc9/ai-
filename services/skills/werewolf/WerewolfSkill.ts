@@ -19,6 +19,9 @@ const INSTRUCTION_TEMPLATE = `
 #### CONSTRAINTS
 - Output strictly in JSON format.
 - **IMPORTANT**: The "speak" field must be in Simplified Chinese.
+- **AVOID REPETITION**: Do not repeat points or analysis already made by previous players.
+- **INCREMENTAL VALUE**: Acknowledge previous views (e.g., "I agree with Player 1") instead of re-explaining them.
+- **BREVITY**: Be concise. If you have nothing new to add, simply say "过" (Pass) or "同上" (Agree with above).
 {constraints}
 `.trim();
 
@@ -180,7 +183,7 @@ ${privateMemory || "None"}
             }
 
             return {
-                task: `Analyze the situation and speak to persuade others. ${wolfInfo} ${instruction || "Speak now."}`,
+                task: `Contribute NEW insights or respond to recent arguments. ${wolfInfo} ${instruction || "Do not just re-analyze everything from scratch."}`,
                 constraints: `- JSON Schema: { "thought": "strategy", "speak": "public message" }`
             };
         }
