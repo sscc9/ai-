@@ -181,8 +181,9 @@ ${privateMemory || "None"}
             }
 
             return {
-                task: `Analyze the situation and speak. ${wolfInfo} ${instruction || "Speak now."}`,
-                constraints: `- If you have nothing new to add, be concise (e.g., "I agree with X" or "Pass").
+                task: `Analyze the situation and speak to persuade others. ${wolfInfo} ${instruction || "Speak now."}`,
+                constraints: `- Focus on being clear and persuasive.
+- If you have nothing new to add, be concise (e.g., "I agree with X" or "Pass").
 - JSON Schema: { "thought": "strategy", "speak": "public message" }`
             };
         }
