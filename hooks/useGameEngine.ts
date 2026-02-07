@@ -230,10 +230,11 @@ export const useGameEngine = () => {
     const generateTurn = useCallback(async (
         player: Player,
         actionInstruction?: string,
-        visibleTo?: number[]
+        visibleTo?: number[],
+        skipIsProcessingFlag: boolean = false
     ): Promise<any> => {
-        if (isProcessing || isReplay || isTheater) return null;
-        setIsProcessing(true);
+        if (!skipIsProcessingFlag && (isProcessing || isReplay || isTheater)) return null;
+        if (!skipIsProcessingFlag) setIsProcessing(true);
         setSpeaker(player.id);
 
         try {
@@ -330,7 +331,7 @@ export const useGameEngine = () => {
             setIsProcessing(false);
             return null;
         } finally {
-            setIsProcessing(false);
+            if (!skipIsProcessingFlag) setIsProcessing(false);
         }
     }, [logs, phase, isProcessing, isReplay, players, turnCount, globalConfig, isTheater, setLogs, setTimeline, setPlayers, setSpeaker, saveSnapshot, setIsPlayingAudio, getActorConfig, isDaytime, getRoleConfigStr, godState]);
 
@@ -367,40 +368,37 @@ export const useGameEngine = () => {
                     break;
 
                 case GamePhase.WEREWOLF_ACTION: {
-                    const wolves = players.filter(p => p.status === PlayerStatus.ALIVE && p.role === Role.WEREWOLF);
+                    setIsProcessing(true);
+                    try {
+                        const wolves = players.filter(p => p.status === PlayerStatus.ALIVE && p.role === Role.WEREWOLF);
+                        const wolfNightPrompt = `目前是讨论阶段，JSON 的 actionTarget 请填 null。`;
+                        const nextWolf = getNextSpeaker(wolves);
 
+                        if (nextWolf) {
+                            const isLastSpeaker = nextWolf.id === wolves[wolves.length - 1].id;
 
-                    const wolfNightPrompt = `目前是讨论阶段，JSON 的 actionTarget 请填 null。`;
+                            if (isLastSpeaker) {
+                                // ALLOW SELF KILL: Removed restriction on targets
+                                const targets = players.filter(p => p.status === PlayerStatus.ALIVE).map(t => t.id);
+                                const finalPrompt = `**最终决策**：你是最后一个发言的狼人。请在 speak 中总结并给出最终决定，且必须在 **actionTarget** 中填入今晚要杀的玩家ID (数字)。`;
 
-                    const nextWolf = getNextSpeaker(wolves);
+                                const result = await generateTurn(nextWolf, finalPrompt, wolves.map(w => w.id), true);
 
-                    if (nextWolf) {
-                        const isLastSpeaker = nextWolf.id === wolves[wolves.length - 1].id;
-
-                        if (isLastSpeaker) {
-                            // ALLOW SELF KILL: Removed restriction on targets
-                            const targets = players.filter(p => p.status === PlayerStatus.ALIVE).map(t => t.id);
-                            const finalPrompt = `**最终决策**：你是最后一个发言的狼人。请在 speak 中总结并给出最终决定，且必须在 **actionTarget** 中填入今晚要杀的玩家ID (数字)。`;
-
-                            const result = await generateTurn(nextWolf, finalPrompt, wolves.map(w => w.id));
-
-                            if (result?.actionTarget) {
-                                const targetId = targets.includes(result.actionTarget) ? result.actionTarget : targets[Math.floor(Math.random() * targets.length)];
-                                setGodState(prev => ({ ...prev, wolfTarget: targetId }));
-                            } else if (targets.length > 0) {
-                                // Fallback random
-                                const targetId = targets[Math.floor(Math.random() * targets.length)];
-                                setGodState(prev => ({ ...prev, wolfTarget: targetId }));
+                                if (result?.actionTarget) {
+                                    const targetId = targets.includes(result.actionTarget) ? result.actionTarget : targets[Math.floor(Math.random() * targets.length)];
+                                    setGodState(prev => ({ ...prev, wolfTarget: targetId }));
+                                } else if (targets.length > 0) {
+                                    // Fallback random
+                                    const targetId = targets[Math.floor(Math.random() * targets.length)];
+                                    setGodState(prev => ({ ...prev, wolfTarget: targetId }));
+                                }
+                            } else {
+                                await generateTurn(nextWolf, wolfNightPrompt, wolves.map(w => w.id), true);
                             }
                         } else {
-                            await generateTurn(nextWolf, wolfNightPrompt, wolves.map(w => w.id));
-                        }
-                    } else {
-                        // Delay before closing eyes
-                        await new Promise(r => setTimeout(r, Math.random() * 1500 + 1000));
+                            // Delay before closing eyes
+                            await new Promise(r => setTimeout(r, Math.random() * 1500 + 1000));
 
-                        setIsProcessing(true);
-                        try {
                             const wolves = players.filter(p => p.role === Role.WEREWOLF);
                             await addSystemLog("狼人请闭眼。", wolves.map(w => w.id));
 
@@ -412,38 +410,33 @@ export const useGameEngine = () => {
 
                             const seer = players.find(p => p.role === Role.SEER);
                             await addSystemLog("预言家请睁眼。", seer ? [seer.id] : [], undefined, GamePhase.SEER_ACTION);
-                        } finally {
-                            setIsProcessing(false);
                         }
+                    } finally {
+                        setIsProcessing(false);
                     }
                     break;
                 }
 
                 case GamePhase.SEER_ACTION: {
-                    const seer = players.find(p => p.role === Role.SEER && p.status === PlayerStatus.ALIVE);
-                    // FIX: Check turnCount to allow Seer to act every night, not just the first one.
-                    const hasSpoken = logs.some(l => l.phase === phase && l.speakerId === seer?.id && l.turn === turnCount);
-
-                    if (seer && !hasSpoken) {
-                        const targetIds = players.filter(p => p.status === PlayerStatus.ALIVE && p.id !== seer.id).map(t => t.id);
-                        const seerPrompt = `请选择查验对象。`;
-                        const result = await generateTurn(seer, seerPrompt, [seer.id]);
-
-                        if (result?.actionTarget) {
-                            const checkId = targetIds.includes(result.actionTarget) ? result.actionTarget : targetIds[Math.floor(Math.random() * targetIds.length)];
-                            const isGood = players.find(p => p.id === checkId)?.role !== Role.WEREWOLF;
-                            setIsProcessing(true);
-                            try {
-                                await addSystemLog(`上帝(私聊): ${checkId}号是 ${isGood ? '好人' : '狼人'}`, [seer.id]);
-                                setGodState(prev => ({ ...prev, seerCheck: checkId }));
-                            } finally {
-                                setIsProcessing(false);
-                            }
-                        }
-                    }
-
                     setIsProcessing(true);
                     try {
+                        const seer = players.find(p => p.role === Role.SEER && p.status === PlayerStatus.ALIVE);
+                        // FIX: Check turnCount to allow Seer to act every night, not just the first one.
+                        const hasSpoken = logs.some(l => l.phase === phase && l.speakerId === seer?.id && l.turn === turnCount);
+
+                        if (seer && !hasSpoken) {
+                            const targetIds = players.filter(p => p.status === PlayerStatus.ALIVE && p.id !== seer.id).map(t => t.id);
+                            const seerPrompt = `请选择查验对象。`;
+                            const result = await generateTurn(seer, seerPrompt, [seer.id], true);
+
+                            if (result?.actionTarget) {
+                                const checkId = targetIds.includes(result.actionTarget) ? result.actionTarget : targetIds[Math.floor(Math.random() * targetIds.length)];
+                                const isGood = players.find(p => p.id === checkId)?.role !== Role.WEREWOLF;
+                                await addSystemLog(`上帝(私聊): ${checkId}号是 ${isGood ? '好人' : '狼人'}`, [seer.id]);
+                                setGodState(prev => ({ ...prev, seerCheck: checkId }));
+                            }
+                        }
+
                         await addSystemLog("预言家请闭眼。");
                         setPhase(GamePhase.WITCH_ACTION);
                         saveSnapshot();
@@ -455,19 +448,19 @@ export const useGameEngine = () => {
                 }
 
                 case GamePhase.WITCH_ACTION: {
-                    const witch = players.find(p => p.role === Role.WITCH && p.status === PlayerStatus.ALIVE);
-                    // FIX: Check turnCount to allow Witch to act every night.
-                    const hasSpoken = logs.some(l => l.phase === phase && l.speakerId === witch?.id && l.turn === turnCount);
+                    setIsProcessing(true);
+                    try {
+                        const witch = players.find(p => p.role === Role.WITCH && p.status === PlayerStatus.ALIVE);
+                        // FIX: Check turnCount to allow Witch to act every night.
+                        const hasSpoken = logs.some(l => l.phase === phase && l.speakerId === witch?.id && l.turn === turnCount);
 
-                    if (witch && !hasSpoken) {
-                        const dyingId = godState.wolfTarget;
-                        const witchPrompt = `女巫行动。`;
+                        if (witch && !hasSpoken) {
+                            const dyingId = godState.wolfTarget;
+                            const witchPrompt = `女巫行动。`;
 
-                        const result = await generateTurn(witch, witchPrompt, [witch.id]);
+                            const result = await generateTurn(witch, witchPrompt, [witch.id], true);
 
-                        if (result) {
-                            setIsProcessing(true);
-                            try {
+                            if (result) {
                                 if (witch.potions?.cure && result.useCure && dyingId) {
                                     setGodState(prev => ({ ...prev, witchSave: true }));
                                     await addSystemLog(`上帝(私聊): 使用解药救了 ${dyingId}号。`, [witch.id]);
@@ -479,19 +472,14 @@ export const useGameEngine = () => {
                                 } else {
                                     await addSystemLog(`上帝(私聊): 未使用药水。`, [witch.id]);
                                 }
-                            } finally {
-                                setIsProcessing(false);
                             }
                         }
-                    }
 
-                    // Delay before closing eyes
-                    await new Promise(r => setTimeout(r, Math.random() * 1500 + 1000));
+                        // Delay before closing eyes
+                        await new Promise(r => setTimeout(r, Math.random() * 1500 + 1000));
 
-                    setIsProcessing(true);
-                    try {
-                        const witch = players.find(p => p.role === Role.WITCH);
-                        await addSystemLog("女巫请闭眼。", witch ? [witch.id] : []);
+                        const targetWitch = players.find(p => p.role === Role.WITCH);
+                        await addSystemLog("女巫请闭眼。", targetWitch ? [targetWitch.id] : []);
 
                         // Small delay before sunrise
                         await new Promise(r => setTimeout(r, 2000));
