@@ -230,10 +230,11 @@ export const useGameEngine = () => {
     const generateTurn = useCallback(async (
         player: Player,
         actionInstruction?: string,
-        visibleTo?: number[]
+        visibleTo?: number[],
+        force: boolean = false
     ): Promise<any> => {
-        if (isProcessing || isReplay || isTheater) return null;
-        setIsProcessing(true);
+        if (!force && (isProcessing || isReplay || isTheater)) return null;
+        if (!force) setIsProcessing(true);
         setSpeaker(player.id);
 
         try {
@@ -330,7 +331,7 @@ export const useGameEngine = () => {
             setIsProcessing(false);
             return null;
         } finally {
-            setIsProcessing(false);
+            if (!force) setIsProcessing(false);
         }
     }, [logs, phase, isProcessing, isReplay, players, turnCount, globalConfig, isTheater, setLogs, setTimeline, setPlayers, setSpeaker, saveSnapshot, setIsPlayingAudio, getActorConfig, isDaytime, getRoleConfigStr, godState]);
 
@@ -340,134 +341,89 @@ export const useGameEngine = () => {
         if (!isAuto || isProcessing || isReplay || isPlayingAudio || isTheater) return;
 
         const loopTimeout = setTimeout(async () => {
-            const getNextSpeaker = (candidates: Player[]) => {
-                // FIX: Add `l.turn === turnCount` to ensure we only look at actions from THIS turn.
-                const spokenIds = logs.filter(l => l.phase === phase && !l.isSystem && l.turn === turnCount).map(l => l.speakerId);
-                return candidates.find(p => !spokenIds.includes(p.id));
-            };
+            setIsProcessing(true);
+            try {
+                const getNextSpeaker = (candidates: Player[]) => {
+                    const spokenIds = logs.filter(l => l.phase === phase && !l.isSystem && l.turn === turnCount).map(l => l.speakerId);
+                    return candidates.find(p => !spokenIds.includes(p.id));
+                };
 
-            switch (phase) {
-                case GamePhase.NIGHT_START:
-                    setIsProcessing(true);
-                    try {
+                switch (phase) {
+                    case GamePhase.NIGHT_START:
                         await addSystemLog("天黑请闭眼。");
-                        // Delay before wolves
                         await new Promise(r => setTimeout(r, Math.random() * 2000 + 1500));
-
                         setPhase(GamePhase.WEREWOLF_ACTION);
                         setGodState({ wolfTarget: null, seerCheck: null, witchSave: false, witchPoison: null, guardProtect: null, deathsTonight: [] });
                         saveSnapshot();
-
                         const wolves = players.filter(p => p.role === Role.WEREWOLF);
                         await addSystemLog("狼人请睁眼。", wolves.map(w => w.id), undefined, GamePhase.WEREWOLF_ACTION);
-                    } finally {
+                        break;
 
-                        setIsProcessing(false);
-                    }
-                    break;
+                    case GamePhase.WEREWOLF_ACTION: {
+                        const wolvesList = players.filter(p => p.status === PlayerStatus.ALIVE && p.role === Role.WEREWOLF);
+                        const wolfNightPrompt = `目前是讨论阶段，JSON 的 actionTarget 请填 null。`;
+                        const nextWolf = getNextSpeaker(wolvesList);
 
-                case GamePhase.WEREWOLF_ACTION: {
-                    const wolves = players.filter(p => p.status === PlayerStatus.ALIVE && p.role === Role.WEREWOLF);
-
-
-                    const wolfNightPrompt = `目前是讨论阶段，JSON 的 actionTarget 请填 null。`;
-
-                    const nextWolf = getNextSpeaker(wolves);
-
-                    if (nextWolf) {
-                        const isLastSpeaker = nextWolf.id === wolves[wolves.length - 1].id;
-
-                        if (isLastSpeaker) {
-                            // ALLOW SELF KILL: Removed restriction on targets
-                            const targets = players.filter(p => p.status === PlayerStatus.ALIVE).map(t => t.id);
-                            const finalPrompt = `**最终决策**：你是最后一个发言的狼人。请在 speak 中总结并给出最终决定，且必须在 **actionTarget** 中填入今晚要杀的玩家ID (数字)。`;
-
-                            const result = await generateTurn(nextWolf, finalPrompt, wolves.map(w => w.id));
-
-                            if (result?.actionTarget) {
-                                const targetId = targets.includes(result.actionTarget) ? result.actionTarget : targets[Math.floor(Math.random() * targets.length)];
-                                setGodState(prev => ({ ...prev, wolfTarget: targetId }));
-                            } else if (targets.length > 0) {
-                                // Fallback random
-                                const targetId = targets[Math.floor(Math.random() * targets.length)];
-                                setGodState(prev => ({ ...prev, wolfTarget: targetId }));
+                        if (nextWolf) {
+                            const isLastSpeaker = nextWolf.id === wolvesList[wolvesList.length - 1].id;
+                            if (isLastSpeaker) {
+                                const targets = players.filter(p => p.status === PlayerStatus.ALIVE).map(t => t.id);
+                                const finalPrompt = `**最终决策**：你是最后一个发言的狼人。请在 speak 中总结并给出最终决定，且必须在 **actionTarget** 中填入今晚要杀的玩家ID (数字)。`;
+                                const result = await generateTurn(nextWolf, finalPrompt, wolvesList.map(w => w.id), true);
+                                if (result?.actionTarget) {
+                                    const targetId = targets.includes(result.actionTarget) ? result.actionTarget : targets[Math.floor(Math.random() * targets.length)];
+                                    setGodState(prev => ({ ...prev, wolfTarget: targetId }));
+                                } else if (targets.length > 0) {
+                                    const targetId = targets[Math.floor(Math.random() * targets.length)];
+                                    setGodState(prev => ({ ...prev, wolfTarget: targetId }));
+                                }
+                            } else {
+                                await generateTurn(nextWolf, wolfNightPrompt, wolvesList.map(w => w.id), true);
                             }
                         } else {
-                            await generateTurn(nextWolf, wolfNightPrompt, wolves.map(w => w.id));
-                        }
-                    } else {
-                        // Delay before closing eyes
-                        await new Promise(r => setTimeout(r, Math.random() * 1500 + 1000));
-
-                        setIsProcessing(true);
-                        try {
+                            await new Promise(r => setTimeout(r, Math.random() * 1500 + 1000));
                             const wolves = players.filter(p => p.role === Role.WEREWOLF);
                             await addSystemLog("狼人请闭眼。", wolves.map(w => w.id));
-
-                            // Delay before Seer
                             await new Promise(r => setTimeout(r, Math.random() * 2000 + 1500));
-
                             setPhase(GamePhase.SEER_ACTION);
                             saveSnapshot();
-
                             const seer = players.find(p => p.role === Role.SEER);
                             await addSystemLog("预言家请睁眼。", seer ? [seer.id] : [], undefined, GamePhase.SEER_ACTION);
-                        } finally {
-                            setIsProcessing(false);
                         }
+                        break;
                     }
-                    break;
-                }
 
-                case GamePhase.SEER_ACTION: {
-                    const seer = players.find(p => p.role === Role.SEER && p.status === PlayerStatus.ALIVE);
-                    // FIX: Check turnCount to allow Seer to act every night, not just the first one.
-                    const hasSpoken = logs.some(l => l.phase === phase && l.speakerId === seer?.id && l.turn === turnCount);
+                    case GamePhase.SEER_ACTION: {
+                        const seer = players.find(p => p.role === Role.SEER && p.status === PlayerStatus.ALIVE);
+                        const hasSpoken = logs.some(l => l.phase === phase && l.speakerId === seer?.id && l.turn === turnCount);
 
-                    if (seer && !hasSpoken) {
-                        const targetIds = players.filter(p => p.status === PlayerStatus.ALIVE && p.id !== seer.id).map(t => t.id);
-                        const seerPrompt = `请选择查验对象。`;
-                        const result = await generateTurn(seer, seerPrompt, [seer.id]);
-
-                        if (result?.actionTarget) {
-                            const checkId = targetIds.includes(result.actionTarget) ? result.actionTarget : targetIds[Math.floor(Math.random() * targetIds.length)];
-                            const isGood = players.find(p => p.id === checkId)?.role !== Role.WEREWOLF;
-                            setIsProcessing(true);
-                            try {
+                        if (seer && !hasSpoken) {
+                            const targetIds = players.filter(p => p.status === PlayerStatus.ALIVE && p.id !== seer.id).map(t => t.id);
+                            const seerPrompt = `请选择查验对象。`;
+                            const result = await generateTurn(seer, seerPrompt, [seer.id], true);
+                            if (result?.actionTarget) {
+                                const checkId = targetIds.includes(result.actionTarget) ? result.actionTarget : targetIds[Math.floor(Math.random() * targetIds.length)];
+                                const isGood = players.find(p => p.id === checkId)?.role !== Role.WEREWOLF;
                                 await addSystemLog(`上帝(私聊): ${checkId}号是 ${isGood ? '好人' : '狼人'}`, [seer.id]);
                                 setGodState(prev => ({ ...prev, seerCheck: checkId }));
-                            } finally {
-                                setIsProcessing(false);
                             }
                         }
-                    }
-
-                    setIsProcessing(true);
-                    try {
                         await addSystemLog("预言家请闭眼。");
                         setPhase(GamePhase.WITCH_ACTION);
                         saveSnapshot();
                         await addSystemLog("女巫请睁眼。", undefined, undefined, GamePhase.WITCH_ACTION);
-                    } finally {
-                        setIsProcessing(false);
+                        break;
                     }
-                    break;
-                }
 
-                case GamePhase.WITCH_ACTION: {
-                    const witch = players.find(p => p.role === Role.WITCH && p.status === PlayerStatus.ALIVE);
-                    // FIX: Check turnCount to allow Witch to act every night.
-                    const hasSpoken = logs.some(l => l.phase === phase && l.speakerId === witch?.id && l.turn === turnCount);
+                    case GamePhase.WITCH_ACTION: {
+                        const witch = players.find(p => p.role === Role.WITCH && p.status === PlayerStatus.ALIVE);
+                        const hasSpoken = logs.some(l => l.phase === phase && l.speakerId === witch?.id && l.turn === turnCount);
 
-                    if (witch && !hasSpoken) {
-                        const dyingId = godState.wolfTarget;
-                        const witchPrompt = `女巫行动。`;
-
-                        const result = await generateTurn(witch, witchPrompt, [witch.id]);
-
-                        if (result) {
-                            setIsProcessing(true);
-                            try {
+                        if (witch && !hasSpoken) {
+                            const dyingId = godState.wolfTarget;
+                            const witchPrompt = `女巫行动。`;
+                            const result = await generateTurn(witch, witchPrompt, [witch.id], true);
+                            if (result) {
                                 if (witch.potions?.cure && result.useCure && dyingId) {
                                     setGodState(prev => ({ ...prev, witchSave: true }));
                                     await addSystemLog(`上帝(私聊): 使用解药救了 ${dyingId}号。`, [witch.id]);
@@ -479,54 +435,34 @@ export const useGameEngine = () => {
                                 } else {
                                     await addSystemLog(`上帝(私聊): 未使用药水。`, [witch.id]);
                                 }
-                            } finally {
-                                setIsProcessing(false);
                             }
                         }
-                    }
-
-                    // Delay before closing eyes
-                    await new Promise(r => setTimeout(r, Math.random() * 1500 + 1000));
-
-                    setIsProcessing(true);
-                    try {
-                        const witch = players.find(p => p.role === Role.WITCH);
-                        await addSystemLog("女巫请闭眼。", witch ? [witch.id] : []);
-
-                        // Small delay before sunrise
+                        await new Promise(r => setTimeout(r, Math.random() * 1500 + 1000));
+                        const witchObj = players.find(p => p.role === Role.WITCH);
+                        await addSystemLog("女巫请闭眼。", witchObj ? [witchObj.id] : []);
                         await new Promise(r => setTimeout(r, 2000));
-
                         setPhase(GamePhase.DAY_ANNOUNCE);
                         saveSnapshot();
-                    } finally {
-                        setIsProcessing(false);
+                        break;
                     }
-                    break;
-                }
 
-
-                case GamePhase.DAY_ANNOUNCE: {
-                    setIsProcessing(true);
-                    try {
+                    case GamePhase.DAY_ANNOUNCE: {
                         const deaths: number[] = [];
                         if (godState.wolfTarget && !godState.witchSave) deaths.push(godState.wolfTarget);
                         if (godState.witchPoison) deaths.push(godState.witchPoison);
                         const uniqueDeaths = [...new Set(deaths)];
 
-                        // Update statuses
                         if (uniqueDeaths.length > 0) {
                             const newPlayers = players.map(p => uniqueDeaths.includes(p.id) ? { ...p, status: PlayerStatus.DEAD_NIGHT } : p);
                             setPlayers(newPlayers);
                             await addSystemLog(`天亮了。昨晚 ${uniqueDeaths.join(', ')}号 死亡。`);
-
-                            // Check Win Condition Immediately after deaths
                             const winState = checkWinCondition(newPlayers);
                             if (winState) {
                                 const winner = winState === 'GOOD_WIN' ? 'GOOD' : 'WOLF';
                                 await addSystemLog(winState === 'GOOD_WIN' ? "游戏结束。好人胜利！" : "游戏结束。狼人胜利！(屠边)");
                                 setPhase(GamePhase.GAME_REVIEW);
-                                setAreRolesVisible(true); // REVEAL
-                                saveGameArchive(winner); // Save Archive
+                                setAreRolesVisible(true);
+                                saveGameArchive(winner);
                                 return;
                             }
                         } else {
@@ -551,88 +487,69 @@ export const useGameEngine = () => {
                         await addSystemLog(`从 ${alive[startIdx].id}号 开始发言。`);
                         setPhase(GamePhase.DAY_DISCUSSION);
                         saveSnapshot();
-                    } finally {
-                        setIsProcessing(false);
+                        break;
                     }
-                    break;
-                }
 
-                case GamePhase.DAY_DISCUSSION: {
-                    const [nextId, ...rest] = speakingQueue;
-                    if (nextId) {
-                        const player = players.find(p => p.id === nextId);
-                        if (player && player.status === PlayerStatus.ALIVE) {
-                            await generateTurn(player);
-                        }
-                        setSpeakingQueue(rest);
-                    } else {
-                        setIsProcessing(true);
-                        try {
+                    case GamePhase.DAY_DISCUSSION: {
+                        const [nextId, ...rest] = speakingQueue;
+                        if (nextId) {
+                            const player = players.find(p => p.id === nextId);
+                            if (player && player.status === PlayerStatus.ALIVE) {
+                                await generateTurn(player, undefined, undefined, true);
+                            }
+                            setSpeakingQueue(rest);
+                        } else {
                             await addSystemLog("发言结束，开始投票...");
                             setPhase(GamePhase.VOTING);
                             saveSnapshot();
-                        } finally {
-                            setIsProcessing(false);
                         }
+                        break;
                     }
-                    break;
-                }
 
-                case GamePhase.VOTING: {
-                    setIsProcessing(true);
-                    try {
-                        const alive = players.filter(p => p.status === PlayerStatus.ALIVE);
+                    case GamePhase.VOTING: {
+                        const alivePlayersList = players.filter(p => p.status === PlayerStatus.ALIVE);
                         const votes: Record<number, number> = {};
+                        const results = await Promise.all(alivePlayersList.map(async p => ({ voter: p.id, target: await getAiVote(p, alivePlayersList.map(a => a.id)) })));
 
-                        // Vote
-                        const results = await Promise.all(alive.map(async p => ({ voter: p.id, target: await getAiVote(p, alive.map(a => a.id)) })));
-
-                        // Count votes for logic
                         results.forEach(({ voter, target }) => { if (target) votes[target] = (votes[target] || 0) + 1; });
-
-                        // Format for Display: Group by Target
                         const voteMap: Record<number, number[]> = {};
-                        const abstained: number[] = [];
+                        const abstainedList: number[] = [];
 
                         results.forEach(({ voter, target }) => {
                             if (target) {
                                 if (!voteMap[target]) voteMap[target] = [];
                                 voteMap[target].push(voter);
                             } else {
-                                abstained.push(voter);
+                                abstainedList.push(voter);
                             }
                         });
 
-                        const detailsLines = Object.entries(voteMap).map(([target, voters]) => {
-                            return `${target}号: ${voters.join('、')}`;
-                        });
-                        if (abstained.length > 0) detailsLines.push(`弃票: ${abstained.join('、')}`);
+                        const detailsLines = Object.entries(voteMap).map(([target, voters]) => `${target}号: ${voters.join('、')}`);
+                        if (abstainedList.length > 0) detailsLines.push(`弃票: ${abstainedList.join('、')}`);
 
                         const voteDetails = detailsLines.join('\n');
                         await addSystemLog(`投票结果:\n${voteDetails}`, undefined, "投票统计完毕。");
 
-                        let max = -1, victims: number[] = [];
+                        let maxScore = -1, victims: number[] = [];
                         for (const [pid, count] of Object.entries(votes)) {
-                            if (count > max) { max = count; victims = [+pid]; }
-                            else if (count === max) victims.push(+pid);
+                            if (count > maxScore) { maxScore = count; victims = [+pid]; }
+                            else if (count === maxScore) victims.push(+pid);
                         }
-                        const final = victims.length > 0 ? victims[Math.floor(Math.random() * victims.length)] : null;
+                        const finalVictim = victims.length > 0 ? victims[Math.floor(Math.random() * victims.length)] : null;
 
-                        if (final) {
-                            await addSystemLog(`${final}号 被投票出局。`);
-                            const newPlayers = players.map(p => p.id === final ? { ...p, status: PlayerStatus.DEAD_VOTE } : p);
+                        if (finalVictim) {
+                            await addSystemLog(`${finalVictim}号 被投票出局。`);
+                            const newPlayers = players.map(p => p.id === finalVictim ? { ...p, status: PlayerStatus.DEAD_VOTE } : p);
                             setPlayers(newPlayers);
+                            const votedOutPlayer = players.find(p => p.id === finalVictim);
 
-                            const votedOutPlayer = players.find(p => p.id === final);
-
-                            // Check Win Condition Immediately
                             const winState = checkWinCondition(newPlayers);
                             if (winState) {
                                 const winner = winState === 'GOOD_WIN' ? 'GOOD' : 'WOLF';
                                 await addSystemLog(winState === 'GOOD_WIN' ? "好人胜利！" : "狼人胜利！(屠边)");
                                 setPhase(GamePhase.GAME_REVIEW);
-                                setAreRolesVisible(true); // REVEAL
-                                saveGameArchive(winner); // Save Archive
+                                setAreRolesVisible(true);
+                                saveGameArchive(winner);
                                 return;
                             }
 
@@ -646,58 +563,43 @@ export const useGameEngine = () => {
 
                             await addSystemLog("请发表遗言。");
                             setPhase(GamePhase.LAST_WORDS);
-                            setSpeakingQueue([final]);
+                            setSpeakingQueue([finalVictim]);
                         } else {
                             await addSystemLog("平安日，无人出局。");
                             setPhase(GamePhase.LAST_WORDS);
                             setSpeakingQueue([]);
                         }
                         saveSnapshot();
-                    } finally {
-                        setIsProcessing(false);
+                        break;
                     }
-                    break;
-                }
 
-                case GamePhase.HUNTER_ACTION: {
-                    const [hunterId] = speakingQueue;
-                    if (hunterId) {
-                        const hunter = players.find(p => p.id === hunterId);
-                        const alivePlayers = players.filter(p => p.status === PlayerStatus.ALIVE);
-                        const targetIds = alivePlayers.map(p => p.id);
+                    case GamePhase.HUNTER_ACTION: {
+                        const [hunterId] = speakingQueue;
+                        if (hunterId) {
+                            const hunter = players.find(p => p.id === hunterId);
+                            const alivePlayersList = players.filter(p => p.status === PlayerStatus.ALIVE);
+                            const targetIds = alivePlayersList.map(p => p.id);
 
-                        if (hunter && targetIds.length > 0) {
-                            const wasVotedOut = hunter.status === PlayerStatus.DEAD_VOTE;
-                            let hunterPrompt = '';
+                            if (hunter && targetIds.length > 0) {
+                                const wasVotedOut = hunter.status === PlayerStatus.DEAD_VOTE;
+                                let hunterPrompt = wasVotedOut ? `你被投票出局了。请发表你的【遗言】，并在发言末尾发动技能带走一名玩家。此外，你也可以选择放弃开枪（压枪）。` : `你出局了，发动猎人技能带走一人。此外，你也可以选择放弃开枪（压枪）。`;
+                                const result = await generateTurn(hunter, hunterPrompt, undefined, true);
+                                const shotTargetId = result?.actionTarget && targetIds.includes(result.actionTarget) ? result.actionTarget : null;
 
-                            if (wasVotedOut) {
-                                hunterPrompt = `你被投票出局了。请发表你的【遗言】，并在发言末尾发动技能带走一名玩家。此外，你也可以选择放弃开枪（压枪）。`;
-                            } else { // Died at night
-                                hunterPrompt = `你出局了，发动猎人技能带走一人。此外，你也可以选择放弃开枪（压枪）。`;
-                            }
-
-                            const result = await generateTurn(hunter, hunterPrompt);
-                            const shotTargetId = result?.actionTarget && targetIds.includes(result.actionTarget) ? result.actionTarget : null;
-
-
-                            if (shotTargetId) {
-                                setIsProcessing(true);
-                                try {
+                                if (shotTargetId) {
                                     await addSystemLog(`猎人开枪，${shotTargetId}号 倒牌。`);
                                     const newPlayers = players.map(p => p.id === shotTargetId ? { ...p, status: PlayerStatus.DEAD_SHOOT } : p);
                                     setPlayers(newPlayers);
-
                                     const winState = checkWinCondition(newPlayers);
                                     if (winState) {
                                         const winner = winState === 'GOOD_WIN' ? 'GOOD' : 'WOLF';
                                         await addSystemLog(winState === 'GOOD_WIN' ? "好人胜利！" : "狼人胜利！(屠边)");
                                         setPhase(GamePhase.GAME_REVIEW);
-                                        setAreRolesVisible(true); // REVEAL
-                                        saveGameArchive(winner); // Save Archive
+                                        setAreRolesVisible(true);
+                                        saveGameArchive(winner);
                                         saveSnapshot();
                                         return;
                                     }
-
                                     if (wasVotedOut) {
                                         await addSystemLog(`猎人遗言并发动技能后，本轮结束。`);
                                         setTurnCount(t => t + 1);
@@ -712,13 +614,7 @@ export const useGameEngine = () => {
                                         await addSystemLog(`从 ${queue[0]}号 开始发言。`);
                                         setPhase(GamePhase.DAY_DISCUSSION);
                                     }
-                                } finally {
-                                    setIsProcessing(false);
-                                }
-                            } else {
-                                // SKIP SHOOTING
-                                setIsProcessing(true);
-                                try {
+                                } else {
                                     await addSystemLog("猎人选择不开枪。");
                                     if (wasVotedOut) {
                                         setTurnCount(t => t + 1);
@@ -732,42 +628,34 @@ export const useGameEngine = () => {
                                         await addSystemLog(`从 ${queue[0]}号 开始发言。`);
                                         setPhase(GamePhase.DAY_DISCUSSION);
                                     }
-                                } finally {
-                                    setIsProcessing(false);
                                 }
                             }
-
                         }
+                        saveSnapshot();
+                        break;
                     }
-                    saveSnapshot();
-                    break;
-                }
 
-                case GamePhase.LAST_WORDS: {
-                    const [sid, ...rest] = speakingQueue;
-                    if (sid) {
-                        const p = players.find(o => o.id === sid);
-                        if (p) await generateTurn(p, "发表遗言。告诉好人你的身份，或者误导他们。");
-                        setSpeakingQueue(rest);
-                    } else {
-                        setIsProcessing(true);
-                        try {
+                    case GamePhase.LAST_WORDS: {
+                        const [sid, ...rest] = speakingQueue;
+                        if (sid) {
+                            const p = players.find(o => o.id === sid);
+                            if (p) await generateTurn(p, "发表遗言。告诉好人你的身份，或者误导他们。", undefined, true);
+                            setSpeakingQueue(rest);
+                        } else {
                             setTurnCount(t => t + 1);
                             setPhase(GamePhase.NIGHT_START);
                             await addSystemLog(`--- 第 ${turnCount + 1} 天 ---`);
                             saveSnapshot();
-                        } finally {
-                            setIsProcessing(false);
                         }
+                        break;
                     }
-                    break;
-                }
 
-                case GamePhase.GAME_REVIEW: {
-                    // Stop auto loop
-                    setIsAuto(false);
-                    break;
+                    case GamePhase.GAME_REVIEW:
+                        setIsAuto(false);
+                        break;
                 }
+            } finally {
+                setIsProcessing(false);
             }
         }, 1000);
 
