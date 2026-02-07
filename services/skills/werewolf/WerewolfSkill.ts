@@ -1,7 +1,10 @@
 import { Skill, SkillContext } from '../types';
 import { Player, Role, GamePhase, ROLE_INFO, PlayerStatus, PHASE_LABELS } from '../../../types';
 
-const SYSTEM_PROMPT = "You are a master strategist playing the game of Werewolf. Your goal is to win for your team.";
+const SYSTEM_PROMPT = `You are a high-level competitive Werewolf player. 
+VICTORY IS YOUR ONLY GOAL. Trust no one by default. 
+Use deception, logic, and tactical sacrifice (even of teammates) to secure a win for your team. 
+Be adversarial: question everything and defend your position aggressively but logically.`.trim();
 
 const INSTRUCTION_TEMPLATE = `
 #### CURRENT STATE
@@ -19,6 +22,7 @@ const INSTRUCTION_TEMPLATE = `
 #### CONSTRAINTS
 - Output strictly in JSON format.
 - **IMPORTANT**: The "speak" field must be in Simplified Chinese.
+- **STRATEGY**: Your primary objective is winning. If you are a Good role, find and exile wolves. If you are a Wolf, deceive the good team and eliminate them.
 - **ANTI-REDUNDANCY**: Review the \`#### TRANSCRIPT\`. If your logical analysis has already been stated by previous players, DO NOT repeat it. Simply state agreement/disagreement or add new unique insights.
 {constraints}
 `.trim();
@@ -175,15 +179,30 @@ ${privateMemory || "None"}
         if (phase === GamePhase.DAY_DISCUSSION || phase === GamePhase.LAST_WORDS || phase === GamePhase.DAY_ANNOUNCE) {
             // Wolf Special Vision
             let wolfInfo = "";
-            if (player.role === Role.WEREWOLF && godState?.wolfTarget) {
-                const target = players.find(p => p.id === godState.wolfTarget);
-                wolfInfo = `[Secret] Last night you attacked ${godState.wolfTarget}. Result: ${target?.status === PlayerStatus.ALIVE ? 'Saved (Peace Night)' : 'Dead'}.`;
+            let roleStrategy = "";
+
+            if (player.role === Role.WEREWOLF) {
+                if (godState?.wolfTarget) {
+                    const target = players.find(p => p.id === godState.wolfTarget);
+                    wolfInfo = `[Secret] Last night you attacked ${godState.wolfTarget}. Result: ${target?.status === PlayerStatus.ALIVE ? 'Saved (Peace Night)' : 'Dead'}.`;
+                }
+                roleStrategy = `
+- **BLEND IN**: Speak like a villager. Don't be too eager to defend teammates. 
+- **TACTICAL BETRAYAL**: If a teammate is being heavily suspected, you MAY vote for them or "踩" (bash) them to establish your credit as a "good person". Winning the game is more important than saving a specific teammate.`;
+            }
+
+            if (player.role === Role.SEER) {
+                roleStrategy = `
+- **PERSUASION**: You MUST persuade others that you are the real Seer. 
+- **COUNTER-HITTING**: If someone else claims to be the Seer, analyze their "logic gaps" and discredit them. 
+- **LOGIC**: Don't just stay "I am the Seer". Say "I am the Seer because X's behavior is wolf-like" or "I checked Y and they are G/B". Explain your thought process to gain trust.`;
             }
 
             return {
-                task: `Your goal is to win the game as a team. Discuss with other players to decide who to vote out. Formulate a "speak" message to persuade others. ${wolfInfo} ${instruction || ""}`,
+                task: `Analyze the situation and speak. ${wolfInfo} ${instruction || "Speak now."}
+${roleStrategy}`,
                 constraints: `- If you have nothing new to add, be concise (e.g., "I agree with X" or "Pass").
-- JSON Schema: { "thought": "strategy", "speak": "public message" }`
+- JSON Schema: { "thought": "detailed strategic analysis", "speak": "public message" }`
             };
         }
 
