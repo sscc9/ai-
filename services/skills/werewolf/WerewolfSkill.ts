@@ -19,9 +19,7 @@ const INSTRUCTION_TEMPLATE = `
 #### CONSTRAINTS
 - Output strictly in JSON format.
 - **IMPORTANT**: The "speak" field must be in Simplified Chinese.
-- **CONCISENESS**: Keep your messages concise and to the point.
-- **PASSING**: You can simply say "过" (Pass), if you have nothing valuable you would like to share.
-- **NATURAL**: Since this is a social game, the "speak" content should sound conversational and spontaneous.
+- **ANTI-REDUNDANCY**: Review the \`#### TRANSCRIPT\`. If your logical analysis has already been stated by previous players, DO NOT repeat it. Simply state agreement/disagreement or add new unique insights.
 {constraints}
 `.trim();
 
@@ -183,8 +181,9 @@ ${privateMemory || "None"}
             }
 
             return {
-                task: `Discuss with other players to decide who logic is suspicious. Formulate a message to PERSUADE others. ${wolfInfo} ${instruction || ""}`,
-                constraints: `- JSON Schema: { "thought": "strategy", "speak": "persuasive message" }`
+                task: `Discuss with other players to decide who to vote out. Formulate a "message" to persuade others. ${wolfInfo} ${instruction || ""}`,
+                constraints: `- If you have nothing new to add, be concise (e.g., "I agree with X" or "Pass").
+- JSON Schema: { "thought": "strategy", "speak": "public message" }`
             };
         }
 
