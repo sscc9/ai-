@@ -161,11 +161,11 @@ const HomeView = () => {
                     </button>
 
                     <button
-                        onClick={() => setScreen('PODCAST_CONFIG')}
-                        className="w-full py-4 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white rounded-xl font-bold text-lg shadow-lg shadow-purple-200 transform transition-all active:scale-[0.98] flex items-center justify-center gap-2"
+                        onClick={() => setScreen('TTS')}
+                        className="w-full py-4 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl font-bold text-lg shadow-lg shadow-blue-200 transform transition-all active:scale-[0.98] flex items-center justify-center gap-2"
                     >
-                        <span className="text-xl">🎙️</span>
-                        <span>讨论模式 (播客)</span>
+                        <span className="text-xl">🔊</span>
+                        <span>TTS 朗读模式</span>
                     </button>
 
                     <button

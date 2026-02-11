@@ -47,13 +47,11 @@ export enum GamePhase {
     GAME_REVIEW = 'GAME_REVIEW' // Post-game chat
 }
 
-export enum PodcastPhase {
-    CONFIG = 'CONFIG',
-    INTRO = 'INTRO',
-    HOST_SPEAK = 'HOST_SPEAK',
-    GUEST_SPEAK = 'GUEST_SPEAK',
-    OUTRO = 'OUTRO',
-    FINISHED = 'FINISHED'
+// TTS Screen State
+export interface TTSState {
+    text: string;
+    voiceId: string;
+    speed: number;
 }
 
 export const PHASE_LABELS: Record<GamePhase, string> = {
@@ -221,37 +219,6 @@ export interface GameSnapshot {
     logs: GameLog[];
     turn: number;
     godState: GodState;
-}
-
-// --- Podcast Specific ---
-export interface PodcastConfig {
-    topic: string;
-
-    // Host Config
-    hostName: string;
-    hostSystemPrompt: string;
-    hostLlmPresetId?: string;
-    hostTtsPresetId?: string;
-    hostVoiceId?: string;
-
-    // Guest Config
-    guest1Name: string;
-    guest1SystemPrompt: string;
-    guest1LlmPresetId?: string;
-    guest1TtsPresetId?: string;
-    guest1VoiceId?: string;
-
-    // Flow Control
-    outline: string;
-}
-
-export interface PodcastArchive extends Omit<GameArchive, 'winner' | 'roles' | 'playerCount'> {
-    type: 'PODCAST';
-    topic: string;
-    hostName: string;
-    hostSystemPrompt: string;
-    guest1Name: string;
-    guest1SystemPrompt: string;
 }
 
 // --- Archive Structure for History ---

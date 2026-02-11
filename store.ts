@@ -7,15 +7,13 @@ import {
     timelineAtom, replaySourceLogsAtom, isReplayModeAtom, areRolesVisibleAtom,
     gameArchivesAtom, isProcessingAtom, agentMessagesAtom,
     llmPresetsAtom, ttsPresetsAtom,
-    isHumanModeAtom, humanPlayerSeatAtom, userInputAtom,
-    podcastPhaseAtom, podcastConfigAtom, podcastLogsAtom
+    isHumanModeAtom, humanPlayerSeatAtom, userInputAtom
 } from './atoms';
 
 import {
     GamePhase, Player, GameLog, GameSnapshot,
     PRESETS, Role, PlayerStatus, ROLE_INFO, GameArchive,
-    DEFAULT_PHASE_PROMPTS,
-    PodcastPhase, PodcastConfig, PodcastArchive
+    DEFAULT_PHASE_PROMPTS
 } from './types';
 
 // Re-export everything from atoms
@@ -139,29 +137,6 @@ export const initGameAtom = atom(null, (get, set, playerCount: 9 | 12) => {
     set(saveSnapshotAtom as any);
 });
 
-export const initPodcastAtom = atom(null, (get, set) => {
-    const config = get(podcastConfigAtom);
-    const actors = get(actorProfilesAtom);
-    const narratorId = get(globalApiConfigAtom).narratorActorId;
-
-    // Reset Podcast State
-    set(podcastPhaseAtom as any, PodcastPhase.INTRO);
-    set(podcastLogsAtom as any, [{
-        id: 'pod-init',
-        turn: 1,
-        phase: GamePhase.SETUP, // Reuse GamePhase for compatibility with logger if needed, or mapped
-        content: `播客节目开始。\n主题：${config.topic}`,
-        timestamp: Date.now(),
-        isSystem: true
-    }]);
-
-    // Reset general playback state
-    set(timelineAtom as any, []);
-    set(isReplayModeAtom as any, false);
-    set(isTheaterModeAtom as any, false);
-    set(isAutoPlayAtom as any, true); // Auto play by default for podcast
-    set(appScreenAtom as any, 'PODCAST_ROOM');
-});
 
 
 export const exitGameAtom = atom(null, (get, set) => {
@@ -205,74 +180,31 @@ export const saveGameArchiveAtom = atom(null, async (get, set, winner: 'GOOD' | 
     console.log("Game Archived:", archive.id);
 });
 
-export const savePodcastArchiveAtom = atom(null, async (get, set) => {
-    const logs = get(podcastLogsAtom);
-    if (logs.length === 0) return;
-
-    const config = get(podcastConfigAtom);
-
-    const archive: PodcastArchive & { id: string } = {
-        id: `podcast-${Date.now()}`,
-        type: 'PODCAST',
-        timestamp: Date.now(),
-        duration: 0,
-        topic: config.topic,
-        hostName: config.hostName,
-        hostSystemPrompt: config.hostSystemPrompt,
-        guest1Name: config.guest1Name,
-        guest1SystemPrompt: config.guest1SystemPrompt,
-        logs: JSON.parse(JSON.stringify(logs)),
-        timeline: JSON.parse(JSON.stringify(get(timelineAtom))),
-        players: [], // Not used for podcast archive but for type compatibility in list
-        turnCount: 1
-    };
-
-    const archives = await get(gameArchivesAtom);
-    set(gameArchivesAtom, [...(Array.isArray(archives) ? archives : []), archive as any]);
-});
 
 
-export const loadGameArchiveAtom = atom(null, (get, set, archive: GameArchive | PodcastArchive) => {
-    // 1. Reset State based on Type
-    if ((archive as any).type === 'PODCAST') {
-        const podArchive = archive as PodcastArchive;
-        // set(podcastLogsAtom, podArchive.logs); // Don't set full logs immediately for replay
-        set(podcastLogsAtom, []);
-        set(logsAtom, []); // Use logsAtom for replay display (driven by theater engine)
-        set(replaySourceLogsAtom, podArchive.logs);
+export const loadGameArchiveAtom = atom(null, (get, set, archive: GameArchive) => {
+    // 1. Reset State
+    const gameArchive = archive as GameArchive;
+    // 1. Reset Players to ALIVE state to allow for a true "Replay"
+    const initialPlayers: Player[] = gameArchive.players.map(p => ({
+        ...p,
+        status: PlayerStatus.ALIVE,
+        isSpeaking: false
+    }));
 
-        set(podcastConfigAtom, {
-            topic: podArchive.topic,
-            hostName: podArchive.hostName,
-            hostSystemPrompt: podArchive.hostSystemPrompt,
-            guest1Name: podArchive.guest1Name,
-            guest1SystemPrompt: podArchive.guest1SystemPrompt,
-            outline: '',
-        });
-        set(appScreenAtom as any, 'PODCAST_ROOM');
-    } else {
-        const gameArchive = archive as GameArchive;
-        // 1. Reset Players to ALIVE state to allow for a true "Replay"
-        const initialPlayers: Player[] = gameArchive.players.map(p => ({
-            ...p,
-            status: PlayerStatus.ALIVE,
-            isSpeaking: false
-        }));
+    set(playersAtom, initialPlayers);
 
-        set(playersAtom, initialPlayers);
+    // 2. Setup Replay Logic
+    set(logsAtom, []);
+    set(replaySourceLogsAtom, gameArchive.logs); // The full script
 
-        // 2. Setup Replay Logic
-        set(logsAtom, []);
-        set(replaySourceLogsAtom, gameArchive.logs); // The full script
+    // 3. Reset Game State for Replay
+    set(turnCountAtom, 1);
+    // Attempt to set start phase from first log, or default
+    const startPhase = gameArchive.logs[0]?.phase || GamePhase.NIGHT_START;
+    set(gamePhaseAtom, startPhase);
 
-        // 3. Reset Game State for Replay
-        set(turnCountAtom, 1);
-        // Attempt to set start phase from first log, or default
-        const startPhase = gameArchive.logs[0]?.phase || GamePhase.NIGHT_START;
-        set(gamePhaseAtom, startPhase);
-
-        set(appScreenAtom as any, 'GAME');
-    }
+    set(appScreenAtom as any, 'GAME');
 
     set(timelineAtom, archive.timeline); // The audio keys
 
