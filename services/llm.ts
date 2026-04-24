@@ -79,7 +79,13 @@ export async function generateText(
                 temperature: 0.7
             };
 
-            if (preset.modelId === 'deepseek-v3-1-terminus') {
+            const isDeepSeekV4 = preset.modelId.startsWith('deepseek-v4');
+            const isDeepSeekV3 = preset.modelId.startsWith('deepseek-v3');
+
+            if (isDeepSeekV4) {
+                body.thinking = { type: "enabled" };
+                body.reasoning_effort = "high";
+            } else if (isDeepSeekV3) {
                 body.thinking = { type: "enabled" };
             }
 

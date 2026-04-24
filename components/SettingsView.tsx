@@ -381,7 +381,23 @@ const SettingsView = () => {
                 <Background />
                 <Header title="AI 模型库" backLabel="设置" />
                 <div className="flex-1 overflow-y-auto custom-scrollbar p-4 relative z-10 max-w-3xl mx-auto w-full">
-                    <button onClick={createProvider} className="w-full py-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold mb-8 shadow-lg shadow-indigo-200 transition-all active:scale-95">+ 添加新供应商</button>
+                    <div className="grid grid-cols-2 gap-3 mb-6">
+                    <button onClick={createProvider} className="py-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold shadow-lg shadow-indigo-200 transition-all active:scale-95">+ 新供应商</button>
+                    <button 
+                        onClick={() => {
+                            const providerId = `provider-deepseek-${Date.now()}`;
+                            setLlmProviders(p => [...p, { id: providerId, name: 'DeepSeek', type: 'openai', baseUrl: 'https://api.deepseek.com', apiKey: '' }]);
+                            const modelId = `llm-v4-${Date.now()}`;
+                            setLlmPresets(p => [...p, { id: modelId, name: 'DeepSeek V4 Pro', providerId: providerId, modelId: 'deepseek-v4-pro' }]);
+                            const actorId = `a-${Date.now()}`;
+                            setActors(p => [...p, { id: actorId, name: 'DeepSeek V4 Pro', llmPresetId: modelId, ttsPresetId: ttsPresets[0]?.id || 'tts-1', voiceId: 'zh_male_yuanbo_moon_bigtts', stylePrompt: '' }]);
+                            pushPage({ type: 'PROVIDER_EDIT', id: providerId });
+                        }} 
+                        className="py-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold shadow-lg shadow-emerald-200 transition-all active:scale-95"
+                    >
+                        ⚡ 极速添加 V4
+                    </button>
+                </div>
 
                     <div className="grid grid-cols-1 gap-4">
                         {llmProviders.map(provider => {
