@@ -104,7 +104,11 @@ const HomeView = () => {
                                 : "bg-white/50 border-transparent hover:bg-white hover:border-indigo-200 hover:shadow-lg"
                         )}
                     >
-                        <div className={clsx("text-3xl mb-3 transition-transform duration-300", selectedMode === 9 ? "scale-110" : "group-hover:scale-110")}>🌙</div>
+                        <div className={clsx("w-12 h-12 rounded-2xl flex items-center justify-center mb-3 transition-transform duration-300", selectedMode === 9 ? "scale-110 bg-indigo-100" : "group-hover:scale-110 bg-slate-100")}>
+                            <svg className={clsx("w-6 h-6", selectedMode === 9 ? "text-indigo-500" : "text-slate-400")} viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+                            </svg>
+                        </div>
                         <span className={clsx("font-bold text-base", selectedMode === 9 ? "text-slate-900" : "text-slate-600")}>9人 标准局</span>
                         <span className="text-[10px] text-slate-400 mt-1 font-medium bg-slate-100 px-2 py-0.5 rounded-full">预女猎</span>
                         {selectedMode === 9 && <div className="absolute top-2 right-2 w-2 h-2 bg-indigo-600 rounded-full"></div>}
@@ -119,7 +123,11 @@ const HomeView = () => {
                                 : "bg-white/50 border-transparent hover:bg-white hover:border-indigo-200 hover:shadow-lg"
                         )}
                     >
-                        <div className={clsx("text-3xl mb-3 transition-transform duration-300", selectedMode === 12 ? "scale-110" : "group-hover:scale-110")}>🐺</div>
+                        <div className={clsx("w-12 h-12 rounded-2xl flex items-center justify-center mb-3 transition-transform duration-300", selectedMode === 12 ? "scale-110 bg-indigo-100" : "group-hover:scale-110 bg-slate-100")}>
+                            <svg className={clsx("w-6 h-6", selectedMode === 12 ? "text-indigo-500" : "text-slate-400")} viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M4.5 6.375a4.125 4.125 0 1 1 8.25 0 4.125 4.125 0 0 1-8.25 0ZM14.25 8.625a3.375 3.375 0 1 1 6.75 0 3.375 3.375 0 0 1-6.75 0ZM1.5 19.125a7.125 7.125 0 0 1 14.25 0v.003l-.001.119a.75.75 0 0 1-.363.63 13.067 13.067 0 0 1-6.761 1.873c-2.472 0-4.786-.684-6.76-1.873a.75.75 0 0 1-.364-.63l-.001-.122ZM17.25 19.128l-.001.144a2.25 2.25 0 0 1-.233.96 10.088 10.088 0 0 0 5.06-1.01.75.75 0 0 0 .42-.643 4.875 4.875 0 0 0-6.957-4.611 8.586 8.586 0 0 1 1.71 5.157v.003Z" />
+                            </svg>
+                        </div>
                         <span className={clsx("font-bold text-base", selectedMode === 12 ? "text-slate-900" : "text-slate-600")}>12人 进阶局</span>
                         <span className="text-[10px] text-slate-400 mt-1 font-medium bg-slate-100 px-2 py-0.5 rounded-full">女猎守</span>
                         {selectedMode === 12 && <div className="absolute top-2 right-2 w-2 h-2 bg-indigo-600 rounded-full"></div>}
@@ -128,7 +136,11 @@ const HomeView = () => {
                 {/* Human Mode Toggle */}
                 <div className="w-full flex items-center justify-between p-4 bg-white/60 backdrop-blur-sm border border-slate-200 rounded-2xl shadow-sm">
                     <div className="flex items-center gap-3">
-                        <span className="text-xl">🧑‍💻</span>
+                        <div className="w-9 h-9 rounded-xl flex items-center justify-center bg-indigo-50 flex-shrink-0">
+                            <svg className="w-5 h-5 text-indigo-500" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z" />
+                            </svg>
+                        </div>
                         <div>
                             <span className="text-sm font-bold text-slate-800 block">人类玩家参与</span>
                             <span className="text-[10px] text-slate-400 font-medium">你将作为一名玩家随机加入游戏</span>
@@ -162,10 +174,10 @@ const HomeView = () => {
 
                     <button
                         onClick={() => setScreen('TTS')}
-                        className="w-full py-4 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl font-bold text-lg shadow-lg shadow-blue-200 transform transition-all active:scale-[0.98] flex items-center justify-center gap-2.5"
+                        className="w-full py-4 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl font-bold text-lg shadow-lg shadow-blue-200 transform transition-all active:scale-[0.98] flex items-center justify-center gap-2"
                     >
-                        <svg className="w-5.5 h-5.5 text-white" fill="none" stroke="currentColor" strokeWidth={2.2} viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M19.114 5.636a9 9 0 0 1 0 12.728M16.463 8.288a5.25 5.25 0 0 1 0 7.424M6.75 8.25l4.72-4.72a.75.75 0 0 1 1.28.53v15.88a.75.75 0 0 1-1.28.53l-4.72-4.72H4.51c-.88 0-1.704-.507-1.938-1.354A9.009 9.009 0 0 1 2.25 12c0-.83.112-1.633.322-2.396C2.806 8.756 3.63 8.25 4.51 8.25H6.75Z" />
+                        <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z" />
                         </svg>
                         <span>TTS 朗读模式</span>
                     </button>
@@ -174,8 +186,8 @@ const HomeView = () => {
                         onClick={() => setScreen('HISTORY')}
                         className="w-full py-3.5 bg-white hover:bg-slate-50 border border-slate-200 hover:border-slate-300 text-slate-600 rounded-xl font-bold shadow-sm transition-all flex items-center justify-center gap-2 group"
                     >
-                        <svg className="w-5 h-5 text-indigo-500 group-hover:scale-110 transition-transform duration-300" fill="none" stroke="currentColor" strokeWidth={2.2} viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+                        <svg className="w-5 h-5 text-slate-500 group-hover:scale-110 transition-transform" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zm-1 1.5L18.5 9H13V3.5zM6 20V4h5v7h7v9H6z" />
                         </svg>
                         <span>历史对局</span>
                     </button>
@@ -185,9 +197,8 @@ const HomeView = () => {
                             onClick={() => setScreen('SETTINGS')}
                             className="py-3.5 bg-white hover:bg-slate-50 border border-slate-200 hover:border-slate-300 text-slate-600 rounded-xl font-bold shadow-sm transition-all flex items-center justify-center gap-2 group"
                         >
-                            <svg className="w-5 h-5 text-indigo-500 group-hover:rotate-90 transition-transform duration-500" fill="none" stroke="currentColor" strokeWidth={2.2} viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 0 1 1.37.49l1.296 2.247a1.125 1.125 0 0 1-.26 1.43l-1.003.828c-.293.241-.438.613-.43.992a7.723 7.723 0 0 1 0 .255c-.008.378.137.75.43.991l1.004.827c.424.35.534.954.26 1.43l-1.298 2.247a1.125 1.125 0 0 1-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.57 6.57 0 0 1-.22.128c-.331.183-.581.495-.644.869l-.213 1.28c-.09.543-.56.941-1.11.941h-2.594c-.55 0-1.02-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 0 1-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 0 1-1.369-.49l-1.297-2.247a1.125 1.125 0 0 1 .26-1.43l1.004-.827c.292-.24.437-.613.43-.992a6.932 6.932 0 0 1 0-.255c.007-.378-.138-.75-.43-.991l-1.004-.827a1.125 1.125 0 0 1-.26-1.43l1.297-2.247a1.125 1.125 0 0 1 1.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.087.22-.128.332-.183.582-.495.644-.869l.214-1.28Z" />
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+                            <svg className="w-5 h-5 text-slate-500 group-hover:rotate-90 transition-transform duration-500" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58a.49.49 0 0 0 .12-.61l-1.92-3.32a.49.49 0 0 0-.59-.22l-2.39.96a7.06 7.06 0 0 0-1.62-.94l-.36-2.54a.484.484 0 0 0-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58a.49.49 0 0 0-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z" />
                             </svg>
                             <span>设置</span>
                         </button>
@@ -195,8 +206,8 @@ const HomeView = () => {
                             onClick={() => setScreen('AGENT')}
                             className="py-3.5 bg-white hover:bg-slate-50 border border-slate-200 hover:border-slate-300 text-slate-600 rounded-xl font-bold shadow-sm transition-all flex items-center justify-center gap-2 group"
                         >
-                            <svg className="w-5 h-5 text-indigo-500 group-hover:scale-110 transition-transform duration-300" fill="none" stroke="currentColor" strokeWidth={2.2} viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904 9 21l-.813-5.096L3.096 15 8 14.187 8.813 9l.813 5.187L14.904 15l-5.091.904ZM18.75 3l-.454 2.546L15.75 6l2.546.454L18.75 9l.454-2.546L21.75 6l-2.546-.454L18.75 3ZM11.25 3l-.326 1.826L9 5.152l1.924.326L11.25 7.3l.326-1.822L13.5 5.152l-1.924-.326L11.25 3Z" />
+                            <svg className="w-5 h-5 text-slate-500 group-hover:scale-110 transition-transform" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M12 2L9.1 9.1 2 12l7.1 2.9L12 22l2.9-7.1L22 12l-7.1-2.9L12 2zm0 3.5l1.9 4.6 4.6 1.9-4.6 1.9-1.9 4.6-1.9-4.6-4.6-1.9 4.6-1.9L12 5.5z" />
                             </svg>
                             <span>助手</span>
                         </button>
