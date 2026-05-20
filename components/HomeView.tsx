@@ -51,7 +51,7 @@ const HomeView = () => {
             "h-full w-full bg-[#f8fafc] text-slate-800 flex flex-col items-center relative font-sans selection:bg-indigo-100 scrollbar-hide",
             isFullscreen
                 ? "justify-center overflow-hidden"
-                : "justify-start sm:justify-center overflow-y-auto pt-4 pb-6 sm:py-4"
+                : "justify-start sm:justify-center overflow-y-auto pt-3 pb-0 sm:py-4"
         )}>
             {/* Top Right Controls - Only show in mobile or if not fullscreen */}
             <div className="absolute top-4 right-4 z-50">
