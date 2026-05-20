@@ -51,7 +51,7 @@ const HomeView = () => {
             "h-full w-full bg-[#f8fafc] text-slate-800 flex flex-col items-center relative font-sans selection:bg-indigo-100 scrollbar-hide",
             isFullscreen
                 ? "justify-center overflow-hidden"
-                : "justify-start sm:justify-center overflow-y-auto pt-6 pb-12 sm:py-0"
+                : "justify-start sm:justify-center overflow-y-auto pt-4 pb-6 sm:py-4"
         )}>
             {/* Top Right Controls - Only show in mobile or if not fullscreen */}
             <div className="absolute top-4 right-4 z-50">
@@ -73,9 +73,9 @@ const HomeView = () => {
                 <div className="absolute top-[20%] right-[10%] w-32 h-32 bg-purple-200/30 rounded-full blur-[60px] mix-blend-multiply"></div>
             </div>
 
-            <div className="z-10 flex flex-col items-center space-y-6 sm:space-y-10 w-full max-w-md px-6 animate-fade-in-up">
+            <div className="z-10 flex flex-col items-center space-y-4 sm:space-y-6 w-full max-w-md px-6 animate-fade-in-up">
                 {/* Title Section */}
-                <div className="text-center space-y-2">
+                <div className="text-center space-y-1">
                     <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white border border-slate-200 shadow-sm mb-2">
                         <span className="relative flex h-2 w-2">
                             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
@@ -98,7 +98,7 @@ const HomeView = () => {
                     <button
                         onClick={() => setSelectedMode(9)}
                         className={clsx(
-                            "group relative flex flex-col items-center p-5 rounded-2xl border-2 transition-all duration-300 ease-out",
+                            "group relative flex flex-col items-center p-4 rounded-2xl border-2 transition-all duration-300 ease-out",
                             selectedMode === 9
                                 ? "bg-white border-indigo-600 shadow-xl shadow-indigo-100 scale-105 z-10"
                                 : "bg-white/50 border-transparent hover:bg-white hover:border-indigo-200 hover:shadow-lg"
@@ -113,7 +113,7 @@ const HomeView = () => {
                     <button
                         onClick={() => setSelectedMode(12)}
                         className={clsx(
-                            "group relative flex flex-col items-center p-5 rounded-2xl border-2 transition-all duration-300 ease-out",
+                            "group relative flex flex-col items-center p-4 rounded-2xl border-2 transition-all duration-300 ease-out",
                             selectedMode === 12
                                 ? "bg-white border-indigo-600 shadow-xl shadow-indigo-100 scale-105 z-10"
                                 : "bg-white/50 border-transparent hover:bg-white hover:border-indigo-200 hover:shadow-lg"
@@ -151,7 +151,7 @@ const HomeView = () => {
                 </div>
 
                 {/* Buttons */}
-                <div className="flex flex-col w-full space-y-3">
+                <div className="flex flex-col w-full space-y-2">
                     <button
                         onClick={() => initGame(selectedMode)}
                         className="w-full py-4 bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 text-white rounded-xl font-bold text-lg shadow-lg shadow-indigo-200 transform transition-all active:scale-[0.98] flex items-center justify-center gap-2"
@@ -196,12 +196,7 @@ const HomeView = () => {
             </div>
 
             {/* Footer Copyright - Balanced spacing with safe area */}
-            <div className={clsx(
-                "text-slate-400 text-[10px] w-full text-center",
-                isFullscreen
-                    ? "absolute bottom-4 pb-[var(--safe-area-inset-bottom)]"
-                    : "mt-4 pb-[calc(1rem+var(--safe-area-inset-bottom))] sm:absolute sm:bottom-4 sm:mt-0 sm:pb-0"
-            )}>
+            <div className="text-slate-400 text-[10px] w-full text-center mt-4 pb-[calc(0.25rem+var(--safe-area-inset-bottom))] shrink-0">
                 Powered by Google Gemini & Jotai
             </div>
         </div>

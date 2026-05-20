@@ -207,9 +207,13 @@ const GameRoomView = () => {
             {/* --- Bottom Player Row --- */}
             <div className={clsx(
                 "z-20 w-full flex justify-center items-start pointer-events-none",
-                isPortrait ? "pt-1 px-4" : "pt-2 pb-6 px-4"
+                isPortrait ? "pt-1 px-4" : "pt-2 px-4"
             )}
-                style={isPortrait ? { paddingBottom: 'calc(2.5rem + var(--safe-area-inset-bottom))' } : undefined}
+                style={{
+                    paddingBottom: isPortrait
+                        ? 'calc(2.5rem + var(--safe-area-inset-bottom))'
+                        : 'calc(1.5rem + var(--safe-area-inset-bottom))'
+                }}
             >
                 <div className={clsx(
                     "pointer-events-auto flex flex-nowrap justify-center max-w-7xl",

@@ -60,7 +60,7 @@ const App = () => {
                         "relative highlight-white/5 transition-all duration-500",
                         isPortrait
                             ? "h-full max-h-full w-auto max-w-full aspect-[9/16] shadow-2xl mx-auto overflow-hidden"
-                            : "w-full h-full min-h-screen sm:min-h-full"
+                            : "w-full h-full"
                     )}
                 >
                     {renderContent()}
