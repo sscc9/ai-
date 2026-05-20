@@ -26,16 +26,72 @@ const Background = () => (
     </div>
 );
 
-const ListItem = ({ label, sub, onClick, icon }: { label: string, sub?: string, onClick: () => void, icon?: string }) => (
+// SVG icon badge helper
+const IconBadge = ({ bg, children }: { bg: string, children: React.ReactNode }) => (
+    <div className={`w-10 h-10 rounded-2xl flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform duration-300 ${bg}`}>
+        {children}
+    </div>
+);
+
+const ListItem = ({ label, sub, onClick, icon }: { label: string, sub?: string, onClick: () => void, icon?: React.ReactNode }) => (
     <div onClick={onClick} className="group flex items-center justify-between p-5 bg-white/60 hover:bg-white border border-slate-200/60 hover:border-indigo-200 shadow-sm hover:shadow-md rounded-xl cursor-pointer transition-all duration-200 mb-2">
         <div className="flex items-center gap-4">
-            {icon && <span className="text-2xl group-hover:scale-110 transition-transform duration-300">{icon}</span>}
+            {icon}
             <div>
                 <div className="text-slate-800 font-bold text-base">{label}</div>
                 {sub && <div className="text-slate-500 text-xs mt-0.5 font-medium">{sub}</div>}
             </div>
         </div>
         <svg className="w-5 h-5 text-slate-400 group-hover:text-indigo-400 transform group-hover:translate-x-1 transition-all" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+    </div>
+);
+
+// Reusable SVG icons
+const IconBrain = () => (
+    <IconBadge bg="bg-pink-100">
+        <svg className="w-5 h-5 text-pink-500" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M13 3a5 5 0 0 1 4.95 4.314A4.5 4.5 0 0 1 21 11.5c0 1.47-.71 2.78-1.8 3.6A4 4 0 0 1 15 19v1a1 1 0 0 1-2 0v-1H11v1a1 1 0 0 1-2 0v-1a4 4 0 0 1-4.2-3.9A4.5 4.5 0 0 1 3 11.5a4.5 4.5 0 0 1 3.05-4.186A5 5 0 0 1 11 3h2zm-1 2h-1a3 3 0 0 0-3 3v.17A2.5 2.5 0 0 0 5.5 10.5v1A2.5 2.5 0 0 0 8 14h8a2 2 0 0 0 2-2v-.5a2.5 2.5 0 0 0-2-2.45V8a3 3 0 0 0-4-2.83V3a1 1 0 0 0-1-1z" />
+        </svg>
+    </IconBadge>
+);
+
+const IconTTS = () => (
+    <IconBadge bg="bg-blue-100">
+        <svg className="w-5 h-5 text-blue-500" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 2a3 3 0 0 1 3 3v6a3 3 0 0 1-6 0V5a3 3 0 0 1 3-3zm7 9a1 1 0 0 1 1 1 8 8 0 0 1-7 7.938V22h3a1 1 0 0 1 0 2H8a1 1 0 0 1 0-2h3v-2.062A8 8 0 0 1 4 12a1 1 0 0 1 2 0 6 6 0 0 0 12 0 1 1 0 0 1 1-1z" />
+        </svg>
+    </IconBadge>
+);
+
+const IconPlayers = () => (
+    <IconBadge bg="bg-blue-100">
+        <svg className="w-5 h-5 text-blue-500" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z" />
+        </svg>
+    </IconBadge>
+);
+
+const IconCloud = () => (
+    <div className="w-10 h-10 rounded-2xl flex items-center justify-center flex-shrink-0 bg-slate-100 group-hover:scale-110 transition-transform duration-300">
+        <svg className="w-5 h-5 text-slate-400" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M19.35 10.04A7.49 7.49 0 0 0 12 4C9.11 4 6.6 5.64 5.35 8.04A5.994 5.994 0 0 0 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96z" />
+        </svg>
+    </div>
+);
+
+const IconExport = () => (
+    <div className="w-10 h-10 rounded-2xl flex items-center justify-center flex-shrink-0 bg-orange-100 mx-auto mb-2">
+        <svg className="w-5 h-5 text-orange-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+        </svg>
+    </div>
+);
+
+const IconImport = () => (
+    <div className="w-10 h-10 rounded-2xl flex items-center justify-center flex-shrink-0 bg-emerald-100 mx-auto mb-2">
+        <svg className="w-5 h-5 text-emerald-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+        </svg>
     </div>
 );
 
@@ -333,16 +389,16 @@ const SettingsView = () => {
 
                     <SectionHeader text="模型与语音" />
                     <div className="space-y-0">
-                        <ListItem label="AI 模型库" sub="管理 AI 供应商与模型" icon="🧠" onClick={() => pushPage({ type: 'LLM_LIST' })} />
-                        <ListItem label="TTS 语音设置" sub="管理 Edge TTS 基础配置" icon="🗣️" onClick={() => pushPage({ type: 'TTS_EDIT', id: 'tts-edge' })} />
+                        <ListItem label="AI 模型库" sub="管理 AI 供应商与模型" icon={<IconBrain />} onClick={() => pushPage({ type: 'LLM_LIST' })} />
+                        <ListItem label="TTS 语音设置" sub="管理 Edge TTS 基础配置" icon={<IconTTS />} onClick={() => pushPage({ type: 'TTS_EDIT', id: 'tts-edge' })} />
                     </div>
 
                     <SectionHeader text="玩家与分身" />
                     <div className="space-y-0">
-                        <ListItem label="玩家列表" sub="管理所有模型分身、声音与性格" icon="👥" onClick={() => pushPage({ type: 'ACTOR_LIST' })} />
+                        <ListItem label="玩家列表" sub="管理所有模型分身、声音与性格" icon={<IconPlayers />} onClick={() => pushPage({ type: 'ACTOR_LIST' })} />
                         <div onClick={() => pushPage({ type: 'ACTOR_EDIT', id: config.narratorActorId })} className="group flex items-center justify-between p-5 bg-indigo-50/50 hover:bg-indigo-50 border border-indigo-100 hover:border-indigo-200 shadow-sm hover:shadow-md rounded-xl cursor-pointer transition-all duration-200 mt-2">
                             <div className="flex items-center gap-4">
-                                <span className="text-2xl">☁️</span>
+                                <IconCloud />
                                 <div>
                                     <div className="text-indigo-900 font-bold text-base">上帝 (旁白) 设置</div>
                                     <div className="text-indigo-400 text-xs mt-0.5 font-medium">设置上帝的声音与风格</div>
@@ -362,11 +418,13 @@ const SettingsView = () => {
                                 isArchivesLoading ? "opacity-50 cursor-wait" : ""
                             )}
                         >
-                            <span className="text-2xl mb-2">{isArchivesLoading ? "⏳" : "📤"}</span>
+                            {isArchivesLoading
+                                ? <div className="w-10 h-10 rounded-2xl flex items-center justify-center bg-slate-100 mx-auto mb-2"><svg className="w-5 h-5 text-slate-400 animate-spin" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg></div>
+                                : <IconExport />}
                             <span className="font-bold text-slate-700 text-sm">{isArchivesLoading ? "数据加载中..." : "导出备份"}</span>
                         </button>
                         <button onClick={handleImportClick} className="flex flex-col items-center justify-center p-4 bg-white border border-slate-200 rounded-xl shadow-sm hover:shadow-md hover:bg-slate-50 transition-all">
-                            <span className="text-2xl mb-2">📥</span>
+                            <IconImport />
                             <span className="font-bold text-slate-700 text-sm">导入备份</span>
                         </button>
                     </div>
