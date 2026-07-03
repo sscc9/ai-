@@ -1,35 +1,35 @@
 import { Skill, SkillContext } from '../types';
 import { Player, Role, GamePhase, ROLE_INFO, PlayerStatus, PHASE_LABELS } from '../../../types';
 
-const SYSTEM_PROMPT = "You are a master strategist in Werewolf. Your only goal is to WIN as a TEAM. Individual survival is secondary to the team victory.";
+const SYSTEM_PROMPT = "你是一位精通狼人杀的游戏大师和策略家。你的唯一目标是带领你的阵营（团队）获得胜利。个人的生存是次要的，团队的胜利高于一切。";
 
 const INSTRUCTION_TEMPLATE = `
-#### CURRENT STATE
+#### 当前游戏状态
 {gameState}
 
-#### MEMORY & VISION
+#### 游戏历史与记忆
 {history}
 
-#### ROLE
+#### 你的身份
 {roleInfo}
 
-#### TASK
+#### 当前任务
 {task}
 
-#### CONSTRAINTS
-- Output strictly in JSON format.
-- **IMPORTANT**: The "speak" field must be in Simplified Chinese.
-- **ANTI-REDUNDANCY**: Review the \`#### TRANSCRIPT\`. If your logical analysis has already been stated by previous players, DO NOT repeat it. Simply state agreement/disagreement or add new unique insights.
+#### 规则与约束
+- 必须严格输出 JSON 格式，不要包含任何 markdown 块标记或多余文字。
+- **发言语言**：\`speak\` 字段必须使用自然、地道的简体中文口语。你可以使用狼人杀术语（如：悍跳、查杀、金水、银水、倒牌、表水、拍身份等）来使发言更像真人。
+- **避免重复**：仔细阅读历史发言。如果你的逻辑或怀疑对象已经被前面的玩家说过了，请不要复述！你可以简单表示同意/反对，或者提出新的独特视角。
 {constraints}
 `.trim();
 
 const GAME_RULES = `
-- Werewolves: Kill all Villagers OR all Gods.
-- Seer: Inspect 1 player per night.
-- Witch: Use 1 Heal and 1 Poison potion per game.
-- Hunter: Shoot 1 player when dead (not poisoned).
-- Guard: Protect 1 player per night (cannot repeat).
-- Priority: Guard > Heal > Kill. (Guard + Heal = Death).
+- 狼人阵营：击杀所有村民 或 所有神职人员。
+- 预言家：每晚可以查验一名玩家的身份（好人或狼人）。
+- 女巫：拥有一瓶解药和一瓶毒药，每种药水每局只能使用一次。
+- 猎人：出局时（被毒杀除外）可以开枪带走一名玩家。
+- 守卫：每晚可以守护一名玩家免受狼人袭击，不能连续两晚守护同一个人。
+- 结算优先级：守卫守护 > 女巫解药救人 > 狼人击杀。（若守卫与女巫同守同救，目标玩家会因“药效冲突”死亡）。
 `.trim();
 
 export class WerewolfSkill implements Skill {
@@ -70,14 +70,14 @@ export class WerewolfSkill implements Skill {
 
     private buildGameState(context: SkillContext, alivePlayers: Player[], roleConfigStr: string): string {
         const { phase } = context;
-        const aliveList = alivePlayers.map(p => `${p.id} 号`).join('、');
+        const aliveList = alivePlayers.map(p => `${p.id}号`).join('、');
 
         return `
-- Phase: ${PHASE_LABELS[phase]}
-- Config: ${roleConfigStr}
-- Rules:
+- 当前阶段: ${PHASE_LABELS[phase]}
+- 板子配置: ${roleConfigStr}
+- 基础规则:
 ${GAME_RULES}
-- Alive Players: [${aliveList}]
+- 存活玩家: [${aliveList}]
 `.trim();
     }
 
@@ -87,44 +87,44 @@ ${GAME_RULES}
         // 1. Current Turn Transcript (Most important)
         const currentTranscript = currentTurnLogs.length > 0
             ? currentTurnLogs.map(l => {
-                if (l.isSystem) return `[SYSTEM]: ${l.content}`;
+                if (l.isSystem) return `[系统公告]: ${l.content}`;
                 if (l.turn < turnCount) {
                     const summary = l.summary || (l.content.length > 15 ? l.content.slice(0, 15) + '...' : l.content);
-                    return `[Player ${l.speakerId} (Summary)]: ${summary}`;
+                    return `[${l.speakerId}号玩家 (发言要点)]: ${summary}`;
                 }
-                return `[Player ${l.speakerId}]: ${l.content}`;
+                return `[${l.speakerId}号玩家]: ${l.content}`;
             }).join('\n')
-            : "(No speeches yet)";
+            : "(当前暂无发言记录)";
 
         // 2. Private Memory (for special roles)
         let privateMemory = "";
 
         if (player.role === Role.SEER) {
             const checks = logs.filter(l => l.phase === GamePhase.SEER_ACTION && l.turn < turnCount && l.isSystem && l.visibleTo?.includes(player.id));
-            if (checks.length) privateMemory += "\n[Your Past Checks]:\n" + checks.map(l => l.content).join('\n');
+            if (checks.length) privateMemory += "\n[你过去的查验记录]:\n" + checks.map(l => l.content).join('\n');
         }
 
         if (player.role === Role.WITCH) {
             const history = logs.filter(l => l.phase === GamePhase.WITCH_ACTION && l.turn < turnCount && l.isSystem && l.visibleTo?.includes(player.id));
-            if (history.length) privateMemory += "\n[Your Past Actions]:\n" + history.map(l => l.content).join('\n');
+            if (history.length) privateMemory += "\n[你过去的使用药水记录]:\n" + history.map(l => l.content).join('\n');
         }
 
         if (player.role === Role.WEREWOLF) {
             const history = logs.filter(l => l.phase === GamePhase.WEREWOLF_ACTION && l.turn < turnCount && !l.isSystem && l.visibleTo?.includes(player.id));
-            if (history.length) privateMemory += "\n[Past Night Chats]:\n" + history.map(l => `Turn ${l.turn}: ${l.content}`).join('\n');
+            if (history.length) privateMemory += "\n[过去的狼人夜间讨论]:\n" + history.map(l => `第 ${l.turn} 天晚上: ${l.content}`).join('\n');
         }
 
         return `
-### Current Transcript
+### 公共对局记录与发言
 ${currentTranscript}
 
-### Private Memory
-${privateMemory || "None"}
+### 你的私有记忆
+${privateMemory || "无"}
 `.trim();
     }
 
     private buildRoleInfo(player: Player): string {
-        return `You are Player ${player.id}. Role: ${ROLE_INFO[player.role].label} (${player.role}).`;
+        return `你是 ${player.id}号 玩家。你的角色是：${ROLE_INFO[player.role].label} (${player.role})。`;
     }
 
     private getPhaseInstruction(player: Player, context: SkillContext, instruction?: string): { task: string, constraints: string } {
@@ -133,60 +133,60 @@ ${privateMemory || "None"}
         // --- 1. Wolf Night ---
         if (phase === GamePhase.WEREWOLF_ACTION && player.role === Role.WEREWOLF) {
             const teammates = players.filter(p => p.role === Role.WEREWOLF && p.id !== player.id);
-            const teammateStr = teammates.map(p => `${p.id}(${p.status})`).join(', ') || "None";
+            const teammateStr = teammates.map(p => `${p.id}号(${p.status === PlayerStatus.ALIVE ? '存活' : '出局'})`).join('、') || "无";
 
             return {
-                task: `Coordinate with teammates to select a kill target. **STRATEGY**: Winning as a team is the ONLY priority. You may attack or distance yourself from teammates in public if it helps the team win. Teammates: ${teammateStr}. ${instruction || "Communicate your intent."}`,
-                constraints: `- JSON Schema: { "thought": "internal strategy", "speak": "private message to teammates" }`
+                task: `与你的狼人队友沟通，选择今晚要袭击的玩家目标。**战术提示**：团队胜利是唯一目标。如果有助于胜利，你可以在白天的发言中踩队友或与队友拉开距离。你的队友是：${teammateStr}。${instruction || "表达你的意图。"}`,
+                constraints: `- 输出 JSON 格式: { "thought": "今晚的刀人思路与战术规划（不对外公开）", "speak": "对队友说的话（私聊内容）" }`
             };
         }
 
         // --- 2. Seer ---
         if (phase === GamePhase.SEER_ACTION && player.role === Role.SEER) {
             return {
-                task: "Choose one player to inspect.",
-                constraints: `- JSON Schema: { "thought": "reasoning", "actionTarget": number, "speak": "internal monologue (short)" }`
+                task: "选择一名你今晚想要查验身份的玩家号码。",
+                constraints: `- 输出 JSON 格式: { "thought": "选择该玩家查验的逻辑和原因", "actionTarget": 查验的玩家号码(数字), "speak": "内心独白（简短）" }`
             };
         }
 
         // --- 3. Witch ---
         if (phase === GamePhase.WITCH_ACTION && player.role === Role.WITCH) {
             const dyingId = godState?.wolfTarget;
-            const info = dyingId ? `Player ${dyingId} was attacked.` : "No one was attacked.";
-            const potions = `Cure: ${player.potions?.cure ? 'YES' : 'NO'}, Poison: ${player.potions?.poison ? 'YES' : 'NO'}`;
+            const info = dyingId ? `${dyingId}号 玩家被袭击` : "无人被袭击";
+            const potions = `解药: ${player.potions?.cure ? '有' : '无'}, 毒药: ${player.potions?.poison ? '有' : '无'}`;
 
             return {
-                task: `Decide potion usage. ${info}. ${potions}.`,
-                constraints: `- JSON Schema: { "thought": "reasoning", "useCure": boolean, "poisonTarget": number | null, "speak": "internal monologue" }`
+                task: `决定今晚是否使用解药或毒药。昨晚：${info}。你当前的药水情况：${potions}。`,
+                constraints: `- 输出 JSON 格式: { "thought": "使用药水决策的思考与逻辑", "useCure": 是否使用解药救被袭击的人(布尔值，true或false), "poisonTarget": 使用毒药的目标玩家号码(数字，不用毒药填null), "speak": "内心独白（简短）" }`
             };
         }
 
         // --- 4. Hunter ---
         if (phase === GamePhase.HUNTER_ACTION && player.role === Role.HUNTER) {
             return {
-                task: "You died. Choose a player to shoot, or pass.",
-                constraints: `- JSON Schema: { "thought": "reasoning", "speak": "last words", "actionTarget": number | null }`
+                task: "你已经出局。选择一名存活玩家开枪带走，或者选择放弃开枪（压枪）。",
+                constraints: `- 输出 JSON 格式: { "thought": "选择该目标开枪或放弃开枪的原因", "speak": "你的最后遗言", "actionTarget": 射击的目标玩家号码(数字，放弃开枪填null) }`
             };
         }
 
         // --- 5. Guard ---
         if (phase === GamePhase.GUARD_ACTION && player.role === Role.GUARD) {
             const lastProtected = godState?.lastGuardProtect;
-            const lastInfo = lastProtected ? `Last night you protected Player ${lastProtected}. You CANNOT protect them again tonight.` : "You did not protect anyone last night.";
-            const targets = alivePlayers.filter(p => p.id !== lastProtected).map(p => p.id).join(', ');
+            const lastInfo = lastProtected ? `昨晚你守护了 ${lastProtected}号 玩家。今晚你绝对不能重复守护他。` : "昨晚你没有守护任何人。";
+            const targets = alivePlayers.filter(p => p.id !== lastProtected).map(p => p.id).join('、');
 
             return {
-                task: `Choose one player to protect from the werewolf attack tonight. ${lastInfo} Valid targets: [${targets}].`,
-                constraints: `- JSON Schema: { "thought": "reasoning", "actionTarget": number, "speak": "internal monologue (short)" }`
+                task: `选择今晚你要守护免受狼人袭击的玩家。${lastInfo} 可选目标：[${targets}]。`,
+                constraints: `- 输出 JSON 格式: { "thought": "决定守护该玩家的防御策略和逻辑", "actionTarget": 守护的玩家号码(数字), "speak": "内心独白（简短）" }`
             };
         }
 
         // --- 6. Voting ---
         if (phase === GamePhase.VOTING) {
-            const targets = alivePlayers.map(p => p.id).join(', ');
+            const targets = alivePlayers.map(p => p.id).join('、');
             return {
-                task: `Vote for a player to exile. Valid targets: [${targets}].`,
-                constraints: `- JSON Schema: { "thought": "reasoning", "speak": "vote reason", "actionTarget": number }`
+                task: `投票放逐一名玩家。可选目标：[${targets}]。`,
+                constraints: `- 输出 JSON 格式: { "thought": "决定投给该玩家的原因（如：怀疑他是狼人，或是跟随队友归票）", "speak": "投票理由（白天公开宣布）", "actionTarget": 投票目标玩家号码(数字) }`
             };
         }
 
@@ -196,21 +196,22 @@ ${privateMemory || "None"}
             let wolfInfo = "";
             if (player.role === Role.WEREWOLF && godState?.wolfTarget) {
                 const target = players.find(p => p.id === godState.wolfTarget);
-                wolfInfo = `[Secret] Last night you attacked ${godState.wolfTarget}. Result: ${target?.status === PlayerStatus.ALIVE ? 'Saved (Peace Night)' : 'Dead'}.`;
+                wolfInfo = `[狼人视角私密信息] 昨晚你们袭击了 ${godState.wolfTarget}号。袭击结果: ${target?.status === PlayerStatus.ALIVE ? '被救活（平安夜）' : '已死亡'}。`;
             }
 
             return {
-                task: `Formulate a message to **CONVINCE** others to follow your lead. ${wolfInfo} ${instruction || "Speak now."}`,
-                constraints: `- **GOAL**: Persuade the town to vote for your targets or trust your identity.
-- If you have nothing new to add, be concise (e.g., "I agree with X" or "Pass").
-- JSON Schema: { "thought": "strategy", "speak": "public message", "summary": "15字以内的发言核心要诀，例如：起跳预言家验3号好人" }`
+                task: `组织白天的发言，**说服**其他玩家信任你，或者跟随你投票。${wolfInfo} ${instruction || "请开始你的发言。"}`,
+                constraints: `- **主要目标**：极力争取好人信任你的身份，或者用逻辑引导大家放逐你怀疑的狼人。
+- 发言要口语化，像真人在玩狼人杀，可以使用专业黑话（金水、查杀、脱衣服、聊爆等）。
+- 如果没有新线索，发言务必言简意赅（如“同意前人发言，过”或“村民过”），避免冗长废话。
+- 输出 JSON 格式: { "thought": "当下的局势分析与白天的策略思考", "speak": "你的公开演讲/发言内容", "summary": "15字以内的发言要点总结，例如：起跳预言家验3号好人" }`
             };
         }
 
         // Fallback
         return {
-            task: "Wait for instructions.",
-            constraints: "- Output NO_OP."
+            task: "等待指令。",
+            constraints: "- 输出 NO_OP。"
         };
     }
 }
