@@ -146,6 +146,8 @@ const SettingsView = () => {
     const [voices, setVoices] = useAtom(edgeTtsVoicesAtom);
     const [enabledCustomPrompts, setEnabledCustomPrompts] = useAtom(enabledCustomPromptsAtom);
     const [customRolePrompts, setCustomRolePrompts] = useAtom(customRolePromptsAtom);
+    const [localPrompts, setLocalPrompts] = useState<Record<string, string>>({});
+    const [activeTab, setActiveTab] = useState<string>('werewolf');
     const [isSyncing, setIsSyncing] = useState(false);
 
     // Use Loadable for Archives to prevent suspense flash
@@ -404,14 +406,33 @@ const SettingsView = () => {
 
                         {/* Custom Prompts Control */}
                         <div className="flex items-center justify-between border-t border-slate-100 pt-4">
-                            <div>
-                                <span className="text-base font-bold text-slate-800 block">自定义角色提示词</span>
-                                <span className="text-xs text-slate-500 block mt-0.5">启用后可为狼人、村民等角色配置专属策略</span>
+                            <div 
+                                onClick={() => {
+                                    if (enabledCustomPrompts) {
+                                        setLocalPrompts({ ...customRolePrompts });
+                                        setActiveTab('werewolf');
+                                        pushPage({ type: 'CUSTOM_PROMPTS' });
+                                    }
+                                }}
+                                className={clsx(
+                                    "flex-grow flex items-center gap-3 transition-all",
+                                    enabledCustomPrompts 
+                                        ? "cursor-pointer hover:opacity-85 text-slate-800" 
+                                        : "opacity-40 pointer-events-none select-none text-slate-500"
+                                )}
+                            >
+                                <svg className="w-5 h-5 text-indigo-500" fill="currentColor" viewBox="0 0 24 24">
+                                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z" />
+                                </svg>
+                                <div>
+                                    <span className="text-sm font-bold block">自定义角色提示词</span>
+                                    <span className="text-[11px] text-slate-400 block mt-0.5">配置 6 个身份的个性化策略设定 (点击进入)</span>
+                                </div>
                             </div>
                             <div
                                 onClick={() => setEnabledCustomPrompts(p => !p)}
                                 className={clsx(
-                                    "relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none mr-2",
+                                    "relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none mr-2 ml-4",
                                     enabledCustomPrompts ? 'bg-indigo-500' : 'bg-slate-300'
                                 )}
                             >
@@ -434,33 +455,7 @@ const SettingsView = () => {
                     <SectionHeader text="玩家与分身" />
                     <div className="space-y-0">
                         <ListItem label="玩家列表" sub="管理所有模型分身、声音与性格" icon={<IconPlayers />} onClick={() => pushPage({ type: 'ACTOR_LIST' })} />
-                        
-                        <div 
-                            onClick={() => {
-                                if (enabledCustomPrompts) {
-                                    pushPage({ type: 'CUSTOM_PROMPTS' });
-                                }
-                            }} 
-                            className={clsx(
-                                "group flex items-center justify-between p-5 border shadow-sm rounded-xl transition-all duration-200 mb-2 mt-2",
-                                enabledCustomPrompts 
-                                    ? "bg-white border-slate-200/60 hover:bg-white hover:border-indigo-200 hover:shadow-md cursor-pointer" 
-                                    : "bg-slate-100/50 border-slate-200/30 opacity-40 cursor-not-allowed select-none"
-                            )}
-                        >
-                            <div className="flex items-center gap-4">
-                                <IconBadge bg={enabledCustomPrompts ? "bg-indigo-100" : "bg-slate-200"}>
-                                    <svg className="w-5 h-5 text-indigo-500" fill="currentColor" viewBox="0 0 24 24">
-                                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z" />
-                                    </svg>
-                                </IconBadge>
-                                <div>
-                                    <div className={clsx("font-bold text-base", enabledCustomPrompts ? "text-slate-800" : "text-slate-500")}>自定义角色提示词</div>
-                                    <div className="text-slate-400 text-xs mt-0.5 font-medium">配置 6 个身份的个性化策略设定</div>
-                                </div>
-                            </div>
-                            <svg className="w-5 h-5 text-slate-400 group-hover:text-indigo-400 transform group-hover:translate-x-1 transition-all" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
-                        </div>
+
                         <div onClick={() => pushPage({ type: 'ACTOR_EDIT', id: config.narratorActorId })} className="group flex items-center justify-between p-5 bg-indigo-50/50 hover:bg-indigo-50 border border-indigo-100 hover:border-indigo-200 shadow-sm hover:shadow-md rounded-xl cursor-pointer transition-all duration-200 mt-2">
                             <div className="flex items-center gap-4">
                                 <IconCloud />
@@ -915,10 +910,7 @@ const SettingsView = () => {
             villager: '🧑 村民'
         };
 
-        const [localPrompts, setLocalPrompts] = useState<Record<string, string>>(() => {
-            return { ...customRolePrompts };
-        });
-        const [activeTab, setActiveTab] = useState<string>('werewolf');
+
 
         const handleRestoreDefaults = () => {
             if (window.confirm("确定要恢复默认示范提示词吗？这会覆盖你当前的所有自定义修改。")) {
