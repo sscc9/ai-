@@ -86,7 +86,14 @@ ${GAME_RULES}
 
         // 1. Current Turn Transcript (Most important)
         const currentTranscript = currentTurnLogs.length > 0
-            ? currentTurnLogs.map(l => l.isSystem ? `[SYSTEM]: ${l.content}` : `[Player ${l.speakerId}]: ${l.content}`).join('\n')
+            ? currentTurnLogs.map(l => {
+                if (l.isSystem) return `[SYSTEM]: ${l.content}`;
+                if (l.turn < turnCount) {
+                    const summary = l.summary || (l.content.length > 15 ? l.content.slice(0, 15) + '...' : l.content);
+                    return `[Player ${l.speakerId} (Summary)]: ${summary}`;
+                }
+                return `[Player ${l.speakerId}]: ${l.content}`;
+            }).join('\n')
             : "(No speeches yet)";
 
         // 2. Private Memory (for special roles)
@@ -162,7 +169,19 @@ ${privateMemory || "None"}
             };
         }
 
-        // --- 5. Voting ---
+        // --- 5. Guard ---
+        if (phase === GamePhase.GUARD_ACTION && player.role === Role.GUARD) {
+            const lastProtected = godState?.lastGuardProtect;
+            const lastInfo = lastProtected ? `Last night you protected Player ${lastProtected}. You CANNOT protect them again tonight.` : "You did not protect anyone last night.";
+            const targets = alivePlayers.filter(p => p.id !== lastProtected).map(p => p.id).join(', ');
+
+            return {
+                task: `Choose one player to protect from the werewolf attack tonight. ${lastInfo} Valid targets: [${targets}].`,
+                constraints: `- JSON Schema: { "thought": "reasoning", "actionTarget": number, "speak": "internal monologue (short)" }`
+            };
+        }
+
+        // --- 6. Voting ---
         if (phase === GamePhase.VOTING) {
             const targets = alivePlayers.map(p => p.id).join(', ');
             return {
@@ -171,7 +190,7 @@ ${privateMemory || "None"}
             };
         }
 
-        // --- 6. Day Discussion ---
+        // --- 7. Day Discussion ---
         if (phase === GamePhase.DAY_DISCUSSION || phase === GamePhase.LAST_WORDS || phase === GamePhase.DAY_ANNOUNCE) {
             // Wolf Special Vision
             let wolfInfo = "";
@@ -184,7 +203,7 @@ ${privateMemory || "None"}
                 task: `Formulate a message to **CONVINCE** others to follow your lead. ${wolfInfo} ${instruction || "Speak now."}`,
                 constraints: `- **GOAL**: Persuade the town to vote for your targets or trust your identity.
 - If you have nothing new to add, be concise (e.g., "I agree with X" or "Pass").
-- JSON Schema: { "thought": "strategy", "speak": "public message" }`
+- JSON Schema: { "thought": "strategy", "speak": "public message", "summary": "15字以内的发言核心要诀，例如：起跳预言家验3号好人" }`
             };
         }
 

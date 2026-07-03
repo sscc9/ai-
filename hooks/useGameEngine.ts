@@ -279,6 +279,7 @@ export const useGameEngine = () => {
                 speakerId: player.id,
                 content: speech,
                 thought: result?.thought, // Capture thought
+                summary: result?.summary, // Capture summary for memory compression
                 timestamp: Date.now(),
                 isSystem: false,
                 visibleTo: visibleTo
@@ -352,20 +353,88 @@ export const useGameEngine = () => {
                     setIsProcessing(true);
                     try {
                         await addSystemLog("天黑请闭眼。");
+                        // Delay before wake up
+                        await new Promise(r => setTimeout(r, Math.random() * 2000 + 1500));
+
+                        // Carry over last guardProtect to lastGuardProtect, then reset guardProtect
+                        const prevGuardProtect = godState.guardProtect;
+                        setGodState({ 
+                            wolfTarget: null, 
+                            seerCheck: null, 
+                            witchSave: false, 
+                            witchPoison: null, 
+                            guardProtect: null, 
+                            lastGuardProtect: prevGuardProtect,
+                            deathsTonight: [],
+                            pkPlayers: godState.pkPlayers || [],
+                            isPkRound: godState.isPkRound || false
+                        });
+                        saveSnapshot();
+
+                        const hasGuard = players.some(p => p.role === Role.GUARD && p.status === PlayerStatus.ALIVE);
+                        if (hasGuard) {
+                            setPhase(GamePhase.GUARD_ACTION);
+                            saveSnapshot();
+                            const guard = players.find(p => p.role === Role.GUARD);
+                            await addSystemLog("守卫请睁眼。", guard ? [guard.id] : [], undefined, GamePhase.GUARD_ACTION);
+                        } else {
+                            setPhase(GamePhase.WEREWOLF_ACTION);
+                            saveSnapshot();
+                            const wolves = players.filter(p => p.role === Role.WEREWOLF);
+                            await addSystemLog("狼人请睁眼。", wolves.map(w => w.id), undefined, GamePhase.WEREWOLF_ACTION);
+                        }
+                    } finally {
+                        setIsProcessing(false);
+                    }
+                    break;
+
+                case GamePhase.GUARD_ACTION: {
+                    setIsProcessing(true);
+                    try {
+                        const guard = players.find(p => p.role === Role.GUARD && p.status === PlayerStatus.ALIVE);
+                        const hasSpoken = logs.some(l => l.phase === phase && l.speakerId === guard?.id && l.turn === turnCount);
+
+                        if (guard && !hasSpoken) {
+                            const lastProtected = godState.lastGuardProtect;
+                            const result = await generateTurn(guard, undefined, [guard.id], true);
+                            
+                            if (result?.actionTarget) {
+                                // Validate constraint: cannot protect consecutively
+                                if (result.actionTarget !== lastProtected) {
+                                    setGodState(prev => ({ ...prev, guardProtect: result.actionTarget }));
+                                    await addSystemLog(`上帝(私聊): 守护了 ${result.actionTarget}号。`, [guard.id]);
+                                } else {
+                                    // Fallback: choose a random alive target that is NOT lastProtected
+                                    const validTargets = players.filter(p => p.status === PlayerStatus.ALIVE && p.id !== lastProtected).map(p => p.id);
+                                    if (validTargets.length > 0) {
+                                        const randomTarget = validTargets[Math.floor(Math.random() * validTargets.length)];
+                                        setGodState(prev => ({ ...prev, guardProtect: randomTarget }));
+                                        await addSystemLog(`上帝(私聊): 守护了 ${randomTarget}号。`, [guard.id]);
+                                    }
+                                }
+                            } else {
+                                await addSystemLog(`上帝(私聊): 未守护任何人。`, [guard.id]);
+                            }
+                        }
+
+                        // Delay before closing eyes
+                        await new Promise(r => setTimeout(r, Math.random() * 1500 + 1000));
+                        const guardId = guard?.id;
+                        await addSystemLog("守卫请闭眼。", guardId ? [guardId] : []);
+                        
                         // Delay before wolves
                         await new Promise(r => setTimeout(r, Math.random() * 2000 + 1500));
 
                         setPhase(GamePhase.WEREWOLF_ACTION);
-                        setGodState({ wolfTarget: null, seerCheck: null, witchSave: false, witchPoison: null, guardProtect: null, deathsTonight: [] });
                         saveSnapshot();
 
                         const wolves = players.filter(p => p.role === Role.WEREWOLF);
                         await addSystemLog("狼人请睁眼。", wolves.map(w => w.id), undefined, GamePhase.WEREWOLF_ACTION);
                     } finally {
-
                         setIsProcessing(false);
                     }
                     break;
+                }
 
                 case GamePhase.WEREWOLF_ACTION: {
                     setIsProcessing(true);
@@ -497,8 +566,32 @@ export const useGameEngine = () => {
                     setIsProcessing(true);
                     try {
                         const deaths: number[] = [];
-                        if (godState.wolfTarget && !godState.witchSave) deaths.push(godState.wolfTarget);
-                        if (godState.witchPoison) deaths.push(godState.witchPoison);
+                        const wolfTarget = godState.wolfTarget;
+                        const guardProtect = godState.guardProtect;
+                        const witchSave = godState.witchSave;
+
+                        if (wolfTarget) {
+                            if (wolfTarget === guardProtect) {
+                                if (witchSave) {
+                                    // 同救同死 (Double save kills target)
+                                    deaths.push(wolfTarget);
+                                } else {
+                                    // 守卫单守救活 (Saved by Guard)
+                                }
+                            } else {
+                                if (witchSave) {
+                                    // 女巫单救救活 (Saved by Witch)
+                                } else {
+                                    // 无任何守护，死亡 (Killed by Wolves)
+                                    deaths.push(wolfTarget);
+                                }
+                            }
+                        }
+
+                        if (godState.witchPoison) {
+                            deaths.push(godState.witchPoison);
+                        }
+
                         const uniqueDeaths = [...new Set(deaths)];
 
                         // Update statuses
@@ -550,13 +643,21 @@ export const useGameEngine = () => {
                     if (nextId) {
                         const player = players.find(p => p.id === nextId);
                         if (player && player.status === PlayerStatus.ALIVE) {
-                            await generateTurn(player);
+                            let customInstruction = undefined;
+                            if (godState.isPkRound && godState.pkPlayers?.includes(nextId)) {
+                                customInstruction = "目前是投票平票后的 PK 发言环节。请发表你的【PK辩白发言】，说服其他玩家不要投你，并指出你认为谁是狼人。";
+                            }
+                            await generateTurn(player, customInstruction);
                         }
                         setSpeakingQueue(rest);
                     } else {
                         setIsProcessing(true);
                         try {
-                            await addSystemLog("发言结束，开始投票...");
+                            if (godState.isPkRound) {
+                                await addSystemLog("PK发言结束，开始进行PK投票...");
+                            } else {
+                                await addSystemLog("发言结束，开始投票...");
+                            }
                             setPhase(GamePhase.VOTING);
                             saveSnapshot();
                         } finally {
@@ -572,8 +673,20 @@ export const useGameEngine = () => {
                         const alive = players.filter(p => p.status === PlayerStatus.ALIVE);
                         const votes: Record<number, number> = {};
 
+                        // Determine voters and target candidates for PK logic
+                        const isPkRound = !!(godState.isPkRound && godState.pkPlayers && godState.pkPlayers.length > 0);
+                        const voters = isPkRound
+                            ? alive.filter(p => !godState.pkPlayers!.includes(p.id))
+                            : alive;
+                        const validTargets = isPkRound
+                            ? godState.pkPlayers!
+                            : alive.map(p => p.id);
+
                         // Vote
-                        const results = await Promise.all(alive.map(async p => ({ voter: p.id, target: await getAiVote(p, alive.map(a => a.id)) })));
+                        const results = await Promise.all(voters.map(async p => ({
+                            voter: p.id,
+                            target: await getAiVote(p, validTargets)
+                        })));
 
                         // Count votes for logic
                         results.forEach(({ voter, target }) => { if (target) votes[target] = (votes[target] || 0) + 1; });
@@ -597,14 +710,55 @@ export const useGameEngine = () => {
                         if (abstained.length > 0) detailsLines.push(`弃票: ${abstained.join('、')}`);
 
                         const voteDetails = detailsLines.join('\n');
-                        await addSystemLog(`投票结果:\n${voteDetails}`, undefined, "投票统计完毕。");
+                        await addSystemLog(
+                            isPkRound ? `PK投票结果:\n${voteDetails}` : `投票结果:\n${voteDetails}`, 
+                            undefined, 
+                            "投票统计完毕。"
+                        );
 
                         let max = -1, victims: number[] = [];
                         for (const [pid, count] of Object.entries(votes)) {
                             if (count > max) { max = count; victims = [+pid]; }
                             else if (count === max) victims.push(+pid);
                         }
-                        const final = victims.length > 0 ? victims[Math.floor(Math.random() * victims.length)] : null;
+
+                        if (victims.length > 1) {
+                            // Tie!
+                            if (!isPkRound) {
+                                // First tie: Enter PK round
+                                await addSystemLog(`投票出现平票，${victims.join('号、')}号 票数相同。进入PK发言阶段。`);
+                                setGodState(prev => ({
+                                    ...prev,
+                                    pkPlayers: victims,
+                                    isPkRound: true
+                                }));
+                                setSpeakingQueue(victims);
+                                setPhase(GamePhase.DAY_DISCUSSION);
+                                saveSnapshot();
+                                return;
+                            } else {
+                                // Second tie: Peace day
+                                await addSystemLog(`PK投票再次平票，今天为平安日，无人出局。`);
+                                setGodState(prev => ({
+                                    ...prev,
+                                    pkPlayers: [],
+                                    isPkRound: false
+                                }));
+                                setPhase(GamePhase.LAST_WORDS);
+                                setSpeakingQueue([]);
+                                saveSnapshot();
+                                return;
+                            }
+                        }
+
+                        const final = victims.length === 1 ? victims[0] : null;
+
+                        // Reset PK flags upon successful exile or peace day
+                        setGodState(prev => ({
+                            ...prev,
+                            pkPlayers: [],
+                            isPkRound: false
+                        }));
 
                         if (final) {
                             await addSystemLog(`${final}号 被投票出局。`);

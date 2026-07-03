@@ -45,7 +45,11 @@ const HumanInputPanel = () => {
     const aliveEveryone = players.filter(p => p.status === PlayerStatus.ALIVE);
     const isVoting = phase === GamePhase.VOTING;
     // For voting, you can vote for anyone alive. For actions (kill/check), you target others.
-    const targetCandidates = isVoting ? aliveEveryone : aliveEveryone.filter(p => p.id !== humanPlayer.id);
+    let targetCandidates = isVoting ? aliveEveryone : aliveEveryone.filter(p => p.id !== humanPlayer.id);
+    if (phase === GamePhase.GUARD_ACTION) {
+        // Guard can protect themselves, but not the same player consecutively
+        targetCandidates = aliveEveryone.filter(p => p.id !== godState.lastGuardProtect);
+    }
 
     let instruction = "";
     if (phase === GamePhase.WITCH_ACTION) {
@@ -53,6 +57,10 @@ const HumanInputPanel = () => {
         instruction = dyingId ? `昨晚 ${dyingId} 号玩家被刀。` : "昨晚无人被杀。";
     } else if (phase === GamePhase.SEER_ACTION) {
         instruction = "请选择查验一名玩家。";
+    } else if (phase === GamePhase.GUARD_ACTION) {
+        instruction = godState.lastGuardProtect 
+            ? `请选择守护一名玩家（不能选择 ${godState.lastGuardProtect} 号）。` 
+            : "请选择守护一名玩家。";
     } else if (phase === GamePhase.WEREWOLF_ACTION) {
         instruction = "与队友沟通并决定目标。";
     } else if (phase === GamePhase.VOTING) {

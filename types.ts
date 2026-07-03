@@ -162,6 +162,9 @@ export interface GodState {
     witchPoison: number | null;
     guardProtect: number | null;
     deathsTonight: number[]; // IDs of players who died
+    lastGuardProtect?: number | null; // Guard cannot protect consecutively
+    pkPlayers?: number[]; // Tie-breakers
+    isPkRound?: boolean; // Whether the current round is a PK vote
 }
 
 // The structure of a log entry
@@ -173,6 +176,7 @@ export interface GameLog {
     speakerName?: string; // Optional override for podcast/custom modes
     content: string; // markdown supported
     thought?: string; // The internal monologue (CoT)
+    summary?: string; // Short summary for previous turns
     timestamp: number;
     isSystem: boolean;
     visibleTo?: number[]; // If set, only these player IDs (and user) can see this log. E.g. Seer result.
