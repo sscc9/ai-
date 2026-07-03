@@ -26,7 +26,9 @@ import {
     isPlayingAudioAtom,
     isTheaterModeAtom,
     areRolesVisibleAtom,
-    userInputAtom
+    userInputAtom,
+    enabledCustomPromptsAtom,
+    customRolePromptsAtom
 } from '../atoms';
 import { GamePhase, ROLE_INFO, PlayerStatus, PHASE_LABELS, Role, Player, GOD_ROLES, VILLAGER_ROLES } from '../types';
 import { AudioService } from '../audio';
@@ -63,6 +65,8 @@ export const useGameEngine = () => {
     const [isPlayingAudio, setIsPlayingAudio] = useAtom(isPlayingAudioAtom);
     const isTheater = useAtomValue(isTheaterModeAtom);
     const isDaytime = useAtomValue(isDaytimeAtom);
+    const enabledCustomPrompts = useAtomValue(enabledCustomPromptsAtom);
+    const customRolePrompts = useAtomValue(customRolePromptsAtom);
 
     const [userInput, setUserInput] = useAtom(userInputAtom) as any;
     const userInputRef = useRef(userInput);
@@ -214,7 +218,9 @@ export const useGameEngine = () => {
                 roleConfigStr: getRoleConfigStr(),
                 godState,
                 alivePlayers,
-                currentTurnLogs
+                currentTurnLogs,
+                enabledCustomPrompts,
+                customRolePrompts
             };
 
             const messages = await werewolfSkill.generatePrompts(player, context);
@@ -256,7 +262,9 @@ export const useGameEngine = () => {
                     roleConfigStr: getRoleConfigStr(),
                     godState,
                     alivePlayers,
-                    currentTurnLogs
+                    currentTurnLogs,
+                    enabledCustomPrompts,
+                    customRolePrompts
                 };
 
                 let messages = await werewolfSkill.generatePrompts(player, context, actionInstruction);
@@ -669,7 +677,9 @@ export const useGameEngine = () => {
                                     logs,
                                     roleConfigStr: getRoleConfigStr(),
                                     godState,
-                                    alivePlayers: alive
+                                    alivePlayers: alive,
+                                    enabledCustomPrompts,
+                                    customRolePrompts
                                 };
                                 const messages = await werewolfSkill.generatePrompts(sheriff, promptContext, "请选择白天的发言方向（顺时针/逆时针）");
                                 const { llm, provider } = getActorConfig(sheriff.actorId);
@@ -1119,7 +1129,9 @@ export const useGameEngine = () => {
                                         logs,
                                         roleConfigStr: getRoleConfigStr(),
                                         godState,
-                                        alivePlayers: players.filter(p => p.status === PlayerStatus.ALIVE)
+                                        alivePlayers: players.filter(p => p.status === PlayerStatus.ALIVE),
+                                        enabledCustomPrompts,
+                                        customRolePrompts
                                     };
                                     const messages = await werewolfSkill.generatePrompts(sheriff, promptContext);
                                     const { llm, provider } = getActorConfig(sheriff.actorId);
@@ -1177,7 +1189,9 @@ export const useGameEngine = () => {
                                         logs,
                                         roleConfigStr: getRoleConfigStr(),
                                         godState,
-                                        alivePlayers: alive
+                                        alivePlayers: alive,
+                                        enabledCustomPrompts,
+                                        customRolePrompts
                                     };
                                     const messages = await werewolfSkill.generatePrompts(sheriff, promptContext, "请选择白天的发言方向（顺时针/逆时针）");
                                     const { llm, provider } = getActorConfig(sheriff.actorId);

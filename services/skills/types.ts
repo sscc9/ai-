@@ -14,6 +14,10 @@ export interface SkillContext {
     // Derived Data (Engine helper results)
     currentTurnLogs?: GameLog[];
     alivePlayers?: Player[];
+
+    // Custom Prompts Configuration
+    enabledCustomPrompts?: boolean;
+    customRolePrompts?: Record<string, string>;
 }
 
 export interface Skill {

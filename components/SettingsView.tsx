@@ -2,7 +2,20 @@
 import React, { useState, useRef } from 'react';
 import { useAtom, useSetAtom, useAtomValue } from 'jotai';
 import { clsx } from 'clsx';
-import { appScreenAtom, globalApiConfigAtom, llmPresetsAtom, ttsPresetsAtom, actorProfilesAtom, gameArchivesAtom, gameArchivesLoadableAtom, llmProvidersAtom, edgeTtsVoicesAtom } from '../store';
+import {
+    appScreenAtom,
+    globalApiConfigAtom,
+    llmPresetsAtom,
+    ttsPresetsAtom,
+    actorProfilesAtom,
+    gameArchivesAtom,
+    gameArchivesLoadableAtom,
+    llmProvidersAtom,
+    edgeTtsVoicesAtom,
+    enabledCustomPromptsAtom,
+    customRolePromptsAtom,
+    DEFAULT_ROLE_PROMPTS
+} from '../store';
 import { LLMPreset, TTSPreset, ActorProfile, LLMProviderConfig } from '../types';
 import { AudioService } from '../audio';
 
@@ -15,7 +28,8 @@ type SettingsPage =
     | { type: 'PROVIDER_EDIT', id?: string }
     | { type: 'LLM_EDIT', id?: string }
     | { type: 'TTS_EDIT', id?: string }
-    | { type: 'ACTOR_EDIT', id?: string };
+    | { type: 'ACTOR_EDIT', id?: string }
+    | { type: 'CUSTOM_PROMPTS' };
 
 // --- Components (Unified Style) ---
 
@@ -130,6 +144,8 @@ const SettingsView = () => {
     const [ttsPresets, setTtsPresets] = useAtom(ttsPresetsAtom);
     const [actors, setActors] = useAtom(actorProfilesAtom);
     const [voices, setVoices] = useAtom(edgeTtsVoicesAtom);
+    const [enabledCustomPrompts, setEnabledCustomPrompts] = useAtom(enabledCustomPromptsAtom);
+    const [customRolePrompts, setCustomRolePrompts] = useAtom(customRolePromptsAtom);
     const [isSyncing, setIsSyncing] = useState(false);
 
     // Use Loadable for Archives to prevent suspense flash
@@ -385,6 +401,28 @@ const SettingsView = () => {
                                 />
                             </div>
                         </div>
+
+                        {/* Custom Prompts Control */}
+                        <div className="flex items-center justify-between border-t border-slate-100 pt-4">
+                            <div>
+                                <span className="text-base font-bold text-slate-800 block">自定义角色提示词</span>
+                                <span className="text-xs text-slate-500 block mt-0.5">启用后可为狼人、村民等角色配置专属策略</span>
+                            </div>
+                            <div
+                                onClick={() => setEnabledCustomPrompts(p => !p)}
+                                className={clsx(
+                                    "relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none mr-2",
+                                    enabledCustomPrompts ? 'bg-indigo-500' : 'bg-slate-300'
+                                )}
+                            >
+                                <span
+                                    className={clsx(
+                                        "pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out",
+                                        enabledCustomPrompts ? 'translate-x-5' : 'translate-x-0'
+                                    )}
+                                />
+                            </div>
+                        </div>
                     </Card>
 
                     <SectionHeader text="模型与语音" />
@@ -396,6 +434,33 @@ const SettingsView = () => {
                     <SectionHeader text="玩家与分身" />
                     <div className="space-y-0">
                         <ListItem label="玩家列表" sub="管理所有模型分身、声音与性格" icon={<IconPlayers />} onClick={() => pushPage({ type: 'ACTOR_LIST' })} />
+                        
+                        <div 
+                            onClick={() => {
+                                if (enabledCustomPrompts) {
+                                    pushPage({ type: 'CUSTOM_PROMPTS' });
+                                }
+                            }} 
+                            className={clsx(
+                                "group flex items-center justify-between p-5 border shadow-sm rounded-xl transition-all duration-200 mb-2 mt-2",
+                                enabledCustomPrompts 
+                                    ? "bg-white border-slate-200/60 hover:bg-white hover:border-indigo-200 hover:shadow-md cursor-pointer" 
+                                    : "bg-slate-100/50 border-slate-200/30 opacity-40 cursor-not-allowed select-none"
+                            )}
+                        >
+                            <div className="flex items-center gap-4">
+                                <IconBadge bg={enabledCustomPrompts ? "bg-indigo-100" : "bg-slate-200"}>
+                                    <svg className="w-5 h-5 text-indigo-500" fill="currentColor" viewBox="0 0 24 24">
+                                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z" />
+                                    </svg>
+                                </IconBadge>
+                                <div>
+                                    <div className={clsx("font-bold text-base", enabledCustomPrompts ? "text-slate-800" : "text-slate-500")}>自定义角色提示词</div>
+                                    <div className="text-slate-400 text-xs mt-0.5 font-medium">配置 6 个身份的个性化策略设定</div>
+                                </div>
+                            </div>
+                            <svg className="w-5 h-5 text-slate-400 group-hover:text-indigo-400 transform group-hover:translate-x-1 transition-all" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+                        </div>
                         <div onClick={() => pushPage({ type: 'ACTOR_EDIT', id: config.narratorActorId })} className="group flex items-center justify-between p-5 bg-indigo-50/50 hover:bg-indigo-50 border border-indigo-100 hover:border-indigo-200 shadow-sm hover:shadow-md rounded-xl cursor-pointer transition-all duration-200 mt-2">
                             <div className="flex items-center gap-4">
                                 <IconCloud />
@@ -834,6 +899,110 @@ const SettingsView = () => {
                                 </button>
                             </div>
                         )}
+                    </Card>
+                </div>
+            </div>
+        );
+    }
+
+    if (currentPage.type === 'CUSTOM_PROMPTS') {
+        const roleLabels: Record<string, string> = {
+            werewolf: '🐺 狼人',
+            seer: '🔮 预言家',
+            witch: '🧪 女巫',
+            hunter: '🏹 猎人',
+            guard: '🛡️ 守卫',
+            villager: '🧑 村民'
+        };
+
+        const [localPrompts, setLocalPrompts] = useState<Record<string, string>>(() => {
+            return { ...customRolePrompts };
+        });
+        const [activeTab, setActiveTab] = useState<string>('werewolf');
+
+        const handleRestoreDefaults = () => {
+            if (window.confirm("确定要恢复所有角色的出厂默认提示词吗？这会覆盖你当前的所有自定义修改。")) {
+                setLocalPrompts({});
+            }
+        };
+
+        const handleSave = () => {
+            setCustomRolePrompts(localPrompts);
+            alert("保存成功！");
+            popPage();
+        };
+
+        const currentVal = localPrompts[activeTab] !== undefined ? localPrompts[activeTab] : (DEFAULT_ROLE_PROMPTS[activeTab] || '');
+
+        return (
+            <div className="h-full w-full bg-[#f8fafc] flex flex-col relative overflow-hidden font-sans">
+                <Background />
+                <Header title="自定义角色提示词" backLabel="设置" onBack={popPage} />
+                <div className="flex-1 overflow-y-auto custom-scrollbar p-4 relative z-10 max-w-3xl mx-auto w-full pb-10">
+                    <Card>
+                        <div className="text-slate-500 text-xs mb-4 leading-relaxed bg-indigo-50 border border-indigo-100 p-3.5 rounded-xl">
+                            💡 <strong>提示：</strong>在此编辑系统发给各角色 AI 的策略指导词。AI 将在此战术指南的规范下，结合自身模型的思考能力以及游戏当前的局面数据进行思考决策。
+                        </div>
+
+                        {/* Tabs Navigation */}
+                        <div className="flex flex-wrap gap-1.5 mb-5 border-b border-slate-100 pb-4">
+                            {Object.entries(roleLabels).map(([role, label]) => (
+                                <button
+                                    key={role}
+                                    onClick={() => setActiveTab(role)}
+                                    className={clsx(
+                                        "px-3.5 py-2 rounded-xl text-xs font-bold transition-all border",
+                                        activeTab === role
+                                            ? "bg-indigo-600 border-indigo-600 text-white shadow-sm shadow-indigo-100"
+                                            : "bg-white border-slate-200 text-slate-600 hover:border-slate-300"
+                                    )}
+                                >
+                                    {label}
+                                </button>
+                            ))}
+                        </div>
+
+                        <div className="mb-5">
+                            <label className="block text-xs font-bold text-indigo-500 uppercase tracking-wide mb-2 ml-1">
+                                {roleLabels[activeTab]} 提示词配置
+                            </label>
+                            <textarea
+                                value={currentVal}
+                                onChange={e => setLocalPrompts(prev => ({ ...prev, [activeTab]: e.target.value }))}
+                                rows={10}
+                                className="w-full bg-white border border-slate-200 rounded-2xl p-4 text-slate-800 font-medium text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all shadow-sm leading-relaxed"
+                                placeholder={`请输入 ${roleLabels[activeTab]} 的自定义提示词...`}
+                            />
+                            {localPrompts[activeTab] === undefined && (
+                                <p className="text-[10px] text-slate-400 mt-2 ml-1 italic">
+                                    （当前正在使用系统预设的默认提示词）
+                                </p>
+                            )}
+                        </div>
+
+                        <div className="flex flex-col gap-3 border-t border-slate-100 pt-6 mt-6">
+                            <div className="flex gap-3">
+                                <button
+                                    onClick={handleSave}
+                                    className="flex-grow py-3.5 bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 text-white rounded-xl font-bold text-sm shadow-md shadow-indigo-200 transition-all active:scale-95"
+                                >
+                                    保存修改
+                                </button>
+                                <button
+                                    onClick={popPage}
+                                    className="px-6 py-3.5 bg-white border border-slate-200 text-slate-600 hover:border-slate-300 rounded-xl font-bold text-sm shadow-sm transition-all active:scale-95"
+                                >
+                                    取消
+                                </button>
+                            </div>
+
+                            <button
+                                onClick={handleRestoreDefaults}
+                                className="w-full py-3 text-xs text-red-500 hover:text-red-700 border border-dashed border-red-200 hover:border-red-300 bg-red-50/30 hover:bg-red-50/80 rounded-xl font-bold transition-all"
+                            >
+                                恢复全部出厂默认提示词
+                            </button>
+                        </div>
                     </Card>
                 </div>
             </div>
