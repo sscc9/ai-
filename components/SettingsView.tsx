@@ -13,7 +13,8 @@ import {
     llmProvidersAtom,
     edgeTtsVoicesAtom,
     enabledCustomPromptsAtom,
-    customRolePromptsAtom
+    customRolePromptsAtom,
+    DEFAULT_ROLE_PROMPTS
 } from '../store';
 import { LLMPreset, TTSPreset, ActorProfile, LLMProviderConfig } from '../types';
 import { AudioService } from '../audio';
@@ -920,7 +921,7 @@ const SettingsView = () => {
         const [activeTab, setActiveTab] = useState<string>('werewolf');
 
         const handleRestoreDefaults = () => {
-            if (window.confirm("确定要恢复系统默认吗？这会清空所有的自定义提示词。")) {
+            if (window.confirm("确定要恢复默认示范提示词吗？这会覆盖你当前的所有自定义修改。")) {
                 setLocalPrompts({});
             }
         };
@@ -931,7 +932,7 @@ const SettingsView = () => {
             popPage();
         };
 
-        const currentVal = localPrompts[activeTab] || '';
+        const currentVal = localPrompts[activeTab] !== undefined ? localPrompts[activeTab] : (DEFAULT_ROLE_PROMPTS[activeTab] || '');
 
         return (
             <div className="h-full w-full bg-[#f8fafc] flex flex-col relative overflow-hidden font-sans">
@@ -940,7 +941,7 @@ const SettingsView = () => {
                 <div className="flex-1 overflow-y-auto custom-scrollbar p-4 relative z-10 max-w-3xl mx-auto w-full pb-10">
                     <Card>
                         <div className="text-slate-500 text-xs mb-4 leading-relaxed bg-indigo-50 border border-indigo-100 p-3.5 rounded-xl">
-                            💡 <strong>提示：</strong>在此编辑系统发给各角色 AI 的策略指导词。AI 将在此战术指南的规范下，结合自身模型的思考能力以及游戏当前的局面数据进行思考决策。留空则只使用系统自带的原生指令。
+                            💡 <strong>提示：</strong>在此编辑系统发给各角色 AI 的策略指导词。AI 将在此战术指南的规范下，结合自身模型的思考能力以及游戏当前的局面数据进行思考决策。
                         </div>
 
                         {/* Tabs Navigation */}
@@ -970,11 +971,11 @@ const SettingsView = () => {
                                 onChange={e => setLocalPrompts(prev => ({ ...prev, [activeTab]: e.target.value }))}
                                 rows={10}
                                 className="w-full bg-white border border-slate-200 rounded-2xl p-4 text-slate-800 font-medium text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all shadow-sm leading-relaxed"
-                                placeholder={`请输入 ${roleLabels[activeTab]} 的自定义提示词...（留空则不追加任何战术，仅使用原生系统词）`}
+                                placeholder={`请输入 ${roleLabels[activeTab]} 的自定义提示词...`}
                             />
-                            {!currentVal && (
+                            {localPrompts[activeTab] === undefined && (
                                 <p className="text-[10px] text-slate-400 mt-2 ml-1 italic">
-                                    （留空将自动使用系统原生的基础模型设定词，不追加额外战术）
+                                    （当前正在使用系统预设的默认示范提示词，你可以直接修改它）
                                 </p>
                             )}
                         </div>
@@ -999,7 +1000,7 @@ const SettingsView = () => {
                                 onClick={handleRestoreDefaults}
                                 className="w-full py-3 text-xs text-red-500 hover:text-red-700 border border-dashed border-red-200 hover:border-red-300 bg-red-50/30 hover:bg-red-50/80 rounded-xl font-bold transition-all"
                             >
-                                清空并恢复系统默认状态
+                                恢复全部出厂示范提示词
                             </button>
                         </div>
                     </Card>

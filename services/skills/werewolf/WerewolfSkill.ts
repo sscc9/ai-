@@ -1,5 +1,6 @@
 import { Skill, SkillContext } from '../types';
 import { Player, Role, GamePhase, ROLE_INFO, PlayerStatus, PHASE_LABELS } from '../../../types';
+import { DEFAULT_ROLE_PROMPTS } from '../../../atoms';
 
 const SYSTEM_PROMPT = "你是一位精通狼人杀的游戏大师和策略家。你的唯一目标是带领你的阵营（团队）获得胜利。个人的生存是次要的，团队的胜利高于一切。";
 
@@ -66,6 +67,8 @@ export class WerewolfSkill implements Skill {
             const customVal = customRolePrompts?.[player.role];
             if (customVal && customVal.trim()) {
                 systemPromptContent += `\n\n### 你的特殊角色策略与行事准则（核心底牌设定）\n${customVal}`;
+            } else {
+                systemPromptContent += `\n\n### 你的特殊角色策略与行事准则（核心底牌设定）\n${DEFAULT_ROLE_PROMPTS[player.role] || ''}`;
             }
         }
 

@@ -117,6 +117,15 @@ export const ttsStateAtom = atomWithStorage<TTSState>('werewolf-ttsState', {
 });
 
 // --- Custom Prompts Atoms ---
+export const DEFAULT_ROLE_PROMPTS: Record<string, string> = {
+    werewolf: "你拿到的真实身份是狼人。你需要与狼队友相互配合，白天隐藏身份、混淆视听，积极表水或起跳悍跳预言家。在夜间讨论中商定最佳刀人策略，想尽一切办法消灭所有村民或神职。",
+    seer: "你拿到的真实身份是预言家。你拥有每晚查验一人底牌的能力。白天你需要起跳报验人（报金水或查杀），用真诚且逻辑清晰的发言争取好人信任，带领好人驱逐狼人。注意保护好自己，防止过早被狼人击杀。",
+    witch: "你拿到的真实身份是女巫。你手握一瓶解药（救人）和一瓶毒药（杀人），功能强大。你需要谨慎选择用药时机。通常情况下，第一晚使用解药救人，白天隐藏身份，并在确定狼人身份后再开毒。",
+    hunter: "你拿到的真实身份是猎人。当你被投票出局或被狼人击杀时，可以开枪射杀一名你怀疑的玩家（被女巫毒杀时不能开枪）。你的发言可以强势一点，但在没出局前尽量隐藏猎人身份，防止成为狼人夜袭击杀的目标。",
+    guard: "你拿到的真实身份是守卫。你每晚可以守护一名玩家使其免受袭击（不能连续两晚守护同一人）。你需要猜测狼人的刀法，优先守护预言家或女巫等关键神职。平时发言要像村民一样低调，隐藏身份以防被刀。",
+    villager: "你拿到的真实身份是村民。你没有任何特殊技能，但对局中你拥有神圣的一票。白天的主要任务是认真倾听每位玩家的发言，通过逻辑分析找出狼人的漏洞。不要轻易起跳神职，站对队伍，跟随神职投票。"
+};
+
 export const enabledCustomPromptsAtom = atomWithStorage<boolean>('werewolf-enabledCustomPrompts', false);
 export const customRolePromptsAtom = atomWithStorage<Record<string, string>>('werewolf-customRolePrompts', {});
 
