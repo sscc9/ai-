@@ -83,7 +83,7 @@ const GameRoomView = () => {
                     "absolute inset-0 bg-gradient-to-br from-sky-50 via-rose-50 to-amber-50 transition-opacity duration-1000 ease-in-out",
                     isDay ? "opacity-100" : "opacity-0"
                 )}>
-                    <div className="absolute top-[-10%] right-[-5%] w-[60vw] h-[60vw] bg-orange-200/30 rounded-full blur-[80px] mix-blend-multiply animate-pulse-slow" />
+                    <div className="absolute top-[-10%] right-[-5%] w-[60vw] h-[60vw] bg-orange-200/30 rounded-full blur-[80px] mix-blend-multiply" />
                     <div className="absolute bottom-[-10%] left-[-10%] w-[50vw] h-[50vw] bg-blue-200/30 rounded-full blur-[80px] mix-blend-multiply" />
                 </div>
 
@@ -92,7 +92,7 @@ const GameRoomView = () => {
                     "absolute inset-0 bg-gradient-to-br from-slate-200 via-indigo-100 to-purple-100 transition-opacity duration-1000 ease-in-out",
                     !isDay ? "opacity-100" : "opacity-0"
                 )}>
-                    <div className="absolute top-[10%] left-[20%] w-[50vw] h-[50vw] bg-indigo-300/20 rounded-full blur-[100px] mix-blend-multiply animate-pulse-slow" />
+                    <div className="absolute top-[10%] left-[20%] w-[50vw] h-[50vw] bg-indigo-300/20 rounded-full blur-[100px] mix-blend-multiply" />
                     <div className="absolute bottom-[10%] right-[10%] w-[60vw] h-[60vw] bg-purple-300/20 rounded-full blur-[100px] mix-blend-multiply" />
                     {/* Subtle moon glow hint */}
                     <div className="absolute top-10 right-20 w-32 h-32 bg-white/40 blur-[60px] rounded-full" />
