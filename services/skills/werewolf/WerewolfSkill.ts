@@ -190,8 +190,51 @@ ${privateMemory || "无"}
             };
         }
 
-        // --- 7. Day Discussion ---
+        // --- 7. Sheriff Election (Run / Speak) ---
+        if (phase === GamePhase.SHERIFF_ELECT) {
+            const isCandidate = godState?.sheriffCandidates?.includes(player.id);
+            if (isCandidate) {
+                return {
+                    task: "你目前正在竞选警长。发表你的竞选演讲，说服警下玩家把警长票投给你。你可以选择继续竞选，或者选择“退水”退出竞选。",
+                    constraints: `- 输出 JSON 格式: { "thought": "竞选策略与逻辑思考", "speak": "竞选演讲内容", "quitCampaign": 是否退水(退出竞选)(布尔值，true或false), "summary": "15字以内的发言核心要诀" }`
+                };
+            } else {
+                return {
+                    task: "警长竞选阶段：决定你是否要竞选警长（上警）。上警可以获得发言权和争夺警长（警徽的1.5票权）；留在警下可以拥有投票选举警长的权力。",
+                    constraints: `- 输出 JSON 格式: { "thought": "决定是否上警竞选警长的原因", "runForSheriff": 是否参加竞选(布尔值，true或false) }`
+                };
+            }
+        }
+
+        // --- 8. Sheriff Voting ---
+        if (phase === GamePhase.SHERIFF_VOTE) {
+            const candidates = godState?.sheriffCandidates?.filter(c => !godState?.sheriffQuitters?.includes(c)) || [];
+            const candidatesStr = candidates.join('、');
+            return {
+                task: `警长投票环节：请从以下候选人中投票选出你认为最合适的警长。候选人：[${candidatesStr}]。`,
+                constraints: `- 输出 JSON 格式: { "thought": "选择把警徽投给该候选人的逻辑与考量", "speak": "内心独白（简短）", "actionTarget": 投票目标玩家号码(数字，弃票填null) }`
+            };
+        }
+
+        // --- 9. Sheriff Badge Transfer ---
+        if (phase === GamePhase.SHERIFF_TRANS) {
+            const targets = alivePlayers.filter(p => p.id !== player.id).map(p => p.id).join('、');
+            return {
+                task: `你出局了。作为警长，你必须移交你的警徽给一位存活的好人玩家，或者选择撕毁警徽（本局不再有警长）。可选交割目标：[${targets}]。`,
+                constraints: `- 输出 JSON 格式: { "thought": "决定交割给该玩家的战术考量", "speak": "交代警徽交割或撕毁的遗言", "actionTarget": 交割目标玩家号码(数字，撕毁警徽填null) }`
+            };
+        }
+
+        // --- 10. Day Discussion ---
         if (phase === GamePhase.DAY_DISCUSSION || phase === GamePhase.LAST_WORDS || phase === GamePhase.DAY_ANNOUNCE) {
+            // Check if this is the Sheriff choosing direction
+            if (instruction && instruction.includes("发言方向")) {
+                return {
+                    task: instruction,
+                    constraints: `- 输出 JSON 格式: { "thought": "选择发言方向的逻辑（例如让怀疑对象先发言以抓漏洞）", "direction": "选择方向：填'LEFT'(顺时针)或'RIGHT'(逆时针)" }`
+                };
+            }
+
             // Wolf Special Vision
             let wolfInfo = "";
             if (player.role === Role.WEREWOLF && godState?.wolfTarget) {

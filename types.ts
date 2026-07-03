@@ -43,6 +43,11 @@ export enum GamePhase {
     DAY_DISCUSSION = 'DAY_DISCUSSION',
     VOTING = 'VOTING',
 
+    // Sheriff Phases
+    SHERIFF_ELECT = 'SHERIFF_ELECT', // Running for Sheriff & Speeches
+    SHERIFF_VOTE = 'SHERIFF_VOTE',   // Voting for Sheriff
+    SHERIFF_TRANS = 'SHERIFF_TRANS', // Sheriff transferring/tearing badge
+
     GAME_OVER = 'GAME_OVER',
     GAME_REVIEW = 'GAME_REVIEW' // Post-game chat
 }
@@ -66,6 +71,9 @@ export const PHASE_LABELS: Record<GamePhase, string> = {
     [GamePhase.LAST_WORDS]: '遗言环节',
     [GamePhase.DAY_DISCUSSION]: '公聊发言',
     [GamePhase.VOTING]: '投票放逐',
+    [GamePhase.SHERIFF_ELECT]: '警长竞选',
+    [GamePhase.SHERIFF_VOTE]: '警长投票',
+    [GamePhase.SHERIFF_TRANS]: '警徽交割',
     [GamePhase.GAME_OVER]: '游戏结束',
     [GamePhase.GAME_REVIEW]: '赛后复盘',
 };
@@ -165,6 +173,10 @@ export interface GodState {
     lastGuardProtect?: number | null; // Guard cannot protect consecutively
     pkPlayers?: number[]; // Tie-breakers
     isPkRound?: boolean; // Whether the current round is a PK vote
+    sheriffId: number | null; // Current Sheriff ID
+    sheriffCandidates?: number[]; // Players running for Sheriff
+    sheriffQuitters?: number[]; // Players who quit campaign
+    pendingDeathId?: number | null; // Queued death ID while Sheriff transfers badge
 }
 
 // The structure of a log entry

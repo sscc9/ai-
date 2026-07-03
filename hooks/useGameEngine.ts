@@ -553,14 +553,17 @@ export const useGameEngine = () => {
                         // Small delay before sunrise
                         await new Promise(r => setTimeout(r, 2000));
 
-                        setPhase(GamePhase.DAY_ANNOUNCE);
+                        if (turnCount === 1) {
+                            setPhase(GamePhase.SHERIFF_ELECT);
+                        } else {
+                            setPhase(GamePhase.DAY_ANNOUNCE);
+                        }
                         saveSnapshot();
                     } finally {
                         setIsProcessing(false);
                     }
                     break;
                 }
-
 
                 case GamePhase.DAY_ANNOUNCE: {
                     setIsProcessing(true);
@@ -575,13 +578,9 @@ export const useGameEngine = () => {
                                 if (witchSave) {
                                     // 同救同死 (Double save kills target)
                                     deaths.push(wolfTarget);
-                                } else {
-                                    // 守卫单守救活 (Saved by Guard)
                                 }
                             } else {
-                                if (witchSave) {
-                                    // 女巫单救救活 (Saved by Witch)
-                                } else {
+                                if (!witchSave) {
                                     // 无任何守护，死亡 (Killed by Wolves)
                                     deaths.push(wolfTarget);
                                 }
@@ -593,6 +592,9 @@ export const useGameEngine = () => {
                         }
 
                         const uniqueDeaths = [...new Set(deaths)];
+                        
+                        // Save deaths list in godState
+                        setGodState(prev => ({ ...prev, deathsTonight: uniqueDeaths }));
 
                         // Update statuses
                         if (uniqueDeaths.length > 0) {
@@ -608,6 +610,14 @@ export const useGameEngine = () => {
                                 setPhase(GamePhase.GAME_REVIEW);
                                 setAreRolesVisible(true); // REVEAL
                                 saveGameArchive(winner); // Save Archive
+                                return;
+                            }
+
+                            // If Sheriff is dead, trigger badge transfer
+                            if (godState.sheriffId && uniqueDeaths.includes(godState.sheriffId)) {
+                                setGodState(prev => ({ ...prev, pendingDeathId: godState.sheriffId }));
+                                setPhase(GamePhase.SHERIFF_TRANS);
+                                saveSnapshot();
                                 return;
                             }
                         } else {
@@ -626,10 +636,70 @@ export const useGameEngine = () => {
                         }
 
                         const alive = players.filter(p => p.status === PlayerStatus.ALIVE && !uniqueDeaths.includes(p.id));
-                        const startIdx = Math.floor(Math.random() * alive.length);
-                        const queue = [...alive.slice(startIdx), ...alive.slice(0, startIdx)].map(p => p.id);
-                        setSpeakingQueue(queue);
-                        await addSystemLog(`从 ${alive[startIdx].id}号 开始发言。`);
+                        const sheriff = alive.find(p => p.id === godState.sheriffId);
+
+                        if (sheriff) {
+                            await addSystemLog(`请警长 ${sheriff.id}号 决定从死者左手边或右手边开始发言。`);
+                            let direction: "LEFT" | "RIGHT" = "LEFT";
+                            if (sheriff.isHuman) {
+                                setSpeaker(sheriff.id);
+                                const result = await waitForHumanInput();
+                                setSpeaker(null);
+                                direction = result?.direction === "RIGHT" ? "RIGHT" : "LEFT";
+                            } else {
+                                const promptContext = {
+                                    phase: GamePhase.DAY_DISCUSSION,
+                                    turnCount,
+                                    players,
+                                    logs,
+                                    roleConfigStr: getRoleConfigStr(),
+                                    godState,
+                                    alivePlayers: alive
+                                };
+                                const messages = await werewolfSkill.generatePrompts(sheriff, promptContext, "请选择白天的发言方向（顺时针/逆时针）");
+                                const { llm, provider } = getActorConfig(sheriff.actorId);
+                                const responseText = await generateText(messages, llm, provider);
+                                const result = parseLLMResponse(responseText || "{}");
+                                direction = result?.direction === "RIGHT" ? "RIGHT" : "LEFT";
+                            }
+
+                            await addSystemLog(`警长决定从 ${direction === "LEFT" ? "左手边（顺时针）" : "右手边（逆时针）"} 开始发言。`);
+
+                            const deadId = uniqueDeaths[0];
+                            const startRefId = deadId || sheriff.id;
+
+                            // Sort alive players based on startRefId
+                            let startIdx = alive.findIndex(p => p.id === startRefId);
+                            if (startIdx === -1) startIdx = 0;
+
+                            let sortedQueue: number[] = [];
+                            if (direction === "LEFT") {
+                                sortedQueue = [
+                                    ...alive.slice(startIdx + 1),
+                                    ...alive.slice(0, startIdx + 1)
+                                ].map(p => p.id);
+                            } else {
+                                const reversed = [...alive].reverse();
+                                let revStartIdx = reversed.findIndex(p => p.id === startRefId);
+                                sortedQueue = [
+                                    ...reversed.slice(revStartIdx + 1),
+                                    ...reversed.slice(0, revStartIdx + 1)
+                                ].map(p => p.id);
+                            }
+
+                            // Sheriff speaks last (归票)
+                            sortedQueue = sortedQueue.filter(id => id !== sheriff.id);
+                            sortedQueue.push(sheriff.id);
+
+                            setSpeakingQueue(sortedQueue);
+                        } else {
+                            // No Sheriff: random order
+                            const startIdx = Math.floor(Math.random() * alive.length);
+                            const queue = [...alive.slice(startIdx), ...alive.slice(0, startIdx)].map(p => p.id);
+                            setSpeakingQueue(queue);
+                            await addSystemLog(`从 ${alive[startIdx].id}号 开始发言。`);
+                        }
+
                         setPhase(GamePhase.DAY_DISCUSSION);
                         saveSnapshot();
                     } finally {
@@ -688,8 +758,13 @@ export const useGameEngine = () => {
                             target: await getAiVote(p, validTargets)
                         })));
 
-                        // Count votes for logic
-                        results.forEach(({ voter, target }) => { if (target) votes[target] = (votes[target] || 0) + 1; });
+                        // Count votes for logic, Sheriff vote counts as 1.5
+                        results.forEach(({ voter, target }) => {
+                            if (target) {
+                                const weight = voter === godState.sheriffId ? 1.5 : 1.0;
+                                votes[target] = (votes[target] || 0) + weight;
+                            }
+                        });
 
                         // Format for Display: Group by Target
                         const voteMap: Record<number, number[]> = {};
@@ -704,8 +779,9 @@ export const useGameEngine = () => {
                             }
                         });
 
-                        const detailsLines = Object.entries(voteMap).map(([target, voters]) => {
-                            return `${target}号: ${voters.join('、')}`;
+                        const detailsLines = Object.entries(voteMap).map(([target, votersList]) => {
+                            const count = votersList.reduce((acc, v) => acc + (v === godState.sheriffId ? 1.5 : 1.0), 0);
+                            return `${target}号: ${votersList.join('、')} (共 ${count} 票)`;
                         });
                         if (abstained.length > 0) detailsLines.push(`弃票: ${abstained.join('、')}`);
 
@@ -778,6 +854,13 @@ export const useGameEngine = () => {
                                 return;
                             }
 
+                            // If Sheriff is exiled, trigger badge transfer
+                            if (godState.sheriffId === final) {
+                                setPhase(GamePhase.SHERIFF_TRANS);
+                                saveSnapshot();
+                                return;
+                            }
+
                             if (votedOutPlayer && votedOutPlayer.role === Role.HUNTER) {
                                 await addSystemLog(`猎人 ${votedOutPlayer.id}号 出局，可以发动技能。`);
                                 setPhase(GamePhase.HUNTER_ACTION);
@@ -795,6 +878,351 @@ export const useGameEngine = () => {
                             setSpeakingQueue([]);
                         }
                         saveSnapshot();
+                    } finally {
+                        setIsProcessing(false);
+                    }
+                    break;
+                }
+
+                case GamePhase.SHERIFF_ELECT: {
+                    setIsProcessing(true);
+                    try {
+                        const alive = players.filter(p => p.status === PlayerStatus.ALIVE);
+                        const human = alive.find(p => p.isHuman);
+
+                        if (godState.sheriffCandidates === undefined) {
+                            // Collect AI decisions in parallel
+                            const aiPlayers = alive.filter(p => !p.isHuman);
+                            const aiDecisions = await Promise.all(aiPlayers.map(async p => {
+                                const promptContext = {
+                                    phase: GamePhase.SHERIFF_ELECT,
+                                    turnCount,
+                                    players,
+                                    logs,
+                                    roleConfigStr: getRoleConfigStr(),
+                                    godState,
+                                    alivePlayers: alive
+                                };
+                                const messages = await werewolfSkill.generatePrompts(p, promptContext);
+                                const { llm, provider } = getActorConfig(p.actorId);
+                                const responseText = await generateText(messages, llm, provider);
+                                const result = parseLLMResponse(responseText || "{}");
+                                return { id: p.id, run: !!result.runForSheriff };
+                            }));
+
+                            let candidates: number[] = [];
+                            aiDecisions.forEach(d => { if (d.run) candidates.push(d.id); });
+
+                            // Check human decision
+                            let humanDecided = false;
+                            let humanRun = false;
+                            if (human) {
+                                if (userInputRef.current) {
+                                    humanDecided = true;
+                                    humanRun = !!userInputRef.current.runForSheriff;
+                                    setUserInput(null);
+                                } else {
+                                    setSpeaker(human.id);
+                                    saveSnapshot();
+                                    return; // Pause and wait for human input
+                                }
+                            }
+
+                            if (human && humanDecided && humanRun) {
+                                candidates.push(human.id);
+                            }
+
+                            await addSystemLog("--- 警长竞选开始 ---");
+                            for (const p of alive) {
+                                const isRun = p.isHuman ? humanRun : aiDecisions.find(d => d.id === p.id)?.run;
+                                if (isRun) {
+                                    await addSystemLog(`${p.id}号 玩家选择参与警长竞选（上警）。`);
+                                } else {
+                                    await addSystemLog(`${p.id}号 玩家留在警下。`);
+                                }
+                            }
+
+                            if (candidates.length === 0) {
+                                await addSystemLog("无人参与竞选，本局警徽流失。");
+                                setGodState(prev => ({ ...prev, sheriffId: null, sheriffCandidates: [], sheriffQuitters: [] }));
+                                setPhase(GamePhase.DAY_ANNOUNCE);
+                                saveSnapshot();
+                                return;
+                            } else if (candidates.length === 1) {
+                                const winner = candidates[0];
+                                await addSystemLog(`仅有 ${winner}号 玩家参选，自动当选为警长！`);
+                                setGodState(prev => ({ ...prev, sheriffId: winner, sheriffCandidates: candidates, sheriffQuitters: [] }));
+                                setPhase(GamePhase.DAY_ANNOUNCE);
+                                saveSnapshot();
+                                return;
+                            } else if (candidates.length === alive.length) {
+                                await addSystemLog("所有玩家均参与竞选（全员上警），警徽流失。");
+                                setGodState(prev => ({ ...prev, sheriffId: null, sheriffCandidates: candidates, sheriffQuitters: [] }));
+                                setPhase(GamePhase.DAY_ANNOUNCE);
+                                saveSnapshot();
+                                return;
+                            }
+
+                            setGodState(prev => ({
+                                ...prev,
+                                sheriffCandidates: candidates,
+                                sheriffQuitters: []
+                            }));
+
+                            setSpeakingQueue(candidates);
+                            saveSnapshot();
+                        } else {
+                            // Speeches round
+                            const [nextId, ...rest] = speakingQueue;
+                            if (nextId) {
+                                const player = players.find(p => p.id === nextId);
+                                if (player && player.status === PlayerStatus.ALIVE) {
+                                    const result = await generateTurn(player);
+                                    if (result?.quitCampaign) {
+                                        setGodState(prev => ({
+                                            ...prev,
+                                            sheriffQuitters: [...(prev.sheriffQuitters || []), nextId]
+                                        }));
+                                        await addSystemLog(`${nextId}号 玩家选择退水（退出竞选）。`);
+                                    }
+                                }
+                                setSpeakingQueue(rest);
+                            } else {
+                                setPhase(GamePhase.SHERIFF_VOTE);
+                                saveSnapshot();
+                            }
+                        }
+                    } finally {
+                        setIsProcessing(false);
+                    }
+                    break;
+                }
+
+                case GamePhase.SHERIFF_VOTE: {
+                    setIsProcessing(true);
+                    try {
+                        const alive = players.filter(p => p.status === PlayerStatus.ALIVE);
+                        const candidates = godState.sheriffCandidates?.filter(c => !godState.sheriffQuitters?.includes(c)) || [];
+                        const voters = alive.filter(p => !godState.sheriffCandidates?.includes(p.id));
+
+                        if (candidates.length === 0) {
+                            await addSystemLog("所有候选人均已退水，警徽流失。");
+                            setGodState(prev => ({ ...prev, sheriffId: null }));
+                            setPhase(GamePhase.DAY_ANNOUNCE);
+                            saveSnapshot();
+                            return;
+                        } else if (candidates.length === 1) {
+                            const winner = candidates[0];
+                            await addSystemLog(`仅剩 ${winner}号 候选人，自动当选为警长！`);
+                            setGodState(prev => ({ ...prev, sheriffId: winner }));
+                            setPhase(GamePhase.DAY_ANNOUNCE);
+                            saveSnapshot();
+                            return;
+                        }
+
+                        if (voters.length === 0) {
+                            await addSystemLog("警下无投票玩家（全员参选或退水），警徽流失。");
+                            setGodState(prev => ({ ...prev, sheriffId: null }));
+                            setPhase(GamePhase.DAY_ANNOUNCE);
+                            saveSnapshot();
+                            return;
+                        }
+
+                        await addSystemLog("开始进行警长选举投票...");
+
+                        const results = await Promise.all(voters.map(async p => ({
+                            voter: p.id,
+                            target: await getAiVote(p, candidates)
+                        })));
+
+                        const votes: Record<number, number> = {};
+                        results.forEach(({ voter, target }) => { if (target) votes[target] = (votes[target] || 0) + 1; });
+
+                        const voteMap: Record<number, number[]> = {};
+                        const abstained: number[] = [];
+
+                        results.forEach(({ voter, target }) => {
+                            if (target) {
+                                if (!voteMap[target]) voteMap[target] = [];
+                                voteMap[target].push(voter);
+                            } else {
+                                abstained.push(voter);
+                            }
+                        });
+
+                        const detailsLines = Object.entries(voteMap).map(([target, votersList]) => {
+                            return `${target}号: ${votersList.join('、')} (共 ${votersList.length} 票)`;
+                        });
+                        if (abstained.length > 0) detailsLines.push(`弃票: ${abstained.join('、')}`);
+
+                        await addSystemLog(`警长选举投票结果:\n${detailsLines.join('\n')}`, undefined, "警长投票统计完毕。");
+
+                        let max = -1, winners: number[] = [];
+                        for (const [pid, count] of Object.entries(votes)) {
+                            if (count > max) { max = count; winners = [+pid]; }
+                            else if (count === max) winners.push(+pid);
+                        }
+
+                        if (winners.length > 1) {
+                            await addSystemLog(`投票出现平票（${winners.join('号、')}号），警徽流失，本局无警长。`);
+                            setGodState(prev => ({ ...prev, sheriffId: null }));
+                        } else if (winners.length === 1) {
+                            const winner = winners[0];
+                            await addSystemLog(`恭喜 ${winner}号 玩家当选为本局警长！`);
+                            setGodState(prev => ({ ...prev, sheriffId: winner }));
+                        } else {
+                            await addSystemLog("全员弃票，本局无警长。");
+                            setGodState(prev => ({ ...prev, sheriffId: null }));
+                        }
+
+                        setPhase(GamePhase.DAY_ANNOUNCE);
+                        saveSnapshot();
+                    } finally {
+                        setIsProcessing(false);
+                    }
+                    break;
+                }
+
+                case GamePhase.SHERIFF_TRANS: {
+                    setIsProcessing(true);
+                    try {
+                        const deadSheriffId = godState.sheriffId;
+                        if (deadSheriffId) {
+                            const sheriff = players.find(p => p.id === deadSheriffId);
+                            if (sheriff) {
+                                setSpeaker(deadSheriffId);
+                                let result: any = null;
+                                if (sheriff.isHuman) {
+                                    result = await waitForHumanInput();
+                                } else {
+                                    const promptContext = {
+                                        phase: GamePhase.SHERIFF_TRANS,
+                                        turnCount,
+                                        players,
+                                        logs,
+                                        roleConfigStr: getRoleConfigStr(),
+                                        godState,
+                                        alivePlayers: players.filter(p => p.status === PlayerStatus.ALIVE)
+                                    };
+                                    const messages = await werewolfSkill.generatePrompts(sheriff, promptContext);
+                                    const { llm, provider } = getActorConfig(sheriff.actorId);
+                                    const responseText = await generateText(messages, llm, provider);
+                                    result = parseLLMResponse(responseText || "{}");
+                                }
+                                setSpeaker(null);
+
+                                const target = result?.actionTarget;
+                                const alive = players.filter(p => p.status === PlayerStatus.ALIVE);
+                                const isValidTarget = target && alive.some(p => p.id === target);
+
+                                if (isValidTarget) {
+                                    await addSystemLog(`前警长 ${deadSheriffId}号 将警徽移交给 ${target}号，${target}号 成为新警长。`);
+                                    setGodState(prev => ({ ...prev, sheriffId: target }));
+                                } else {
+                                    await addSystemLog(`前警长 ${deadSheriffId}号 选择撕毁警徽，本局不再有警长。`);
+                                    setGodState(prev => ({ ...prev, sheriffId: null }));
+                                }
+                            }
+                        }
+
+                        if (godState.pendingDeathId) {
+                            setGodState(prev => ({ ...prev, pendingDeathId: null }));
+                            
+                            // Check Hunter
+                            const deadHunter = players.find(p => godState.deathsTonight?.includes(p.id) && p.role === Role.HUNTER);
+                            const hunterPoisoned = deadHunter && deadHunter.id === godState.witchPoison;
+
+                            if (deadHunter && !hunterPoisoned) {
+                                await addSystemLog(`猎人 ${deadHunter.id}号 倒牌，发动技能开枪。`);
+                                setPhase(GamePhase.HUNTER_ACTION);
+                                setSpeakingQueue([deadHunter.id]);
+                                saveSnapshot();
+                                return;
+                            }
+
+                            // Sunrise speech ordering
+                            const alive = players.filter(p => p.status === PlayerStatus.ALIVE);
+                            const sheriff = alive.find(p => p.id === godState.sheriffId);
+
+                            if (sheriff) {
+                                await addSystemLog(`请新警长 ${sheriff.id}号 决定从死者左手边或右手边开始发言。`);
+                                let direction: "LEFT" | "RIGHT" = "LEFT";
+                                if (sheriff.isHuman) {
+                                    setSpeaker(sheriff.id);
+                                    const result = await waitForHumanInput();
+                                    setSpeaker(null);
+                                    direction = result?.direction === "RIGHT" ? "RIGHT" : "LEFT";
+                                } else {
+                                    const promptContext = {
+                                        phase: GamePhase.DAY_DISCUSSION,
+                                        turnCount,
+                                        players,
+                                        logs,
+                                        roleConfigStr: getRoleConfigStr(),
+                                        godState,
+                                        alivePlayers: alive
+                                    };
+                                    const messages = await werewolfSkill.generatePrompts(sheriff, promptContext, "请选择白天的发言方向（顺时针/逆时针）");
+                                    const { llm, provider } = getActorConfig(sheriff.actorId);
+                                    const responseText = await generateText(messages, llm, provider);
+                                    const result = parseLLMResponse(responseText || "{}");
+                                    direction = result?.direction === "RIGHT" ? "RIGHT" : "LEFT";
+                                }
+
+                                await addSystemLog(`警长决定从 ${direction === "LEFT" ? "左手边（顺时针）" : "右手边（逆时针）"} 开始发言。`);
+
+                                const deadId = godState.deathsTonight?.[0];
+                                const startRefId = deadId || sheriff.id;
+
+                                let startIdx = alive.findIndex(p => p.id === startRefId);
+                                if (startIdx === -1) startIdx = 0;
+
+                                let sortedQueue: number[] = [];
+                                if (direction === "LEFT") {
+                                    sortedQueue = [
+                                        ...alive.slice(startIdx + 1),
+                                        ...alive.slice(0, startIdx + 1)
+                                    ].map(p => p.id);
+                                } else {
+                                    const reversed = [...alive].reverse();
+                                    let revStartIdx = reversed.findIndex(p => p.id === startRefId);
+                                    sortedQueue = [
+                                        ...reversed.slice(revStartIdx + 1),
+                                        ...reversed.slice(0, revStartIdx + 1)
+                                    ].map(p => p.id);
+                                }
+
+                                sortedQueue = sortedQueue.filter(id => id !== sheriff.id);
+                                sortedQueue.push(sheriff.id);
+
+                                setSpeakingQueue(sortedQueue);
+                            } else {
+                                const startIdx = Math.floor(Math.random() * alive.length);
+                                const queue = [...alive.slice(startIdx), ...alive.slice(0, startIdx)].map(p => p.id);
+                                setSpeakingQueue(queue);
+                                await addSystemLog(`从 ${alive[startIdx].id}号 开始发言。`);
+                            }
+
+                            setPhase(GamePhase.DAY_DISCUSSION);
+                            saveSnapshot();
+                        } else {
+                            const exiledId = deadSheriffId;
+                            if (exiledId) {
+                                const votedOutPlayer = players.find(p => p.id === exiledId);
+                                if (votedOutPlayer && votedOutPlayer.role === Role.HUNTER) {
+                                    await addSystemLog(`猎人 ${votedOutPlayer.id}号 出局，可以发动技能。`);
+                                    setPhase(GamePhase.HUNTER_ACTION);
+                                    setSpeakingQueue([votedOutPlayer.id]);
+                                    saveSnapshot();
+                                    return;
+                                }
+
+                                await addSystemLog("请发表遗言。");
+                                setPhase(GamePhase.LAST_WORDS);
+                                setSpeakingQueue([exiledId]);
+                                saveSnapshot();
+                            }
+                        }
                     } finally {
                         setIsProcessing(false);
                     }

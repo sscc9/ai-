@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useAtomValue } from 'jotai';
 import { clsx } from 'clsx';
-import { playersAtom, currentSpeakerIdAtom, gamePhaseAtom, actorProfilesAtom, areRolesVisibleAtom, replayPerspectiveAtom, isReplayModeAtom, isPortraitModeAtom } from '../store';
+import { playersAtom, currentSpeakerIdAtom, gamePhaseAtom, actorProfilesAtom, areRolesVisibleAtom, replayPerspectiveAtom, isReplayModeAtom, isPortraitModeAtom, godStateAtom } from '../store';
 import { ROLE_INFO, Role, GamePhase, PlayerStatus } from '../types';
 
 interface PlayerCardProps { seat: number; isTop: boolean; }
@@ -16,6 +16,7 @@ const PlayerCard: React.FC<PlayerCardProps> = ({ seat, isTop }) => {
     // FIX: Use isReplayModeAtom (static state) instead of isTheaterModeAtom (engine state) to prevent UI jumps
     const isReplayMode = useAtomValue(isReplayModeAtom);
     const isPortrait = useAtomValue(isPortraitModeAtom);
+    const godState = useAtomValue(godStateAtom);
 
     const [imgLoaded, setImgLoaded] = useState(false);
 
@@ -207,6 +208,13 @@ const PlayerCard: React.FC<PlayerCardProps> = ({ seat, isTop }) => {
                         </span>
                     </div>
                 </div>
+
+                {/* Sheriff Badge */}
+                {godState.sheriffId === player.id && (
+                    <div className="absolute -right-2 -top-2 bg-gradient-to-r from-amber-400 to-yellow-500 text-white rounded-full w-5.5 h-5.5 sm:w-7 sm:h-7 flex items-center justify-center shadow-lg shadow-amber-200 border-2 border-amber-100 z-40 text-[10px] sm:text-xs font-black animate-pulse" title="警长">
+                        👑
+                    </div>
+                )}
 
                 {/* Status Icons (Poison/Shoot) - Absolute positioned around */}
                 {player.status === PlayerStatus.DEAD_POISON && (
