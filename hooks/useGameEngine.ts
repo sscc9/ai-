@@ -260,9 +260,25 @@ export const useGameEngine = () => {
                     currentTurnLogs
                 };
 
-                const messages = await werewolfSkill.generatePrompts(player, context, actionInstruction);
-                const responseText = await generateText(messages, llm, provider);
+                let messages = await werewolfSkill.generatePrompts(player, context, actionInstruction);
+                let responseText = await generateText(messages, llm, provider);
                 result = parseLLMResponse(responseText || "{}");
+
+                // Parse error feedback retry
+                const isInvalid = !result || !result.thought || (!result.speak && !result.speech);
+                if (isInvalid && responseText && !responseText.includes("Error:")) {
+                    console.warn(`JSON parsing failed/incomplete for Player ${player.id}, retrying with feedback...`);
+                    messages = [
+                        ...messages,
+                        { role: 'model', content: responseText },
+                        { role: 'user', content: "解析错误：您的输出未能被正确解析为 JSON。请确保您的回复中【仅包含】纯 JSON 对象（不要用 ```json 标记包裹，不要有任何前导或尾随文字，确保没有格式错误，且必须首个输出 thought 字段以进行策略推理）。请重新输出您的 JSON 对象。" }
+                    ];
+                    responseText = await generateText(messages, llm, provider);
+                    const retryResult = parseLLMResponse(responseText || "{}");
+                    if (retryResult && retryResult.thought) {
+                        result = retryResult;
+                    }
+                }
             }
 
             const speech = result?.speak || result?.speech || "...";
