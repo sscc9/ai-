@@ -29,6 +29,9 @@ export const isDaytimeAtom = atom((get) => {
         GamePhase.LAST_WORDS,
         GamePhase.DAY_DISCUSSION,
         GamePhase.VOTING,
+        GamePhase.SHERIFF_ELECT,
+        GamePhase.SHERIFF_VOTE,
+        GamePhase.SHERIFF_TRANS,
         GamePhase.HUNTER_ACTION,
         GamePhase.GAME_OVER,
         GamePhase.GAME_REVIEW

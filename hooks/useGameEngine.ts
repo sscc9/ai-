@@ -191,7 +191,7 @@ export const useGameEngine = () => {
     }, [setUserInput]);
 
     // --- Vote Logic ---
-    const getAiVote = useCallback(async (player: Player, validTargets: number[]): Promise<number | null> => {
+    const getAiVote = useCallback(async (player: Player, validTargets: number[], votePhase: GamePhase = GamePhase.VOTING): Promise<number | null> => {
         try {
             if (player.isHuman) {
                 setSpeaker(player.id);
@@ -201,14 +201,13 @@ export const useGameEngine = () => {
             }
 
             const currentTurnLogs = logs.filter(l => l.turn <= turnCount && (!l.visibleTo || l.visibleTo.includes(player.id)));
-            const currentTurnText = currentTurnLogs.map(l => l.isSystem ? `[系统]: ${l.content}` : `[${l.speakerId}号]: ${l.content}`).join('\n');
 
             const { llm, provider } = getActorConfig(player.actorId);
             const alivePlayers = players.filter(p => p.status === PlayerStatus.ALIVE);
 
-            // --- SKILL INTEGRATION (VOTING) ---
+            // --- SKILL INTEGRATION (VOTING/SHERIFF_VOTE) ---
             const context = {
-                phase: GamePhase.VOTING,
+                phase: votePhase,
                 turnCount,
                 players,
                 logs,
@@ -222,7 +221,7 @@ export const useGameEngine = () => {
             const responseText = await generateText(messages, llm, provider);
             const result = parseLLMResponse(responseText || "{}");
 
-            if (result && result.actionTarget && validTargets.includes(result.actionTarget)) return result.actionTarget;
+            if (result && result.actionTarget !== undefined && (result.actionTarget === null || validTargets.includes(result.actionTarget))) return result.actionTarget;
             return null;
         } catch (e) { return null; }
     }, [logs, turnCount, players, globalConfig, getActorConfig, getRoleConfigStr, waitForHumanInput]);
@@ -769,9 +768,13 @@ export const useGameEngine = () => {
                             : alive.map(p => p.id);
 
                         // Vote
+                        await addSystemLog(isPkRound ? "正在收集所有玩家的 PK 投票，请稍候..." : "正在收集所有玩家的放逐投票，请解下/在警上的玩家做出决定...");
+                        saveSnapshot();
+                        await new Promise(r => setTimeout(r, 100)); // Yield thread to render logs
+
                         const results = await Promise.all(voters.map(async p => ({
                             voter: p.id,
-                            target: await getAiVote(p, validTargets)
+                            target: await getAiVote(p, validTargets, GamePhase.VOTING)
                         })));
 
                         // Count votes for logic, Sheriff vote counts as 1.5
@@ -907,24 +910,19 @@ export const useGameEngine = () => {
                         const human = alive.find(p => p.isHuman);
 
                         if (godState.sheriffCandidates === undefined) {
-                            // Collect AI decisions in parallel
+                            // Instant heuristic for AI upper-campaign decisions to ensure zero latency and realism
                             const aiPlayers = alive.filter(p => !p.isHuman);
-                            const aiDecisions = await Promise.all(aiPlayers.map(async p => {
-                                const promptContext = {
-                                    phase: GamePhase.SHERIFF_ELECT,
-                                    turnCount,
-                                    players,
-                                    logs,
-                                    roleConfigStr: getRoleConfigStr(),
-                                    godState,
-                                    alivePlayers: alive
-                                };
-                                const messages = await werewolfSkill.generatePrompts(p, promptContext);
-                                const { llm, provider } = getActorConfig(p.actorId);
-                                const responseText = await generateText(messages, llm, provider);
-                                const result = parseLLMResponse(responseText || "{}");
-                                return { id: p.id, run: !!result.runForSheriff };
-                            }));
+                            const aiDecisions = aiPlayers.map(p => {
+                                let runProbability = 0.3; // Default Villager
+                                if (p.role === Role.WEREWOLF) runProbability = 0.8;
+                                else if (p.role === Role.SEER) runProbability = 1.0;
+                                else if (p.role === Role.WITCH) runProbability = 0.4;
+                                else if (p.role === Role.HUNTER) runProbability = 0.4;
+                                else if (p.role === Role.GUARD) runProbability = 0.2;
+
+                                const run = Math.random() < runProbability;
+                                return { id: p.id, run };
+                            });
 
                             let candidates: number[] = [];
                             aiDecisions.forEach(d => { if (d.run) candidates.push(d.id); });
@@ -938,6 +936,7 @@ export const useGameEngine = () => {
                                     humanRun = !!userInputRef.current.runForSheriff;
                                     setUserInput(null);
                                 } else {
+                                    await addSystemLog("天亮了。第一天上午，开始竞选警长！请选择是否上警参选...");
                                     setSpeaker(human.id);
                                     saveSnapshot();
                                     return; // Pause and wait for human input
@@ -1044,11 +1043,13 @@ export const useGameEngine = () => {
                             return;
                         }
 
-                        await addSystemLog("开始进行警长选举投票...");
+                        await addSystemLog("开始进行警长选举投票，请警下玩家做出决定...");
+                        saveSnapshot();
+                        await new Promise(r => setTimeout(r, 100)); // Yield thread to render logs
 
                         const results = await Promise.all(voters.map(async p => ({
                             voter: p.id,
-                            target: await getAiVote(p, candidates)
+                            target: await getAiVote(p, candidates, GamePhase.SHERIFF_VOTE)
                         })));
 
                         const votes: Record<number, number> = {};
