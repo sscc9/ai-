@@ -16,7 +16,7 @@ import {
     customRolePromptsAtom,
     DEFAULT_ROLE_PROMPTS
 } from '../store';
-import { LLMPreset, TTSPreset, ActorProfile, LLMProviderConfig } from '../types';
+import { LLMPreset, TTSPreset, ActorProfile, LLMProviderConfig, Role } from '../types';
 import { AudioService } from '../audio';
 
 type SettingsPage =
@@ -147,7 +147,7 @@ const SettingsView = () => {
     const [enabledCustomPrompts, setEnabledCustomPrompts] = useAtom(enabledCustomPromptsAtom);
     const [customRolePrompts, setCustomRolePrompts] = useAtom(customRolePromptsAtom);
     const [localPrompts, setLocalPrompts] = useState<Record<string, string>>({});
-    const [activeTab, setActiveTab] = useState<string>('werewolf');
+    const [activeTab, setActiveTab] = useState<string>(Role.WEREWOLF);
     const [isSyncing, setIsSyncing] = useState(false);
 
     // Use Loadable for Archives to prevent suspense flash
@@ -410,7 +410,7 @@ const SettingsView = () => {
                                 onClick={() => {
                                     if (enabledCustomPrompts) {
                                         setLocalPrompts({ ...customRolePrompts });
-                                        setActiveTab('werewolf');
+                                        setActiveTab(Role.WEREWOLF);
                                         pushPage({ type: 'CUSTOM_PROMPTS' });
                                     }
                                 }}
@@ -901,13 +901,13 @@ const SettingsView = () => {
     }
 
     if (currentPage.type === 'CUSTOM_PROMPTS') {
-        const roleLabels: Record<string, string> = {
-            werewolf: '🐺 狼人',
-            seer: '🔮 预言家',
-            witch: '🧪 女巫',
-            hunter: '🏹 猎人',
-            guard: '🛡️ 守卫',
-            villager: '🧑 村民'
+        const roleLabels: Record<Role, string> = {
+            [Role.WEREWOLF]: '🐺 狼人',
+            [Role.SEER]: '🔮 预言家',
+            [Role.WITCH]: '🧪 女巫',
+            [Role.HUNTER]: '🏹 猎人',
+            [Role.GUARD]: '🛡️ 守卫',
+            [Role.VILLAGER]: '🧑 村民'
         };
 
 
