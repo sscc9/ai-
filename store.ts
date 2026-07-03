@@ -13,12 +13,12 @@ import {
 import {
     GamePhase, Player, GameLog, GameSnapshot,
     PRESETS, Role, PlayerStatus, ROLE_INFO, GameArchive,
-    DEFAULT_PHASE_PROMPTS
+    DEFAULT_PHASE_PROMPTS, DEFAULT_ROLE_PROMPTS
 } from './types';
 
 // Re-export everything from atoms
 export * from './atoms';
-export { DEFAULT_PHASE_PROMPTS };
+export { DEFAULT_PHASE_PROMPTS, DEFAULT_ROLE_PROMPTS };
 
 // --- Derived Atoms ---
 

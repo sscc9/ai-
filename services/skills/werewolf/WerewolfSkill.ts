@@ -1,6 +1,5 @@
 import { Skill, SkillContext } from '../types';
-import { Player, Role, GamePhase, ROLE_INFO, PlayerStatus, PHASE_LABELS } from '../../../types';
-import { DEFAULT_ROLE_PROMPTS } from '../../../atoms';
+import { Player, Role, GamePhase, ROLE_INFO, PlayerStatus, PHASE_LABELS, DEFAULT_ROLE_PROMPTS } from '../../../types';
 
 const SYSTEM_PROMPT = "你是一位精通狼人杀的游戏大师和策略家。你的唯一目标是带领你的阵营（团队）获得胜利。个人的生存是次要的，团队的胜利高于一切。";
 
