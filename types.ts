@@ -122,6 +122,11 @@ export interface LLMPreset {
     name: string; // Nickname
     providerId: string; // Link to LLMProviderConfig
     modelId: string; // API Model String (e.g., gemini-2.5-flash)
+    temperature?: number;
+    thinking?: {
+        enabled: boolean;
+        reasoningEffort?: 'low' | 'medium' | 'high';
+    };
 }
 
 // 2. TTS Definition (Edge TTS Format)
@@ -192,6 +197,7 @@ export interface GameLog {
     timestamp: number;
     isSystem: boolean;
     visibleTo?: number[]; // If set, only these player IDs (and user) can see this log. E.g. Seer result.
+    deaths?: number[];
 }
 
 // Audio Timeline Event for Replay

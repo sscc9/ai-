@@ -39,14 +39,14 @@ const werewolfSkill = new WerewolfSkill(); // Singleton skill instance
 
 // --- AI Logic Hook (The God Engine) ---
 export const useGameEngine = () => {
-    const [phase, setPhase] = useAtom(gamePhaseAtom) as any;
-    const [players, setPlayers] = useAtom(playersAtom) as any;
-    const [logs, setLogs] = useAtom(logsAtom) as any;
-    const [isAuto, setIsAuto] = useAtom(isAutoPlayAtom) as any;
-    const [isProcessing, setIsProcessing] = useAtom(isProcessingAtom) as any;
-    const setSpeaker = useSetAtom(currentSpeakerIdAtom) as any;
-    const saveSnapshot = useSetAtom(saveSnapshotAtom) as any;
-    const [godState, setGodState] = useAtom(godStateAtom) as any;
+    const [phase, setPhase] = useAtom(gamePhaseAtom);
+    const [players, setPlayers] = useAtom(playersAtom);
+    const [logs, setLogs] = useAtom(logsAtom);
+    const [isAuto, setIsAuto] = useAtom(isAutoPlayAtom);
+    const [isProcessing, setIsProcessing] = useAtom(isProcessingAtom);
+    const setSpeaker = useSetAtom(currentSpeakerIdAtom);
+    const saveSnapshot = useSetAtom(saveSnapshotAtom);
+    const [godState, setGodState] = useAtom(godStateAtom);
     const [speakingQueue, setSpeakingQueue] = useAtom(speakingQueueAtom);
     const [turnCount, setTurnCount] = useAtom(turnCountAtom);
     const isReplay = useAtomValue(isReplayModeAtom);
@@ -68,7 +68,7 @@ export const useGameEngine = () => {
     const enabledCustomPrompts = useAtomValue(enabledCustomPromptsAtom);
     const customRolePrompts = useAtomValue(customRolePromptsAtom);
 
-    const [userInput, setUserInput] = useAtom(userInputAtom) as any;
+    const [userInput, setUserInput] = useAtom(userInputAtom);
     const userInputRef = useRef(userInput);
     useEffect(() => { userInputRef.current = userInput; }, [userInput]);
 
@@ -106,7 +106,8 @@ export const useGameEngine = () => {
         content: string,
         visibleTo?: number[],
         audioOverride?: string,
-        phaseOverride?: GamePhase
+        phaseOverride?: GamePhase,
+        deaths?: number[]
     ) => {
         // Use a combination of timestamp, monotonic counter, and random string to ensure uniqueness
         // preventing "Duplicate Audio" issues caused by ID collisions in Timeline.
@@ -121,7 +122,8 @@ export const useGameEngine = () => {
             content: content,
             timestamp: Date.now(),
             isSystem: true,
-            visibleTo
+            visibleTo,
+            deaths
         }]);
 
         // Get narrator config
@@ -223,9 +225,22 @@ export const useGameEngine = () => {
                 customRolePrompts
             };
 
-            const messages = await werewolfSkill.generatePrompts(player, context);
-            const responseText = await generateText(messages, llm, provider);
-            const result = parseLLMResponse(responseText || "{}");
+            let messages = await werewolfSkill.generatePrompts(player, context);
+            let responseText = await generateText(messages, llm, provider);
+            let result = parseLLMResponse(responseText || "{}");
+
+            // Parse error feedback retry
+            const isInvalid = !result || result.actionTarget === undefined;
+            if (isInvalid && responseText && !responseText.includes("Error:")) {
+                console.warn(`JSON parsing failed or actionTarget missing for Player ${player.id} vote, retrying with feedback...`);
+                const retryMessages = [
+                    ...messages,
+                    { role: 'model', content: responseText },
+                    { role: 'user', content: "解析错误：您的输出未能被正确解析为包含 'actionTarget' 的 JSON。请确保您的回复中【仅包含】纯 JSON 对象，确保包含 'actionTarget' 字段（你要投给哪个玩家的座号数字，例如：3；若选择弃票则为 null），不要用 markdown 代码块标记包裹。请重新输出您的 JSON 对象。" }
+                ];
+                responseText = await generateText(retryMessages, llm, provider);
+                result = parseLLMResponse(responseText || "{}");
+            }
 
             if (result && result.actionTarget !== undefined && (result.actionTarget === null || validTargets.includes(result.actionTarget))) return result.actionTarget;
             return null;
@@ -379,7 +394,6 @@ export const useGameEngine = () => {
                         // Delay before wake up
                         await new Promise(r => setTimeout(r, Math.random() * 2000 + 1500));
 
-                        // Carry over last guardProtect to lastGuardProtect, then reset guardProtect
                         const prevGuardProtect = godState.guardProtect;
                         setGodState({ 
                             wolfTarget: null, 
@@ -390,7 +404,8 @@ export const useGameEngine = () => {
                             lastGuardProtect: prevGuardProtect,
                             deathsTonight: [],
                             pkPlayers: godState.pkPlayers || [],
-                            isPkRound: godState.isPkRound || false
+                            isPkRound: godState.isPkRound || false,
+                            sheriffId: godState.sheriffId
                         });
                         saveSnapshot();
 
@@ -623,7 +638,7 @@ export const useGameEngine = () => {
                         if (uniqueDeaths.length > 0) {
                             const newPlayers = players.map(p => uniqueDeaths.includes(p.id) ? { ...p, status: PlayerStatus.DEAD_NIGHT } : p);
                             setPlayers(newPlayers);
-                            await addSystemLog(`天亮了。昨晚 ${uniqueDeaths.join(', ')}号 死亡。`);
+                            await addSystemLog(`天亮了。昨晚 ${uniqueDeaths.join(', ')}号 死亡。`, undefined, undefined, undefined, uniqueDeaths);
 
                             // Check Win Condition Immediately after deaths
                             const winState = checkWinCondition(newPlayers);
@@ -866,7 +881,7 @@ export const useGameEngine = () => {
                         }));
 
                         if (final) {
-                            await addSystemLog(`${final}号 被投票出局。`);
+                            await addSystemLog(`${final}号 被投票出局。`, undefined, undefined, undefined, [final]);
                             const newPlayers = players.map(p => p.id === final ? { ...p, status: PlayerStatus.DEAD_VOTE } : p);
                             setPlayers(newPlayers);
 
@@ -1284,7 +1299,7 @@ export const useGameEngine = () => {
                             if (shotTargetId) {
                                 setIsProcessing(true);
                                 try {
-                                    await addSystemLog(`猎人开枪，${shotTargetId}号 倒牌。`);
+                                    await addSystemLog(`猎人开枪，${shotTargetId}号 倒牌。`, undefined, undefined, undefined, [shotTargetId]);
                                     const newPlayers = players.map(p => p.id === shotTargetId ? { ...p, status: PlayerStatus.DEAD_SHOOT } : p);
                                     setPlayers(newPlayers);
 

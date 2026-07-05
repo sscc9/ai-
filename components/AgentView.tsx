@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useAtom, useSetAtom, useAtomValue } from 'jotai';
 import { clsx } from 'clsx';
-import { agentMessagesAtom, appScreenAtom, globalApiConfigAtom, actorProfilesAtom, llmPresetsAtom } from '../store';
+import { agentMessagesAtom, appScreenAtom, globalApiConfigAtom, actorProfilesAtom, llmPresetsAtom, llmProvidersAtom } from '../store';
 import { AgentMessage } from '../types';
 import { generateText } from '../services/llm';
 
@@ -16,6 +16,7 @@ const AgentView = () => {
     const config = useAtomValue(globalApiConfigAtom);
     const actors = useAtomValue(actorProfilesAtom);
     const llmPresets = useAtomValue(llmPresetsAtom);
+    const llmProviders = useAtomValue(llmProvidersAtom);
 
     // Auto scroll
     useEffect(() => {
@@ -34,8 +35,9 @@ const AgentView = () => {
         try {
             const narrator = actors.find(a => a.id === config.narratorActorId) || actors[0];
             const llm = llmPresets.find(l => l.id === narrator.llmPresetId) || llmPresets[0];
+            const provider = llmProviders.find(p => p.id === llm.providerId) || llmProviders[0];
             const apiMsgs = [...messages.map(m => ({ role: m.role, content: m.content })), { role: 'user', content: input }];
-            const text = await generateText(apiMsgs, llm);
+            const text = await generateText(apiMsgs, llm, provider);
 
             if (text) setMessages(prev => [...prev, { id: Date.now().toString(), role: 'model', content: text, timestamp: Date.now() }]);
         } catch (e) {

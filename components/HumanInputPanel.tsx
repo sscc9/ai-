@@ -21,7 +21,7 @@ const HumanInputPanel = () => {
     const phase = useAtomValue(gamePhaseAtom);
     const godState = useAtomValue(godStateAtom);
     const speakingQueue = useAtomValue(speakingQueueAtom);
-    const setUserInput = useSetAtom(userInputAtom) as any;
+    const setUserInput = useSetAtom(userInputAtom);
     const isPortrait = useAtomValue(isPortraitModeAtom);
     const isReplayMode = useAtomValue(isReplayModeAtom);
     const isTheaterMode = useAtomValue(isTheaterModeAtom);

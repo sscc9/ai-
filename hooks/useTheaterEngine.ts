@@ -18,40 +18,7 @@ import { useGameTurn } from './useGameTurn';
 import { PlayerStatus, TTSPreset, Role, Perspective, GameLog, Player, GamePhase, TimelineEvent, GlobalApiConfig, ActorProfile } from '../types';
 import { AudioService } from '../audio';
 
-const detectDeath = (content: string): number[] => {
-    const deadIds: number[] = [];
-    const singlePatterns = [
-        /(\d+)号\s*被投票出局/,
-        /猎人开枪.*(\d+)号\s*倒牌/,
-        /毒死了\s*(\d+)号/
-    ];
 
-    singlePatterns.forEach(p => {
-        const match = content.match(p);
-        if (match && match[1]) deadIds.push(parseInt(match[1]));
-    });
-
-    if (content.includes("死亡") || content.includes("倒牌")) {
-        // Improved Regex: Capture patterns like "3号", "3、6号", "3,6号", "3和6号"
-        // 1. Find the "号" and look backwards for numbers
-        // Regex explanation:
-        // Match a group that ends with "号"
-        // Inside the group, match digits, optionally followed by separators (comma, pause, space, 'and'), then more digits
-        const groupMatches = content.match(/(\d+(?:[、，,和\s]+\d+)*)号/g);
-
-        if (groupMatches) {
-            groupMatches.forEach(target => {
-                // 'target' is like "3、6号"
-                const numbers = target.match(/\d+/g);
-                if (numbers) {
-                    numbers.forEach(n => deadIds.push(parseInt(n)));
-                }
-            });
-        }
-    }
-
-    return [...new Set(deadIds)];
-};
 
 // --- Core Visibility Logic ---
 const shouldExperienceLog = (log: GameLog, perspective: Perspective, players: Player[]) => {
@@ -196,10 +163,15 @@ export const useTheaterEngine = () => {
 
                 // 3. Check for Deaths & Game Over
                 if (log.isSystem) {
-                    const victims = detectDeath(log.content);
-                    if (victims.length > 0) {
+                    if (log.deaths && log.deaths.length > 0) {
+                        let status = PlayerStatus.DEAD_NIGHT;
+                        if (log.phase === GamePhase.VOTING) {
+                            status = PlayerStatus.DEAD_VOTE;
+                        } else if (log.phase === GamePhase.HUNTER_ACTION) {
+                            status = PlayerStatus.DEAD_SHOOT;
+                        }
                         setPlayersAtom(prev => prev.map(p =>
-                            victims.includes(p.seatNumber) ? { ...p, status: PlayerStatus.DEAD_NIGHT } : p
+                            log.deaths!.includes(p.seatNumber) ? { ...p, status } : p
                         ));
                     }
 

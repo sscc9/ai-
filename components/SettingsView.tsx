@@ -332,10 +332,10 @@ const SettingsView = () => {
     const deleteActor = (id: string) => { setActors(p => p.filter(i => i.id !== id)); popPage(); };
 
     // Header component remains here to access 'stack' and 'popPage'
-    const Header = ({ title, backLabel }: { title: string, backLabel?: string }) => (
+    const Header = ({ title, backLabel, onBack }: { title: string, backLabel?: string, onBack?: () => void }) => (
         <div className="flex items-center h-16 bg-white/70 backdrop-blur-md border-b border-slate-200 px-6 sticky top-0 z-20 shadow-sm">
             {stack.length > 1 ? (
-                <button onClick={popPage} className="flex items-center text-indigo-600 font-bold hover:text-indigo-700 transition-colors">
+                <button onClick={onBack || popPage} className="flex items-center text-indigo-600 font-bold hover:text-indigo-700 transition-colors">
                     <svg className="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" /></svg>
                     {backLabel || '返回'}
                 </button>

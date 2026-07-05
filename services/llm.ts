@@ -33,28 +33,34 @@ export async function generateText(
     providerConfig: LLMProviderConfig
 ): Promise<string> {
     const doFetch = async () => {
+        const temperature = preset.temperature !== undefined ? preset.temperature : 0.7;
+
         if (providerConfig.type === 'gemini') {
             // --- GEMINI NATIVE SDK ---
-            const apiKey = providerConfig.apiKey || process.env.API_KEY;
-            if (!apiKey) return "Error: No API Key configured for Gemini.";
+            const apiKey = providerConfig.apiKey;
+            if (!apiKey) return "Error: No API Key configured for Gemini. Please configure it in Settings.";
 
             const ai = new GoogleGenAI({ apiKey });
             let systemInstruction = "";
-            let promptParts: string[] = [];
+            const contents: any[] = [];
 
             messages.forEach(m => {
-                if (m.role === 'system') systemInstruction += m.content + "\n\n";
-                else promptParts.push(`${m.role === 'user' ? 'User' : 'Model'}: ${m.content}`);
+                if (m.role === 'system') {
+                    systemInstruction += m.content + "\n\n";
+                } else {
+                    contents.push({
+                        role: m.role === 'user' ? 'user' : 'model',
+                        parts: [{ text: m.content }]
+                    });
+                }
             });
-
-            const finalPrompt = promptParts.join('\n');
 
             const response = await ai.models.generateContent({
                 model: preset.modelId,
-                contents: finalPrompt,
+                contents: contents,
                 config: {
                     systemInstruction: systemInstruction,
-                    temperature: 0.7,
+                    temperature: temperature,
                     safetySettings: [
                         { category: HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: HarmBlockThreshold.BLOCK_NONE },
                         { category: HarmCategory.HARM_CATEGORY_HATE_SPEECH, threshold: HarmBlockThreshold.BLOCK_NONE },
@@ -76,17 +82,14 @@ export async function generateText(
             const body: any = {
                 model: preset.modelId,
                 messages: messages,
-                temperature: 0.7
+                temperature: temperature
             };
 
-            const isDeepSeekV4 = preset.modelId.startsWith('deepseek-v4');
-            const isDeepSeekV3 = preset.modelId.startsWith('deepseek-v3');
-
-            if (isDeepSeekV4) {
+            if (preset.thinking?.enabled) {
                 body.thinking = { type: "enabled" };
-                body.reasoning_effort = "high";
-            } else if (isDeepSeekV3) {
-                body.thinking = { type: "enabled" };
+                if (preset.thinking.reasoningEffort) {
+                    body.reasoning_effort = preset.thinking.reasoningEffort;
+                }
             }
 
             const response = await fetch(url, {

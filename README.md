@@ -1,53 +1,105 @@
-# AI 狼人杀模拟器 - 架构设计方案
+# AI 狼人杀模拟器 (AI Werewolf Simulator)
 
-您好！根据您的需求（视频录制专用、多AI博弈、高度可定制、历史回放），以下是针对**状态管理**和**CSS架构**的详细设计建议。
+这是一个基于 React + Jotai + Vite 驱动前端，FastAPI + Edge-TTS 驱动后端的全自动/人机交互 AI 狼人杀模拟器。项目专为多 AI 对局博弈、游戏策略研究、可视化回放及视频录制设计。
 
-## 1. 状态管理架构：为什么选择 Jotai？
+## 项目特点
 
-对于这个项目，**Jotai** 是绝佳的选择，远优于 Redux 或 React Context。
+1. **多模型博弈**：支持不同 AI 角色（Gemini、DeepSeek 等）进行逻辑对决，每个玩家拥有独立的记忆、视角和战术设定。
+2. **结构化流程控制**：游戏状态机采用清晰的流程驱动，避免了传统的模糊正则解析，保证了状态变化的精准性。
+3. **音画同步回放**：支持旁白与玩家发言的文字转语音（TTS）播报，支持时间旅行回放与剧场模式。
+4. **高自由度定制**：可在后台配置各角色的系统策略提示词（System Prompt）、模型参数（Temperature、Thinking）以及个性化音色。
 
-### 核心理由：
-1.  **原子化更新 (Atomic Updates)：**
-    *   在狼人杀游戏中，状态非常细碎且更新频率不同。比如，“当前发言的文字”在不断跳动（打字机效果），而“存活玩家列表”很久才变一次。
-    *   使用 Jotai，我们可以把 `currentPlayerTextAtom` 和 `playerListAtom` 分开。当文字跳动时，只有中间的“发言面板”会渲染，顶部的“玩家头像”不会闪烁。这对于**视频录制**至关重要，因为画面必须极其流畅，不能有不必要的重绘。
-2.  **时间旅行与回放 (Time Travel & Replay)：**
-    *   您提到了“回顾”和“回放模式”。
-    *   Jotai 的原子状态非常容易序列化。我们可以创建一个 `historyAtom`，记录每一步的原子快照（Snapshot）。
-    *   当您点击“回放”时，我们只需要将当前的 Atoms 值重置为历史记录中的某一帧，整个 UI 就会瞬间回到那个时刻。
-3.  **派生状态 (Derived State)：**
-    *   游戏中有很多计算属性。例如：`aliveWolfCountAtom`（存活狼人数量）可以自动从 `playersAtom` 派生。当任意玩家死亡时，这个计数器自动更新，无需手动维护副作用。
+---
 
-### 建议的 Jotai 结构 (在 `store.ts` 中体现)：
-*   `configAtom`: 游戏规则配置（几人局、有哪些角色）。
-*   `gamePhaseAtom`: 当前阶段（天黑、狼人行动、女巫行动、天亮发言、投票）。
-*   `playersAtom`: 包含所有玩家对象（ID、AI模型、角色、生卒状态、历史发言）。
-*   `logsAtom`: 全局的游戏日志，用于生成上下文传给 AI。
-*   `currentSpeakerAtom`: 当前正在发言的玩家 ID（用于 UI 高亮）。
+## 快速开始
 
-## 2. CSS 架构：Tailwind CSS 方案
+本项目由前端（Vite 开发服务器）和后端（FastAPI TTS 服务）两部分组成。
 
-为了满足“录视频专用”的高审美要求，我们采用 **Tailwind CSS** 配合 **Utility-First** 策略。
+### 1. 后端 TTS 服务配置与启动
 
-### 核心方案：
-1.  **Tailwind CSS + `clsx` / `tailwind-merge`：**
-    *   这是处理动态样式的标准方案。
-    *   **场景：** 玩家卡片会有多种状态（存活、死亡、被选中、发言中、中毒、中枪）。
-    *   **写法：** `clsx('border-2', isSpeaking ? 'border-yellow-400 scale-110' : 'border-gray-600', isDead && 'grayscale opacity-50')`。这种写法清晰且性能极高。
-2.  **布局策略 (Layout)：**
-    *   **上帝视角 (Spectator View)：** 采用 Flexbox 或 Grid 布局。
-    *   **顶部/底部：** 玩家卡片横向排列（Avatar Row）。
-    *   **中央舞台：** 巨大的对话框和当前行动提示。字体要大（建议 `text-2xl` 或更大），确保在手机上刷短视频时也能看清文字。
-3.  **主题与动效 (Theming & Animation)：**
-    *   **日夜交替：** 利用 Tailwind 的颜色系统定义 `transition-colors duration-1000`。天黑时背景平滑过渡到深蓝/黑色，天亮过渡到暖色。
-    *   **高对比度：** 文字颜色主要使用 `text-white` 或 `text-gray-100`，配合深色半透明背景（Glassmorphism），确保在复杂的背景图上也能看清。
+后端使用 Python 执行 Edge-TTS 接口，提供免费且高质量的语音合成服务。
 
-## 3. AI 与 Agent 设计架构
+#### 安装步骤：
+1. 确保系统已安装 Python 3.10+。
+2. 进入 `server` 目录：
+   ```bash
+   cd server
+   ```
+3. 创建虚拟环境并激活：
+   * **Windows**:
+     ```powershell
+     python -m venv venv
+     venv\Scripts\activate
+     ```
+   * **macOS/Linux**:
+     ```bash
+     python3 -m venv venv
+     source venv/bin/activate
+     ```
+4. 安装 Python 依赖：
+   ```bash
+   pip install -r requirements.txt
+   ```
 
-*   **Game Loop (裁判):** 主控逻辑，负责分发 Prompt。它不直接产生内容，而是像“服务器”一样询问 AI。
-*   **Player Agents (玩家):** 每个玩家是一个独立的 AI 会话。**关键点**：同一个 AI 模型（如 Gemini）可以实例化多次，通过维持不同的 `history` 数组来模拟不同的玩家视角。
-*   **Meta Agent (规则助手):** 这是一个独立的 Agent。
-    *   **工具:** `googleSearch`。
-    *   **功能:** 它可以上网查“12人预女猎白规则”，然后输出一个标准的 JSON 配置对象，直接应用到 `configAtom` 中。
+#### 启动后端：
+* 直接运行 Python 脚本：
+  ```bash
+  python main.py
+  ```
+* 或者在项目根目录下双击运行 `start_tts_backend.bat` (Windows) 或执行 `start_tts_backend.sh` (macOS/Linux)。
 
-此架构已在代码框架中初步搭建。您可以查看 `store.ts` 和 `types.ts` 了解数据流向。
-<!-- trigger redeploy -->
+后端将在 `http://localhost:8000` 启动服务。
+
+### 2. 前端服务配置与启动
+
+前端采用 Vite 进行模块打包和本地热更新，利用 `http-proxy` 代理请求到后端。
+
+#### 安装步骤：
+1. 确保系统已安装 Node.js (推荐 18+ 或 20+)。
+2. 在项目根目录下，安装 Node 依赖包：
+   ```bash
+   npm install
+   ```
+
+#### 配置环境变量：
+1. 复制根目录下的 `.env.example` 为 `.env`：
+   ```bash
+   cp .env.example .env
+   ```
+2. 打开 `.env` 文件并填入您的 `GEMINI_API_KEY`（此 Key 用于本地开发快速测试）：
+   ```env
+   GEMINI_API_KEY=您的GeminiAPI密钥
+   ```
+
+#### 启动前端：
+在根目录下运行以下命令启动本地开发服务器：
+```bash
+npm run dev
+```
+前端开发服务器将在 `http://localhost:3000` 启动，您可以通过浏览器访问它。
+
+* **Windows 一键启动**：根目录下提供了 `start_app.bat`，双击可自动开启后端 TTS 虚拟环境并并行启动前端 Vite。
+
+---
+
+## 🔒 部署与安全警示
+
+> [!WARNING]
+> **API Key 安全隐患**：
+> 当前 `vite.config.ts` 使用 `define` 机制在编译打包时将 `.env` 中的 `GEMINI_API_KEY` 硬编码注入到前端的 JS bundle 中。
+> **如果您的部署页面是公开访问的，任何人都可以通过浏览器查看 JS 源码提取出您的 API Key！**
+
+### 安全部署建议：
+1. **公开部署**：请在发布到外网前，将代码中依赖 `process.env.API_KEY` 的静态 Key 配置剔除。
+2. **Settings UI 配置**：本应用内置了供应商设置界面（Settings ⚙️）。建议公开部署时让用户自己在浏览器端输入个人的 API Key，这些 Key 会安全地保存在用户的浏览器 `localStorage` 中，不会泄露给第三方。
+
+---
+
+## 架构与核心逻辑
+
+* **`atoms.ts`**：Jotai 的全局状态原子库，负责定义核心的角色名单、游戏阶段、上帝笔记本、日志归档等底层数据结构。
+* **`store.ts`**：派生状态与事务动作，提供游戏初始化、历史快照保存和回放逻辑。
+* **`hooks/useGameEngine.ts`**：游戏主引擎。通过轮询驱动各阶段的游戏转换。包含 AI 投票的 JSON 重新呼叫和纠错机制。
+* **`hooks/useTheaterEngine.ts`**：音频剧场级播放引擎。通过结构化的 `log.deaths` 属性准确还原现场死亡状态，剔除了不稳定的正则自然语言反推。
+* **`services/skills/werewolf/WerewolfSkill.ts`**：狼人杀专有技能类，用于根据游戏上下文为每个玩家组装最优提示词。
+* **`services/llm.ts`**：通用大模型网关层，支持 Gemini SDK 的结构化多轮 `contents` 会话，并能够自适应预设中配置的思维链属性和温度参数。

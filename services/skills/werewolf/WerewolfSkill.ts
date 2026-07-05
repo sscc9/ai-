@@ -100,7 +100,19 @@ ${GAME_RULES}
             ? currentTurnLogs.map(l => {
                 if (l.isSystem) return `[系统公告]: ${l.content}`;
                 if (l.turn < turnCount) {
-                    const summary = l.summary || (l.content.length > 15 ? l.content.slice(0, 15) + '...' : l.content);
+                    let summary = l.summary;
+                    if (!summary) {
+                        if (l.content.length <= 40) {
+                            summary = l.content;
+                        } else {
+                            const keyPattern = /(预言家|女巫|猎人|守卫|狼人|查杀|金水|银水|跳神|跳女巫|跳预言家|跳猎人|跳守卫|警长|警徽)/;
+                            if (keyPattern.test(l.content)) {
+                                summary = l.content.length > 100 ? l.content.slice(0, 100) + '...' : l.content;
+                            } else {
+                                summary = l.content.slice(0, 30) + '...';
+                            }
+                        }
+                    }
                     return `[${l.speakerId}号玩家 (发言要点)]: ${summary}`;
                 }
                 return `[${l.speakerId}号玩家]: ${l.content}`;

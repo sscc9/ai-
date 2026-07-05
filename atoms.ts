@@ -40,11 +40,11 @@ const defaultLlmProviders: LLMProviderConfig[] = [
 ];
 
 const defaultLlmPresets: LLMPreset[] = [
-    { id: 'llm-1', name: 'Gemini 3 Flash', providerId: 'provider-gemini', modelId: 'gemini-3-flash-preview' },
-    { id: 'llm-2', name: 'Gemini 3 Pro', providerId: 'provider-gemini', modelId: 'gemini-3-pro-preview' },
-    { id: 'llm-3', name: 'DeepSeek Chat', providerId: 'provider-deepseek', modelId: 'deepseek-chat' },
-    { id: 'llm-4', name: 'DeepSeek R1', providerId: 'provider-deepseek', modelId: 'deepseek-reasoner' },
-    { id: 'llm-deepseek-v3.1', name: 'DeepSeek v3.1 (Terminus)', providerId: 'provider-volc', modelId: 'deepseek-v3-1-terminus' },
+    { id: 'llm-1', name: 'Gemini 3 Flash', providerId: 'provider-gemini', modelId: 'gemini-3-flash-preview', temperature: 0.7 },
+    { id: 'llm-2', name: 'Gemini 3 Pro', providerId: 'provider-gemini', modelId: 'gemini-3-pro-preview', temperature: 0.7 },
+    { id: 'llm-3', name: 'DeepSeek Chat', providerId: 'provider-deepseek', modelId: 'deepseek-chat', temperature: 0.7 },
+    { id: 'llm-4', name: 'DeepSeek R1', providerId: 'provider-deepseek', modelId: 'deepseek-reasoner', temperature: 0.7, thinking: { enabled: true, reasoningEffort: 'high' } },
+    { id: 'llm-deepseek-v3.1', name: 'DeepSeek v3.1 (Terminus)', providerId: 'provider-volc', modelId: 'deepseek-v3-1-terminus', temperature: 0.7, thinking: { enabled: true } },
 ];
 
 const defaultTtsPresets: TTSPreset[] = [
@@ -89,7 +89,7 @@ export const replayPerspectiveAtom = atom<Perspective>('GOOD');
 
 export const isHumanModeAtom = atom<boolean>(false);
 export const humanPlayerSeatAtom = atom<number>(1);
-export const userInputAtom = atom<any>(null);
+export const userInputAtom = atom<any>(null) as PrimitiveAtom<any>;
 
 export const godStateAtom = atom<GodState>({
     wolfTarget: null,
@@ -97,14 +97,15 @@ export const godStateAtom = atom<GodState>({
     witchSave: false,
     witchPoison: null,
     guardProtect: null,
-    deathsTonight: []
+    deathsTonight: [],
+    sheriffId: null
 });
 
 export const playersAtom = atom<Player[]>([]);
 export const logsAtom = atom<GameLog[]>([]);
 export const gameHistoryAtom = atom<GameSnapshot[]>([]);
 export const speakingQueueAtom = atom<number[]>([]);
-export const currentSpeakerIdAtom = atom<number | null>(null);
+export const currentSpeakerIdAtom = atom<number | null>(null) as PrimitiveAtom<number | null>;
 export const agentMessagesAtom = atom<AgentMessage[]>([
     { id: 'welcome', role: 'model', content: '你好！我是狼人杀上帝助手。我可以协助你控制游戏流程。', timestamp: Date.now() }
 ]);

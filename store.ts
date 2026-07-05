@@ -130,14 +130,14 @@ export const initGameAtom = atom(null, (get, set, playerCount: 9 | 12) => {
     set(isTheaterModeAtom, false);
     set(isAutoPlayAtom, false);
     set(areRolesVisibleAtom, true); // Reset visibility to shown
-    set(godStateAtom, { wolfTarget: null, seerCheck: null, witchSave: false, witchPoison: null, guardProtect: null, deathsTonight: [] });
+    set(godStateAtom, { wolfTarget: null, seerCheck: null, witchSave: false, witchPoison: null, guardProtect: null, deathsTonight: [], sheriffId: null });
     set(speakingQueueAtom, []);
     set(currentSpeakerIdAtom, null);
     set(userInputAtom, null);
     set(appScreenAtom, 'GAME');
 
     // Save Initial Snapshot
-    set(saveSnapshotAtom as any);
+    set(saveSnapshotAtom);
 });
 
 
@@ -207,7 +207,7 @@ export const loadGameArchiveAtom = atom(null, (get, set, archive: GameArchive) =
     const startPhase = gameArchive.logs[0]?.phase || GamePhase.NIGHT_START;
     set(gamePhaseAtom, startPhase);
 
-    set(appScreenAtom as any, 'GAME');
+    set(appScreenAtom, 'GAME');
 
     set(timelineAtom, archive.timeline); // The audio keys
 
