@@ -134,11 +134,10 @@ export const parseLLMResponse = (responseText: string): any => {
             try {
                 return JSON.parse(jsonMatch[0]);
             } catch (e2) {
-                // Fallback: treat the whole text as speech if JSON fails
-                return { speak: responseText };
+                return null;
             }
         }
-        return { speak: responseText };
+        return null;
     }
 };
 

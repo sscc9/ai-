@@ -260,6 +260,7 @@ export const useGameEngine = () => {
         try {
             const { actor, tts, llm, provider } = getActorConfig(player.actorId);
             let result: any = null;
+            let rawSpeechFallback = '';
 
             if (player.isHuman) {
                 // Wait for human
@@ -284,6 +285,7 @@ export const useGameEngine = () => {
 
                 let messages = await werewolfSkill.generatePrompts(player, context, actionInstruction);
                 let responseText = await generateText(messages, llm, provider);
+                rawSpeechFallback = responseText;
                 result = parseLLMResponse(responseText || "{}");
 
                 // Parse error feedback retry
@@ -303,7 +305,7 @@ export const useGameEngine = () => {
                 }
             }
 
-            const speech = result?.speak || result?.speech || "...";
+            const speech = result?.speak || result?.speech || (rawSpeechFallback && !rawSpeechFallback.includes("Error:") ? rawSpeechFallback : "...");
 
             // FIX: Generate Shared ID with stronger UUID and monotonic counter
             const uniqueSuffix = `${Date.now()}-${logIdCounter.current++}-${Math.random().toString(36).slice(2)}`;
