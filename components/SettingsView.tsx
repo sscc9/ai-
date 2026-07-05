@@ -921,7 +921,6 @@ const SettingsView = () => {
         const handleSave = () => {
             setCustomRolePrompts(localPrompts);
             alert("保存成功！");
-            popPage();
         };
 
         const currentVal = localPrompts[activeTab] !== undefined ? localPrompts[activeTab] : (DEFAULT_ROLE_PROMPTS[activeTab] || '');
