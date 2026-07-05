@@ -257,6 +257,9 @@ export interface GameArchive {
     timeline: TimelineEvent[];
     players: Player[]; // Final state of players (names, avatars)
     turnCount: number;
+
+    type?: 'GAME' | 'PODCAST';
+    topic?: string;
 }
 
 export const PRESETS: Record<number, { playerCount: number; roles: Role[] }> = {

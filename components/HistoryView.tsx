@@ -210,7 +210,7 @@ const HistoryView = () => {
                         return (
                             <div
                                 key={game.id}
-                                onClick={() => !isDownloading && loadGame(game as any)}
+                                onClick={() => !isDownloading && loadGame(game)}
                                 className={clsx(
                                     "bg-white/80 backdrop-blur-md rounded-2xl border border-slate-200 p-4 transition-all duration-300 group relative",
                                     isDownloading ? "cursor-wait opacity-90" : "cursor-pointer hover:bg-white hover:shadow-lg hover:border-indigo-200"
@@ -220,14 +220,14 @@ const HistoryView = () => {
                                     {/* Left Side: Info */}
                                     <div className="flex flex-col gap-1.5 min-w-0">
                                         <div className="text-xl font-black text-slate-800 tracking-tight leading-none flex flex-col sm:flex-row sm:items-end gap-1 sm:gap-2">
-                                            <span>{(game as any).type === 'PODCAST' ? '🎙️ 播客节目' : new Date(game.timestamp).toLocaleString('zh-CN', { month: 'short', day: 'numeric' })}</span>
+                                            <span>{game.type === 'PODCAST' ? '🎙️ 播客节目' : new Date(game.timestamp).toLocaleString('zh-CN', { month: 'short', day: 'numeric' })}</span>
                                             <span className="text-sm font-bold text-slate-400 mb-0.5">{new Date(game.timestamp).toLocaleString('zh-CN', { hour: '2-digit', minute: '2-digit' })}</span>
                                         </div>
                                         <div className="text-slate-500 text-xs font-bold flex items-center gap-2 font-mono">
-                                            {(game as any).type === 'PODCAST' ? (
+                                            {game.type === 'PODCAST' ? (
                                                 <div className="flex items-center gap-1">
                                                     <span className="opacity-70">💬</span>
-                                                    <span className="truncate max-w-[200px]">主题: {(game as any).topic}</span>
+                                                    <span className="truncate max-w-[200px]">主题: {game.topic}</span>
                                                 </div>
                                             ) : (
                                                 <>
@@ -256,11 +256,11 @@ const HistoryView = () => {
                                         <div className="flex items-center gap-2 flex-wrap justify-end">
                                             {/* Winner Badge moved here */}
                                             <span className={clsx("px-2 py-1.5 rounded-lg text-[10px] font-bold border shadow-sm whitespace-nowrap",
-                                                (game as any).type === 'PODCAST' ? "bg-indigo-50 text-indigo-600 border-indigo-100" :
+                                                game.type === 'PODCAST' ? "bg-indigo-50 text-indigo-600 border-indigo-100" :
                                                     game.winner === 'GOOD' ? "bg-blue-50 text-blue-600 border-blue-100" :
                                                         game.winner === 'WOLF' ? "bg-red-50 text-red-600 border-red-100" : "bg-slate-50 text-slate-500 border-slate-100"
                                             )}>
-                                                {(game as any).type === 'PODCAST' ? '播客对谈' : (game.winner === 'GOOD' ? '好人胜利' : game.winner === 'WOLF' ? '狼人胜利' : '未知结果')}
+                                                {game.type === 'PODCAST' ? '播客对谈' : (game.winner === 'GOOD' ? '好人胜利' : game.winner === 'WOLF' ? '狼人胜利' : '未知结果')}
                                             </span>
 
                                             {isDownloading ? (
@@ -320,7 +320,7 @@ const HistoryView = () => {
                                 </div>
 
                                 <div className="mt-3 pt-3 border-t border-slate-100 flex flex-wrap gap-1.5">
-                                    {(game as any).type === 'PODCAST' ? (
+                                    {game.type === 'PODCAST' ? (
                                         <div className="text-[10px] font-bold text-slate-400">参与者: 主持人, 1号嘉宾, 2号嘉宾</div>
                                     ) : (
                                         game.players.map(p => (
