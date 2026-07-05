@@ -50,7 +50,7 @@
 
 后端将在 `http://localhost:8000` 启动服务。
 
-### 2. 前端服务配置与启动
+### 2. 前端服务安装与启动
 
 前端采用 Vite 进行模块打包和本地热更新，利用 `http-proxy` 代理请求到后端。
 
@@ -61,15 +61,8 @@
    npm install
    ```
 
-#### 配置环境变量：
-1. 复制根目录下的 `.env.example` 为 `.env`：
-   ```bash
-   cp .env.example .env
-   ```
-2. 打开 `.env` 文件并填入您的 `GEMINI_API_KEY`（此 Key 用于本地开发快速测试）：
-   ```env
-   GEMINI_API_KEY=您的GeminiAPI密钥
-   ```
+#### 配置 API Key：
+启动应用后，直接在浏览器网页的右上角点击 **设置 (Settings ⚙️)** 图标，配置您个人的 Google Gemini 或 DeepSeek 等模型的 API Key 即可。
 
 #### 启动前端：
 在根目录下运行以下命令启动本地开发服务器：
@@ -82,16 +75,13 @@ npm run dev
 
 ---
 
-## 🔒 部署与安全警示
+## 🔒 部署与安全设计
 
-> [!WARNING]
-> **API Key 安全隐患**：
-> 当前 `vite.config.ts` 使用 `define` 机制在编译打包时将 `.env` 中的 `GEMINI_API_KEY` 硬编码注入到前端的 JS bundle 中。
-> **如果您的部署页面是公开访问的，任何人都可以通过浏览器查看 JS 源码提取出您的 API Key！**
-
-### 安全部署建议：
-1. **公开部署**：请在发布到外网前，将代码中依赖 `process.env.API_KEY` 的静态 Key 配置剔除。
-2. **Settings UI 配置**：本应用内置了供应商设置界面（Settings ⚙️）。建议公开部署时让用户自己在浏览器端输入个人的 API Key，这些 Key 会安全地保存在用户的浏览器 `localStorage` 中，不会泄露给第三方。
+> [!NOTE]
+> **零 Key 泄露风险**：
+> 本项目已彻底移除了在编译打包时将外部 Key 注入打包产物的行为。
+>
+> 页面中所有大模型 API Key 均**完全由用户自行在网页“设置⚙️”界面配置**，且仅加密或直接保存在玩家本地浏览器的 `localStorage` 中。公开部署上线此网页（例如使用 Vercel 或 GitHub Pages）完全不用担心密钥被泄露。
 
 ---
 
