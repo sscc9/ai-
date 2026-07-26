@@ -1,0 +1,12 @@
+{
+  "functions": {
+    "api/edge-tts-generate.py": {
+      "runtime": "@vercel/python@4",
+      "maxDuration": 60
+    },
+    "api/edge-tts-voices.py": {
+      "runtime": "@vercel/python@4",
+      "maxDuration": 30
+    }
+  }
+}
