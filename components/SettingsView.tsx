@@ -664,16 +664,16 @@ const SettingsView = () => {
                                     <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
                                 </div>
                                 <div>
-                                    <div className="font-black text-indigo-900 text-base">Python 核心驱动</div>
-                                    <div className="text-[10px] text-indigo-400 font-bold uppercase tracking-wider">Edge-TTS Engine Active</div>
+                                    <div className="font-black text-indigo-900 text-base">云端语音引擎</div>
+                                    <div className="text-[10px] text-indigo-400 font-bold uppercase tracking-wider">Edge-TTS Cloud Active</div>
                                 </div>
                             </div>
                             <p className="text-xs text-indigo-600 leading-relaxed font-medium mt-1">
-                                已切换至高性能 Python 后端。支持更稳定的语音合成、精细的语速调节以及全量微软音色库。
+                                基于 Vercel 云函数运行，无需本地后端。支持稳定的语音合成、精细的语速调节以及全量微软音色库。
                             </p>
                         </div>
 
-                        <InputGroup label="后端地址" value={tts.baseUrl || ''} onChange={(e: any) => updateTts(tts.id, { baseUrl: e.target.value })} placeholder="/api/edge-tts-generate" sub="通常保持默认即可" />
+                        <InputGroup label="接口地址" value={tts.baseUrl || ''} onChange={(e: any) => updateTts(tts.id, { baseUrl: e.target.value })} placeholder="/api/edge-tts-generate" sub="通常保持默认即可" />
 
                         <div className="mt-8">
                             <button
@@ -697,7 +697,7 @@ const SettingsView = () => {
                                 )}
                             </button>
                             <p className="text-[10px] text-slate-400 mt-3 text-center px-4">
-                                点击同步将从 Python 后端获取最新的微软音色列表
+                                点击同步将从云端获取最新的微软音色列表
                             </p>
                         </div>
                     </Card>
