@@ -133,7 +133,7 @@ ${GAME_RULES}
         }
 
         if (player.role === Role.WEREWOLF) {
-            const history = logs.filter(l => l.phase === GamePhase.WEREWOLF_ACTION && l.turn < turnCount && !l.isSystem && l.visibleTo?.includes(player.id));
+            const history = logs.filter(l => l.phase === GamePhase.WEREWOLF_ACTION && l.turn <= turnCount && !l.isSystem && l.visibleTo?.includes(player.id));
             if (history.length) privateMemory += "\n[过去的狼人夜间讨论]:\n" + history.map(l => `第 ${l.turn} 天晚上: ${l.content}`).join('\n');
         }
 
