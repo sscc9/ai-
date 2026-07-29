@@ -134,7 +134,20 @@ ${GAME_RULES}
 
         if (player.role === Role.WEREWOLF) {
             const history = logs.filter(l => l.phase === GamePhase.WEREWOLF_ACTION && l.turn <= turnCount && !l.isSystem && l.visibleTo?.includes(player.id));
-            if (history.length) privateMemory += "\n[过去的狼人夜间讨论]:\n" + history.map(l => `第 ${l.turn} 天晚上: ${l.content}`).join('\n');
+            if (history.length) {
+                // Group by night (turn) and compress each night to one sentence
+                const nightMap = new Map<number, string[]>();
+                history.forEach(l => {
+                    if (!nightMap.has(l.turn)) nightMap.set(l.turn, []);
+                    // Use summary if available, otherwise truncate content
+                    const text = l.summary || (l.content.length <= 50 ? l.content : l.content.slice(0, 50) + '...');
+                    nightMap.get(l.turn)!.push(`${l.speakerId}号:${text}`);
+                });
+                const nightSummaries = Array.from(nightMap.entries())
+                    .sort(([a], [b]) => a - b)
+                    .map(([turn, texts]) => `第${turn}晚: ${texts.join('；')}`);
+                privateMemory += "\n[狼人夜间讨论摘要]:\n" + nightSummaries.join('\n');
+            }
         }
 
         return `
