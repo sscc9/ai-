@@ -63,7 +63,9 @@ const App = () => {
                             : "w-full h-full"
                     )}
                 >
-                    {renderContent()}
+                    <div key={screen} className="w-full h-full animate-page-fade">
+                        {renderContent()}
+                    </div>
                 </div>
             </div>
 

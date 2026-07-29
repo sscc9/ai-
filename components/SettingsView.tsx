@@ -136,6 +136,8 @@ const SettingsView = () => {
     const [stack, setStack] = useState<SettingsPage[]>([{ type: 'ROOT' }]);
     const currentPage = stack[stack.length - 1];
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const [navDirection, setNavDirection] = useState<'push' | 'pop' | 'none'>('none');
+    const [animKey, setAnimKey] = useState(0);
 
     // Atoms
     const [config, setConfig] = useAtom(globalApiConfigAtom);
@@ -176,8 +178,8 @@ const SettingsView = () => {
     const archives = archivesLoadable.state === 'hasData' ? archivesLoadable.data : [];
     const isArchivesLoading = archivesLoadable.state === 'loading';
 
-    const pushPage = (page: SettingsPage) => setStack(prev => [...prev, page]);
-    const popPage = () => setStack(prev => prev.length > 1 ? prev.slice(0, -1) : prev);
+    const pushPage = (page: SettingsPage) => { setNavDirection('push'); setAnimKey(k => k + 1); setStack(prev => [...prev, page]); };
+    const popPage = () => { setNavDirection('pop'); setAnimKey(k => k + 1); setStack(prev => prev.length > 1 ? prev.slice(0, -1) : prev); };
 
     // --- Import/Export Logic ---
     const handleExport = () => {
@@ -350,10 +352,11 @@ const SettingsView = () => {
     );
 
     // --- Page Renders ---
+    const animClass = navDirection === 'push' ? 'animate-page-push' : navDirection === 'pop' ? 'animate-page-pop' : '';
 
     if (currentPage.type === 'ROOT') {
         return (
-            <div className="h-full w-full bg-[#f8fafc] flex flex-col relative overflow-hidden font-sans">
+            <div key={animKey} className={`h-full w-full bg-[#f8fafc] flex flex-col relative overflow-hidden font-sans ${animClass}`}>
                 <Background />
                 <Header title="设置" />
                 <div className="flex-1 overflow-y-auto custom-scrollbar px-4 pb-10 relative z-10 max-w-3xl mx-auto w-full">
@@ -495,7 +498,7 @@ const SettingsView = () => {
 
     if (currentPage.type === 'LLM_LIST') {
         return (
-            <div className="h-full w-full bg-[#f8fafc] flex flex-col relative overflow-hidden font-sans">
+            <div key={animKey} className={`h-full w-full bg-[#f8fafc] flex flex-col relative overflow-hidden font-sans ${animClass}`}>
                 <Background />
                 <Header title="AI 模型库" backLabel="设置" />
                 <div className="flex-1 overflow-y-auto custom-scrollbar p-4 relative z-10 max-w-3xl mx-auto w-full">
@@ -553,7 +556,7 @@ const SettingsView = () => {
         );
 
         return (
-            <div className="h-full w-full bg-[#f8fafc] flex flex-col relative overflow-hidden font-sans">
+            <div key={animKey} className={`h-full w-full bg-[#f8fafc] flex flex-col relative overflow-hidden font-sans ${animClass}`}>
                 <Background />
                 <Header title={provider.name} backLabel="模型库" />
                 <div className="flex-1 overflow-y-auto custom-scrollbar p-4 relative z-10 max-w-2xl mx-auto w-full pb-10">
@@ -622,7 +625,7 @@ const SettingsView = () => {
         const provider = llmProviders.find(p => p.id === llm.providerId);
 
         return (
-            <div className="h-full w-full bg-[#f8fafc] flex flex-col relative overflow-hidden font-sans">
+            <div key={animKey} className={`h-full w-full bg-[#f8fafc] flex flex-col relative overflow-hidden font-sans ${animClass}`}>
                 <Background />
                 <Header title="编辑模型" backLabel={provider?.name || "AI 模型库"} />
                 <div className="p-4 pt-8 relative z-10 max-w-2xl mx-auto w-full">
@@ -650,7 +653,7 @@ const SettingsView = () => {
         const tts = ttsPresets.find(i => i.id === currentPage.id) || ttsPresets[0];
         if (!tts) return null;
         return (
-            <div className="h-full w-full bg-[#f8fafc] flex flex-col relative overflow-hidden font-sans">
+            <div key={animKey} className={`h-full w-full bg-[#f8fafc] flex flex-col relative overflow-hidden font-sans ${animClass}`}>
                 <Background />
                 <Header title="Edge TTS 设置" backLabel="设置" />
                 <div className="flex-1 overflow-y-auto custom-scrollbar p-4 relative z-10 max-w-2xl mx-auto w-full pb-10">
@@ -708,7 +711,7 @@ const SettingsView = () => {
 
     if (currentPage.type === 'ACTOR_LIST') {
         return (
-            <div className="h-full w-full bg-[#f8fafc] flex flex-col relative overflow-hidden font-sans">
+            <div key={animKey} className={`h-full w-full bg-[#f8fafc] flex flex-col relative overflow-hidden font-sans ${animClass}`}>
                 <Background />
                 <Header title="玩家列表" backLabel="设置" />
                 <div className="flex-1 overflow-y-auto custom-scrollbar p-4 relative z-10 max-w-3xl mx-auto w-full">
@@ -746,7 +749,7 @@ const SettingsView = () => {
         const tts = ttsPresets.find(t => t.id === actor.ttsPresetId);
 
         return (
-            <div className="h-full w-full bg-[#f8fafc] flex flex-col relative overflow-hidden font-sans">
+            <div key={animKey} className={`h-full w-full bg-[#f8fafc] flex flex-col relative overflow-hidden font-sans ${animClass}`}>
                 <Background />
                 <Header title={isNarrator ? "设置上帝" : "编辑玩家"} backLabel={isNarrator ? "设置" : "玩家列表"} />
                 <div className="flex-1 overflow-y-auto custom-scrollbar p-4 pt-8 relative z-10 max-w-2xl mx-auto w-full pb-10">
@@ -926,7 +929,7 @@ const SettingsView = () => {
         const currentVal = localPrompts[activeTab] !== undefined ? localPrompts[activeTab] : (DEFAULT_ROLE_PROMPTS[activeTab] || '');
 
         return (
-            <div className="h-full w-full bg-[#f8fafc] flex flex-col relative overflow-hidden font-sans">
+            <div key={animKey} className={`h-full w-full bg-[#f8fafc] flex flex-col relative overflow-hidden font-sans ${animClass}`}>
                 <Background />
                 <Header title="自定义角色提示词" backLabel="设置" onBack={popPage} />
                 <div className="flex-1 overflow-y-auto custom-scrollbar p-4 relative z-10 max-w-3xl mx-auto w-full pb-10">
