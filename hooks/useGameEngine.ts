@@ -593,6 +593,36 @@ export const useGameEngine = () => {
                         // Small delay before sunrise
                         await new Promise(r => setTimeout(r, 2000));
 
+                        // --- Background: Summarize wolf night discussion (non-blocking) ---
+                        const wolfNightLogs = logs.filter(l =>
+                            l.phase === GamePhase.WEREWOLF_ACTION && l.turn === turnCount && !l.isSystem
+                        );
+                        if (wolfNightLogs.length > 0) {
+                            const wolfForSummary = players.find(p => p.role === Role.WEREWOLF && p.status === PlayerStatus.ALIVE);
+                            if (wolfForSummary) {
+                                const { llm: sLlm, provider: sProvider } = getActorConfig(wolfForSummary.actorId);
+                                const fullText = wolfNightLogs.map(l => `${l.speakerId}号: ${l.content}`).join('\n');
+                                const summaryPrompt = [
+                                    { role: 'system', content: '你是一个信息压缩助手。用一句简洁的中文总结以下狼人夜间讨论的关键决策和计划，保留所有重要信息（刀谁、跳什么身份、白天策略等）。只输出总结文本，不要任何格式标记。' },
+                                    { role: 'user', content: fullText }
+                                ];
+                                // Fire and forget - don't await, let it run in background
+                                const currentTurn = turnCount;
+                                generateText(summaryPrompt, sLlm, sProvider).then(summaryText => {
+                                    if (summaryText && !summaryText.includes('Error:')) {
+                                        setGodState(prev => ({
+                                            ...prev,
+                                            wolfNightSummaries: {
+                                                ...(prev.wolfNightSummaries || {}),
+                                                [currentTurn]: summaryText.trim()
+                                            }
+                                        }));
+                                        console.log(`[Wolf Night ${currentTurn}] Summary: ${summaryText.trim()}`);
+                                    }
+                                }).catch(e => console.warn('Wolf night summary failed:', e));
+                            }
+                        }
+
                         if (turnCount === 1) {
                             setPhase(GamePhase.SHERIFF_ELECT);
                         } else {

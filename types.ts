@@ -182,6 +182,7 @@ export interface GodState {
     sheriffCandidates?: number[]; // Players running for Sheriff
     sheriffQuitters?: number[]; // Players who quit campaign
     pendingDeathId?: number | null; // Queued death ID while Sheriff transfers badge
+    wolfNightSummaries?: Record<number, string>; // LLM-generated summaries of wolf night discussions, keyed by turn
 }
 
 // The structure of a log entry

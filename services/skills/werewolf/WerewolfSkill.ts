@@ -133,20 +133,27 @@ ${GAME_RULES}
         }
 
         if (player.role === Role.WEREWOLF) {
+            const { godState } = context;
+            const wolfSummaries = godState?.wolfNightSummaries || {};
             const history = logs.filter(l => l.phase === GamePhase.WEREWOLF_ACTION && l.turn <= turnCount && !l.isSystem && l.visibleTo?.includes(player.id));
             if (history.length) {
-                // Group by night (turn) and compress each night to one sentence
-                const nightMap = new Map<number, string[]>();
+                // Group by night (turn)
+                const nightMap = new Map<number, typeof history>();
                 history.forEach(l => {
                     if (!nightMap.has(l.turn)) nightMap.set(l.turn, []);
-                    // Use summary if available, otherwise truncate content
-                    const text = l.summary || (l.content.length <= 50 ? l.content : l.content.slice(0, 50) + '...');
-                    nightMap.get(l.turn)!.push(`${l.speakerId}号:${text}`);
+                    nightMap.get(l.turn)!.push(l);
                 });
-                const nightSummaries = Array.from(nightMap.entries())
+                const nightLines = Array.from(nightMap.entries())
                     .sort(([a], [b]) => a - b)
-                    .map(([turn, texts]) => `第${turn}晚: ${texts.join('；')}`);
-                privateMemory += "\n[狼人夜间讨论摘要]:\n" + nightSummaries.join('\n');
+                    .map(([turn, nightLogs]) => {
+                        // Use LLM summary if available (generated in background)
+                        if (wolfSummaries[turn]) {
+                            return `第${turn}晚: ${wolfSummaries[turn]}`;
+                        }
+                        // Current night or summary not ready yet: show full text
+                        return `第${turn}晚: ${nightLogs.map(l => `${l.speakerId}号:${l.content}`).join('；')}`;
+                    });
+                privateMemory += "\n[狼人夜间讨论记忆]:\n" + nightLines.join('\n');
             }
         }
 
