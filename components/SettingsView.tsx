@@ -345,7 +345,7 @@ const SettingsView = () => {
                     主页
                 </button>
             )}
-            <div className="absolute left-1/2 transform -translate-x-1/2 text-lg font-black text-slate-800 tracking-tight">{title}</div>
+            <div className="flex-1 text-center text-lg font-black text-slate-800 tracking-tight truncate px-2">{title}</div>
         </div>
     );
 
@@ -749,7 +749,7 @@ const SettingsView = () => {
             <div className="h-full w-full bg-[#f8fafc] flex flex-col relative overflow-hidden font-sans">
                 <Background />
                 <Header title={isNarrator ? "设置上帝" : "编辑玩家"} backLabel={isNarrator ? "设置" : "玩家列表"} />
-                <div className="p-4 pt-8 relative z-10 max-w-2xl mx-auto w-full">
+                <div className="flex-1 overflow-y-auto custom-scrollbar p-4 pt-8 relative z-10 max-w-2xl mx-auto w-full pb-10">
                     <Card>
                         <InputGroup label={isNarrator ? "旁白称呼" : "玩家名称"} value={actor.name} onChange={(e: any) => updateActor(actor.id, { name: e.target.value })} />
 
