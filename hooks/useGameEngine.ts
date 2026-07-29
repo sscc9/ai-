@@ -937,24 +937,7 @@ export const useGameEngine = () => {
                         const human = alive.find(p => p.isHuman);
 
                         if (godState.sheriffCandidates === undefined) {
-                            // Instant heuristic for AI upper-campaign decisions to ensure zero latency and realism
-                            const aiPlayers = alive.filter(p => !p.isHuman);
-                            const aiDecisions = aiPlayers.map(p => {
-                                let runProbability = 0.3; // Default Villager
-                                if (p.role === Role.WEREWOLF) runProbability = 0.8;
-                                else if (p.role === Role.SEER) runProbability = 1.0;
-                                else if (p.role === Role.WITCH) runProbability = 0.4;
-                                else if (p.role === Role.HUNTER) runProbability = 0.4;
-                                else if (p.role === Role.GUARD) runProbability = 0.2;
-
-                                const run = Math.random() < runProbability;
-                                return { id: p.id, run };
-                            });
-
-                            let candidates: number[] = [];
-                            aiDecisions.forEach(d => { if (d.run) candidates.push(d.id); });
-
-                            // Check human decision
+                            // --- Check human decision first (avoid wasting LLM calls if waiting) ---
                             let humanDecided = false;
                             let humanRun = false;
                             if (human) {
@@ -970,19 +953,77 @@ export const useGameEngine = () => {
                                 }
                             }
 
+                            // --- AI Sheriff Decision: Use LLM to decide based on night memory ---
+                            const aiPlayers = alive.filter(p => !p.isHuman);
+
+                            await addSystemLog(human ? "各玩家正在考虑是否上警..." : "天亮了。第一天上午，开始竞选警长！各玩家正在考虑是否上警...");
+
+                            // Parallel LLM calls for all AI players
+                            const aiDecisions = await Promise.all(aiPlayers.map(async (p) => {
+                                try {
+                                    const { llm, provider } = getActorConfig(p.actorId);
+                                    const currentTurnLogs = logs.filter(l => l.turn <= turnCount && (!l.visibleTo || l.visibleTo.includes(p.id)));
+                                    const alivePlayers = players.filter(pl => pl.status === PlayerStatus.ALIVE);
+
+                                    const context = {
+                                        phase,
+                                        turnCount,
+                                        players,
+                                        logs,
+                                        roleConfigStr: getRoleConfigStr(),
+                                        godState: { ...godState, sheriffCandidates: undefined },
+                                        alivePlayers,
+                                        currentTurnLogs,
+                                        enabledCustomPrompts,
+                                        customRolePrompts
+                                    };
+
+                                    const messages = await werewolfSkill.generatePrompts(p, context);
+                                    const responseText = await generateText(messages, llm, provider);
+                                    const result = parseLLMResponse(responseText || "{}");
+                                    const run = result?.runForSheriff === true;
+                                    return { id: p.id, run };
+                                } catch (e) {
+                                    console.warn(`Sheriff decision LLM failed for Player ${p.id}, using fallback`, e);
+                                    // Fallback: role-based probability if LLM fails
+                                    let prob = 0.3;
+                                    if (p.role === Role.WEREWOLF) prob = 0.8;
+                                    else if (p.role === Role.SEER) prob = 1.0;
+                                    else if (p.role === Role.WITCH) prob = 0.4;
+                                    else if (p.role === Role.HUNTER) prob = 0.4;
+                                    else if (p.role === Role.GUARD) prob = 0.2;
+                                    return { id: p.id, run: Math.random() < prob };
+                                }
+                            }));
+
+                            let candidates: number[] = [];
+                            aiDecisions.forEach(d => { if (d.run) candidates.push(d.id); });
+
                             if (human && humanDecided && humanRun) {
                                 candidates.push(human.id);
                             }
 
-                            await addSystemLog("--- 警长竞选开始 ---");
+                            // --- Merge announcement into a single message ---
+                            const runList: number[] = [];
+                            const stayList: number[] = [];
                             for (const p of alive) {
                                 const isRun = p.isHuman ? humanRun : aiDecisions.find(d => d.id === p.id)?.run;
                                 if (isRun) {
-                                    await addSystemLog(`${p.id}号 玩家选择参与警长竞选（上警）。`);
+                                    runList.push(p.id);
                                 } else {
-                                    await addSystemLog(`${p.id}号 玩家留在警下。`);
+                                    stayList.push(p.id);
                                 }
                             }
+
+                            let announcement = "--- 警长竞选开始 ---\n";
+                            if (runList.length > 0) {
+                                announcement += `${runList.map(id => id + '号').join('、')} 选择上警竞选；`;
+                            }
+                            if (stayList.length > 0) {
+                                announcement += `${stayList.map(id => id + '号').join('、')} 留在警下。`;
+                            }
+                            await addSystemLog(announcement.trim());
+
 
                             if (candidates.length === 0) {
                                 await addSystemLog("无人参与竞选，本局警徽流失。");
