@@ -1,5 +1,6 @@
 
 import React, { Suspense } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
 import { useAtomValue } from 'jotai';
 import { clsx } from 'clsx';
 import { appScreenAtom, isPortraitModeAtom } from './store';
@@ -63,9 +64,18 @@ const App = () => {
                             : "w-full h-full"
                     )}
                 >
-                    <div key={screen} className="w-full h-full animate-page-fade">
-                        {renderContent()}
-                    </div>
+                    <AnimatePresence mode="wait">
+                        <motion.div
+                            key={screen}
+                            initial={{ opacity: 0, scale: 0.98 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            exit={{ opacity: 0, scale: 0.98 }}
+                            transition={{ duration: 0.2, ease: 'easeOut' }}
+                            className="w-full h-full"
+                        >
+                            {renderContent()}
+                        </motion.div>
+                    </AnimatePresence>
                 </div>
             </div>
 

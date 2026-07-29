@@ -1,5 +1,6 @@
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useCallback } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
 import { useAtom, useSetAtom, useAtomValue } from 'jotai';
 import { clsx } from 'clsx';
 import {
@@ -131,13 +132,33 @@ const InputGroup = ({ label, value, onChange, placeholder, type = "text", sub }:
     </div>
 );
 
+// iOS-style page transition variants
+const iosPageVariants = {
+    push: {
+        initial: { x: '100%', boxShadow: '-8px 0 30px rgba(0,0,0,0.15)' },
+        animate: { x: 0, boxShadow: '0px 0 0px rgba(0,0,0,0)' },
+        exit: { x: '-30%', opacity: 0.6 },
+    },
+    pop: {
+        initial: { x: '-30%', opacity: 0.6 },
+        animate: { x: 0, opacity: 1 },
+        exit: { x: '100%', boxShadow: '-8px 0 30px rgba(0,0,0,0.15)' },
+    },
+};
+
+const iosTransition = {
+    type: 'spring',
+    stiffness: 350,
+    damping: 35,
+    mass: 0.8,
+};
+
 const SettingsView = () => {
     const setScreen = useSetAtom(appScreenAtom);
     const [stack, setStack] = useState<SettingsPage[]>([{ type: 'ROOT' }]);
     const currentPage = stack[stack.length - 1];
     const fileInputRef = useRef<HTMLInputElement>(null);
-    const [navDirection, setNavDirection] = useState<'push' | 'pop' | 'none'>('none');
-    const [animKey, setAnimKey] = useState(0);
+    const directionRef = useRef<'push' | 'pop'>('push');
 
     // Atoms
     const [config, setConfig] = useAtom(globalApiConfigAtom);
@@ -178,8 +199,8 @@ const SettingsView = () => {
     const archives = archivesLoadable.state === 'hasData' ? archivesLoadable.data : [];
     const isArchivesLoading = archivesLoadable.state === 'loading';
 
-    const pushPage = (page: SettingsPage) => { setNavDirection('push'); setAnimKey(k => k + 1); setStack(prev => [...prev, page]); };
-    const popPage = () => { setNavDirection('pop'); setAnimKey(k => k + 1); setStack(prev => prev.length > 1 ? prev.slice(0, -1) : prev); };
+    const pushPage = useCallback((page: SettingsPage) => { directionRef.current = 'push'; setStack(prev => [...prev, page]); }, []);
+    const popPage = useCallback(() => { directionRef.current = 'pop'; setStack(prev => prev.length > 1 ? prev.slice(0, -1) : prev); }, []);
 
     // --- Import/Export Logic ---
     const handleExport = () => {
@@ -352,11 +373,13 @@ const SettingsView = () => {
     );
 
     // --- Page Renders ---
-    const animClass = navDirection === 'push' ? 'animate-page-push' : navDirection === 'pop' ? 'animate-page-pop' : '';
+    const direction = directionRef.current;
+    const variants = iosPageVariants[direction];
+    const pageKey = `${currentPage.type}-${(currentPage as any).id || 'root'}`;
 
     if (currentPage.type === 'ROOT') {
         return (
-            <div key={animKey} className={`h-full w-full bg-[#f8fafc] flex flex-col relative overflow-hidden font-sans ${animClass}`}>
+            <motion.div key={pageKey} initial={variants.initial} animate={variants.animate} exit={variants.exit} transition={iosTransition} className="h-full w-full bg-[#f8fafc] flex flex-col relative overflow-hidden font-sans">
                 <Background />
                 <Header title="设置" />
                 <div className="flex-1 overflow-y-auto custom-scrollbar px-4 pb-10 relative z-10 max-w-3xl mx-auto w-full">
@@ -492,13 +515,13 @@ const SettingsView = () => {
                         </button>
                     </div>
                 </div>
-            </div>
+            </motion.div>
         );
     }
 
     if (currentPage.type === 'LLM_LIST') {
         return (
-            <div key={animKey} className={`h-full w-full bg-[#f8fafc] flex flex-col relative overflow-hidden font-sans ${animClass}`}>
+            <motion.div key={pageKey} initial={variants.initial} animate={variants.animate} exit={variants.exit} transition={iosTransition} className="h-full w-full bg-[#f8fafc] flex flex-col relative overflow-hidden font-sans">
                 <Background />
                 <Header title="AI 模型库" backLabel="设置" />
                 <div className="flex-1 overflow-y-auto custom-scrollbar p-4 relative z-10 max-w-3xl mx-auto w-full">
@@ -542,7 +565,7 @@ const SettingsView = () => {
                         })}
                     </div>
                 </div>
-            </div>
+            </motion.div>
         );
     }
 
@@ -556,7 +579,7 @@ const SettingsView = () => {
         );
 
         return (
-            <div key={animKey} className={`h-full w-full bg-[#f8fafc] flex flex-col relative overflow-hidden font-sans ${animClass}`}>
+            <motion.div key={pageKey} initial={variants.initial} animate={variants.animate} exit={variants.exit} transition={iosTransition} className="h-full w-full bg-[#f8fafc] flex flex-col relative overflow-hidden font-sans">
                 <Background />
                 <Header title={provider.name} backLabel="模型库" />
                 <div className="flex-1 overflow-y-auto custom-scrollbar p-4 relative z-10 max-w-2xl mx-auto w-full pb-10">
@@ -615,7 +638,7 @@ const SettingsView = () => {
                         <button onClick={() => deleteProvider(provider.id)} className="w-full py-3 text-red-600 border border-red-100 bg-red-50 hover:bg-red-100 rounded-xl font-bold transition-colors">删除此供应商</button>
                     </div>
                 </div>
-            </div>
+            </motion.div>
         );
     }
 
@@ -625,7 +648,7 @@ const SettingsView = () => {
         const provider = llmProviders.find(p => p.id === llm.providerId);
 
         return (
-            <div key={animKey} className={`h-full w-full bg-[#f8fafc] flex flex-col relative overflow-hidden font-sans ${animClass}`}>
+            <motion.div key={pageKey} initial={variants.initial} animate={variants.animate} exit={variants.exit} transition={iosTransition} className="h-full w-full bg-[#f8fafc] flex flex-col relative overflow-hidden font-sans">
                 <Background />
                 <Header title="编辑模型" backLabel={provider?.name || "AI 模型库"} />
                 <div className="p-4 pt-8 relative z-10 max-w-2xl mx-auto w-full">
@@ -645,7 +668,7 @@ const SettingsView = () => {
                         <button onClick={() => deleteLlm(llm.id)} className="w-full py-3 text-red-600 border border-red-100 bg-red-50 hover:bg-red-100 rounded-xl font-bold transition-colors">删除模型</button>
                     </Card>
                 </div>
-            </div>
+            </motion.div>
         );
     }
 
@@ -653,7 +676,7 @@ const SettingsView = () => {
         const tts = ttsPresets.find(i => i.id === currentPage.id) || ttsPresets[0];
         if (!tts) return null;
         return (
-            <div key={animKey} className={`h-full w-full bg-[#f8fafc] flex flex-col relative overflow-hidden font-sans ${animClass}`}>
+            <motion.div key={pageKey} initial={variants.initial} animate={variants.animate} exit={variants.exit} transition={iosTransition} className="h-full w-full bg-[#f8fafc] flex flex-col relative overflow-hidden font-sans">
                 <Background />
                 <Header title="Edge TTS 设置" backLabel="设置" />
                 <div className="flex-1 overflow-y-auto custom-scrollbar p-4 relative z-10 max-w-2xl mx-auto w-full pb-10">
@@ -705,13 +728,13 @@ const SettingsView = () => {
                         </div>
                     </Card>
                 </div>
-            </div>
+            </motion.div>
         );
     }
 
     if (currentPage.type === 'ACTOR_LIST') {
         return (
-            <div key={animKey} className={`h-full w-full bg-[#f8fafc] flex flex-col relative overflow-hidden font-sans ${animClass}`}>
+            <motion.div key={pageKey} initial={variants.initial} animate={variants.animate} exit={variants.exit} transition={iosTransition} className="h-full w-full bg-[#f8fafc] flex flex-col relative overflow-hidden font-sans">
                 <Background />
                 <Header title="玩家列表" backLabel="设置" />
                 <div className="flex-1 overflow-y-auto custom-scrollbar p-4 relative z-10 max-w-3xl mx-auto w-full">
@@ -736,7 +759,7 @@ const SettingsView = () => {
                     </div>
                     <p className="text-xs text-slate-400 mt-8 text-center">如需添加新类型玩家，请先在“AI 模型库”中添加模型。点击玩家可进行分身。</p>
                 </div>
-            </div>
+            </motion.div>
         );
     }
 
@@ -749,7 +772,7 @@ const SettingsView = () => {
         const tts = ttsPresets.find(t => t.id === actor.ttsPresetId);
 
         return (
-            <div key={animKey} className={`h-full w-full bg-[#f8fafc] flex flex-col relative overflow-hidden font-sans ${animClass}`}>
+            <motion.div key={pageKey} initial={variants.initial} animate={variants.animate} exit={variants.exit} transition={iosTransition} className="h-full w-full bg-[#f8fafc] flex flex-col relative overflow-hidden font-sans">
                 <Background />
                 <Header title={isNarrator ? "设置上帝" : "编辑玩家"} backLabel={isNarrator ? "设置" : "玩家列表"} />
                 <div className="flex-1 overflow-y-auto custom-scrollbar p-4 pt-8 relative z-10 max-w-2xl mx-auto w-full pb-10">
@@ -899,7 +922,7 @@ const SettingsView = () => {
                         )}
                     </Card>
                 </div>
-            </div>
+            </motion.div>
         );
     }
 
@@ -929,7 +952,7 @@ const SettingsView = () => {
         const currentVal = localPrompts[activeTab] !== undefined ? localPrompts[activeTab] : (DEFAULT_ROLE_PROMPTS[activeTab] || '');
 
         return (
-            <div key={animKey} className={`h-full w-full bg-[#f8fafc] flex flex-col relative overflow-hidden font-sans ${animClass}`}>
+            <motion.div key={pageKey} initial={variants.initial} animate={variants.animate} exit={variants.exit} transition={iosTransition} className="h-full w-full bg-[#f8fafc] flex flex-col relative overflow-hidden font-sans">
                 <Background />
                 <Header title="自定义角色提示词" backLabel="设置" onBack={popPage} />
                 <div className="flex-1 overflow-y-auto custom-scrollbar p-4 relative z-10 max-w-3xl mx-auto w-full pb-10">
@@ -999,7 +1022,7 @@ const SettingsView = () => {
                         </div>
                     </Card>
                 </div>
-            </div>
+            </motion.div>
         );
     }
 
