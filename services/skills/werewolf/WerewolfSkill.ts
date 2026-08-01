@@ -190,7 +190,7 @@ ${privateMemory || "无"}
             const teammateStr = teammates.map(p => `${p.id}号(${p.status === PlayerStatus.ALIVE ? '存活' : '出局'})`).join('、') || "无";
 
             return {
-                task: `与你的狼人队友沟通，选择今晚要袭击的玩家目标。**战术提示**：团队胜利是唯一目标。如果有助于胜利，你可以在白天的发言中踩队友或与队友拉开距离。你的队友是：${teammateStr}。${instruction || "表达你的意图。"}`,
+                task: `与你的狼人队友沟通，选择今晚要袭击的玩家目标，并讨论明天白天的战术（如谁悍跳、怎么配合）。**战术提示**：团队胜利是唯一目标。如果有助于胜利，你可以在白天的发言中踩队友或与队友拉开距离。你的队友是：${teammateStr}。${instruction || "表达你的意图。"}`,
                 constraints: `- 输出 JSON 格式。
 - 格式: { "speak": "对队友说的话（私聊内容）" }
 - 示例 (普通讨论): { "speak": "3号听起来挺像神的，你们怎么看？" }
