@@ -270,7 +270,7 @@ ${privateMemory || "无"}
             const isCandidate = godState?.sheriffCandidates?.includes(player.id);
             if (isCandidate) {
                 return {
-                    task: "你目前正在竞选警长。发表你的竞选演讲，说服警下玩家把警长票投给你。你可以选择继续竞选，或者选择“退水”退出竞选。",
+                    task: "你目前正在竞选警长。你的核心目标是**让其他玩家相信你、信任你**，从而把警长票投给你。注意：别人不会因为你说了什么身份就自动相信你，你需要用逻辑和证据主动说服他们。你也可以选择“退水”退出竞选。",
                     constraints: `- 输出 JSON 格式。
 - 格式: { "speak": "竞选演讲内容", "quitCampaign": 是否退水(退出竞选)(布尔值，true或false), "summary": "15字以内的发言核心要诀" }
 - 示例: { "speak": "我是预言家，警徽交给我带领发言。", "quitCampaign": false, "summary": "预言家起跳拿警徽" }`
