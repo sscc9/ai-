@@ -37,12 +37,18 @@ const HumanInputPanel = () => {
     const [isCollapsed, setIsCollapsed] = useState(false);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-    // Auto-resize speech textarea based on content (with bounds 44px to 160px)
+    // Auto-resize speech textarea based on content (with bounds 60px to 200px)
     useEffect(() => {
         const textarea = textareaRef.current;
         if (textarea && !isCollapsed) {
             textarea.style.height = 'auto';
-            textarea.style.height = `${Math.min(Math.max(textarea.scrollHeight, 44), 160)}px`;
+            const scrollHeight = textarea.scrollHeight;
+            if (scrollHeight > 200) {
+                textarea.style.overflowY = 'auto';
+            } else {
+                textarea.style.overflowY = 'hidden';
+            }
+            textarea.style.height = `${Math.min(Math.max(scrollHeight, 60), 200)}px`;
         }
     }, [text, isCollapsed]);
 
@@ -300,15 +306,15 @@ const HumanInputPanel = () => {
                                 <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center w-full">
                                     {/* Speech text input (if not voting) */}
                                     {!isVoting && (
-                                        <div className="flex-grow w-full">
+                                        <div className="flex-grow w-full sm:self-center">
                                             <textarea
                                                 ref={textareaRef}
                                                 value={text}
                                                 onChange={(e) => setText(e.target.value)}
                                                 placeholder="输入你的发言或选择目标的理由..."
-                                                style={{ minHeight: '44px' }}
+                                                style={{ minHeight: '60px' }}
                                                 className={clsx(
-                                                    "w-full p-2.5 text-xs rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all resize-none shadow-sm font-medium",
+                                                    "w-full p-3 text-sm rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all resize-none shadow-sm font-medium",
                                                     isDay
                                                         ? "bg-white border border-slate-200 text-slate-800 placeholder:text-slate-400"
                                                         : "bg-slate-800/40 border border-slate-750 text-slate-100 placeholder:text-slate-500"
@@ -318,7 +324,7 @@ const HumanInputPanel = () => {
                                     )}
 
                                     {/* Target input and Submit controls */}
-                                    <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 shrink-0 justify-between sm:justify-end w-full sm:w-auto">
+                                    <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 shrink-0 justify-between sm:justify-end w-full sm:w-auto sm:self-center">
                                         {needsTarget && (
                                             <div className={clsx(
                                                 "flex items-center gap-1.5 border px-2.5 py-1.5 rounded-xl shadow-sm w-full sm:w-auto justify-between sm:justify-start",
