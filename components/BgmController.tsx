@@ -1,7 +1,7 @@
 
 import React, { useEffect } from 'react';
 import { useAtomValue } from 'jotai';
-import { gamePhaseAtom, isPlayingAudioAtom, globalApiConfigAtom } from '../store';
+import { gamePhaseAtom, currentSpeakerIdAtom, globalApiConfigAtom } from '../store';
 import { GamePhase } from '../types';
 import { BgmService } from '../bgm';
 
@@ -21,7 +21,7 @@ const isActiveGamePhase = (phase: GamePhase): boolean => {
 
 const BgmController: React.FC = () => {
     const phase = useAtomValue(gamePhaseAtom);
-    const isPlayingAudio = useAtomValue(isPlayingAudioAtom);
+    const currentSpeakerId = useAtomValue(currentSpeakerIdAtom);
     const globalConfig = useAtomValue(globalApiConfigAtom);
 
     // BGM is independent of TTS. Default to enabled if field is missing (undefined).
@@ -38,7 +38,8 @@ const BgmController: React.FC = () => {
         } else {
             const track = isNightPhase(phase) ? 'night' : 'day';
             bgm.play(track);
-            if (isPlayingAudio) {
+            // If a player is currently speaking, keep it faded
+            if (currentSpeakerId !== null) {
                 bgm.fadeOut();
             }
         }
@@ -56,22 +57,25 @@ const BgmController: React.FC = () => {
 
         const track = isNightPhase(phase) ? 'night' : 'day';
         bgm.play(track);
-        if (isPlayingAudio) {
+        if (currentSpeakerId !== null) {
             bgm.fadeOut();
         }
     }, [phase, bgmEnabled]);
 
-    // Handle fading BGM when TTS (announcer or player speech) starts or ends
+    // Fade BGM only when a PLAYER is speaking (currentSpeakerId !== null).
+    // Narrator/God speech does NOT fade the BGM.
     useEffect(() => {
         const bgm = BgmService.getInstance();
         if (!bgmEnabled || !isActiveGamePhase(phase)) return;
 
-        if (isPlayingAudio) {
+        if (currentSpeakerId !== null) {
+            // A player is speaking → fade out BGM
             bgm.fadeOut();
         } else {
+            // No player speaking → fade in BGM
             bgm.fadeIn();
         }
-    }, [isPlayingAudio, bgmEnabled, phase]);
+    }, [currentSpeakerId, bgmEnabled, phase]);
 
     // Cleanup on unmount
     useEffect(() => {
