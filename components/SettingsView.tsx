@@ -363,7 +363,7 @@ const SettingsView = () => {
                     <Card>
                         <div className="flex items-center justify-between mb-4">
                             <div>
-                                <span className="text-base font-bold text-slate-800 block">启用语音 (TTS)</span>
+                                <span className="text-sm font-bold text-slate-800 block">启用语音 (TTS)</span>
                                 <span className="text-xs text-slate-500 block mt-0.5">需要配置 TTS 引擎的 API Key</span>
                             </div>
                             <div
