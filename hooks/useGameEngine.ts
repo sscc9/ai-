@@ -343,7 +343,6 @@ export const useGameEngine = () => {
 
             // Play TTS
             setPlayers(prev => prev.map(p => p.id === player.id ? { ...p, isSpeaking: true } : p));
-            setIsPlayingAudio(true);
 
             // TTS Call (Only for AI, human already typed/spoke it)
             if (globalConfig.enabled && !player.isHuman) {
@@ -352,16 +351,18 @@ export const useGameEngine = () => {
                     actor.voiceId,
                     audioKey,
                     tts,
-                    undefined,
-                    undefined,
+                    // onPlayStart: fires when audio ACTUALLY starts playing (not during loading)
+                    () => setIsPlayingAudio(true),
+                    // onPlayEnd: fires when audio finishes
+                    () => setIsPlayingAudio(false),
                     globalConfig.ttsSpeed || 1.0
                 );
+                // Ensure cleanup in case onPlayEnd didn't fire (e.g. error)
+                setIsPlayingAudio(false);
             } else {
                 // Simulation delay for reading if no audio or human
                 await new Promise(r => setTimeout(r, 1500));
             }
-
-            setIsPlayingAudio(false);
             setPlayers(prev => prev.map(p => ({ ...p, isSpeaking: false })));
             setSpeaker(null);
             saveSnapshot();
