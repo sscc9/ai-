@@ -15,7 +15,9 @@ import {
     isPortraitModeAtom,
     isDaytimeAtom,
     replayPerspectiveAtom,
-    isReplayModeAtom
+    isReplayModeAtom,
+    gameWeatherAtom,
+    GameWeather
 } from '../store';
 import { GamePhase, PHASE_LABELS } from '../types';
 import { useGameEngine } from '../hooks/useGameEngine';
@@ -23,6 +25,22 @@ import { useTheaterEngine } from '../hooks/useTheaterEngine';
 import PlayerCard from './PlayerCard';
 import { AutoScrollLog } from './GameLogs';
 import HumanInputPanel from './HumanInputPanel';
+import WeatherBackground from './WeatherBackground';
+
+const getWeatherLabel = (weather: GameWeather, isDay: boolean) => {
+    switch (weather) {
+        case GameWeather.SUNNY:
+            return isDay ? { label: '晴空', icon: '☀️' } : { label: '星空', icon: '🌌' };
+        case GameWeather.CLOUDY:
+            return { label: '多云', icon: '☁️' };
+        case GameWeather.RAINY:
+            return isDay ? { label: '下雨', icon: '🌧️' } : { label: '夜雨', icon: '🌧️' };
+        case GameWeather.THUNDERSTORM:
+            return { label: '雷雨', icon: '⛈️' };
+        default:
+            return { label: '晴空', icon: '☀️' };
+    }
+};
 
 const GameRoomView = () => {
     const players = useAtomValue(playersAtom);
@@ -37,6 +55,7 @@ const GameRoomView = () => {
     const [perspective, setPerspective] = useAtom(replayPerspectiveAtom);
     const isReplayMode = useAtomValue(isReplayModeAtom);
     const isPortrait = useAtomValue(isPortraitModeAtom);
+    const weather = useAtomValue(gameWeatherAtom);
 
     useGameEngine();
     useTheaterEngine();
@@ -97,6 +116,8 @@ const GameRoomView = () => {
                     {/* Moon glow hint */}
                     <div className="absolute top-10 right-20 w-32 h-32 bg-indigo-400/20 blur-[60px] rounded-full" />
                 </div>
+                {/* Weather effects (stars, drifting clouds, rain particles, lightning glow) */}
+                <WeatherBackground />
             </div>
 
             {/* --- Controls Overlay --- */}
@@ -202,6 +223,15 @@ const GameRoomView = () => {
                                     : "bg-indigo-950/80 text-indigo-300 border border-indigo-900/30"
                             )}>
                                 {perspective === 'GOD' ? PHASE_LABELS[phase] : (isDay ? "白天" : "夜晚")}
+                            </span>
+                            <span className={clsx(
+                                "text-[10px] sm:text-xs font-bold px-2.5 py-1 rounded-full transition-all duration-1000 shadow-sm flex items-center gap-1",
+                                isDay 
+                                    ? "bg-slate-100 text-slate-700 border border-slate-200/50" 
+                                    : "bg-slate-800/80 text-slate-300 border border-slate-700/25"
+                            )}>
+                                <span>{getWeatherLabel(weather, isDay).icon}</span>
+                                <span>{getWeatherLabel(weather, isDay).label}</span>
                             </span>
                         </div>
                         <div className="flex items-center gap-2">

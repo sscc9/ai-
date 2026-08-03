@@ -74,6 +74,14 @@ export const globalApiConfigAtom = atomWithStorage<GlobalApiConfig>('werewolf-gl
 export const gameArchivesAtom = atomWithStorage<GameArchive[]>('werewolf-gameArchives', [], idbStorage);
 export const gameArchivesLoadableAtom = loadable(gameArchivesAtom);
 
+export enum GameWeather {
+    SUNNY = 'SUNNY',             // 晴朗 / 星空
+    CLOUDY = 'CLOUDY',           // 多云 / 阴天
+    RAINY = 'RAINY',             // 细雨 / 夜雨
+    THUNDERSTORM = 'THUNDERSTORM' // 雷阵雨 / 雷暴
+}
+
+export const gameWeatherAtom = atom<GameWeather>(GameWeather.SUNNY);
 export const timelineAtom = atom<TimelineEvent[]>([]);
 export const replaySourceLogsAtom = atom<GameLog[]>([]);
 export const isPlayingAudioAtom = atom<boolean>(false);
