@@ -70,7 +70,7 @@ export const llmPresetsAtom = atomWithStorage<LLMPreset[]>('werewolf-llmPresets'
 export const ttsPresetsAtom = atomWithStorage<TTSPreset[]>('werewolf-ttsPresets-v3', defaultTtsPresets);
 export const actorProfilesAtom = atomWithStorage<ActorProfile[]>('werewolf-actorProfiles-v2', DEFAULT_ACTORS);
 export const edgeTtsVoicesAtom = atomWithStorage<EdgeVoice[]>('werewolf-edgeTtsVoices', []);
-export const globalApiConfigAtom = atomWithStorage<GlobalApiConfig>('werewolf-globalApiConfig', { enabled: false, narratorActorId: 'n1' });
+export const globalApiConfigAtom = atomWithStorage<GlobalApiConfig>('werewolf-globalApiConfig', { enabled: false, narratorActorId: 'n1', bgmEnabled: true, bgmVolume: 0.2 });
 export const gameArchivesAtom = atomWithStorage<GameArchive[]>('werewolf-gameArchives', [], idbStorage);
 export const gameArchivesLoadableAtom = loadable(gameArchivesAtom);
 

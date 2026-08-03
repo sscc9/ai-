@@ -404,6 +404,52 @@ const SettingsView = () => {
                             </div>
                         </div>
 
+                        {/* BGM Toggle Control */}
+                        <div className="flex items-center justify-between border-t border-slate-100 pt-4">
+                            <div>
+                                <span className="text-sm font-bold text-slate-800 block">背景音乐 (BGM)</span>
+                                <span className="text-xs text-slate-500 block mt-0.5">开启悬疑氛围音乐，发言时自动降低音量</span>
+                            </div>
+                            <div
+                                onClick={() => setConfig(p => ({ ...p, bgmEnabled: !p.bgmEnabled }))}
+                                className={clsx(
+                                    "relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none mr-2",
+                                    config.bgmEnabled ? 'bg-indigo-500' : 'bg-slate-300'
+                                )}
+                            >
+                                <span
+                                    className={clsx(
+                                        "pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out",
+                                        config.bgmEnabled ? 'translate-x-5' : 'translate-x-0'
+                                    )}
+                                />
+                            </div>
+                        </div>
+
+                        {/* BGM Volume Control */}
+                        {config.bgmEnabled && (
+                            <div className="flex items-center justify-between border-t border-slate-100 pt-4">
+                                <div>
+                                    <span className="text-sm font-bold text-slate-800 block">音乐音量</span>
+                                    <span className="text-xs text-slate-500 block mt-0.5">调整背景音乐的基准音量</span>
+                                </div>
+                                <div className="flex items-center gap-3">
+                                    <span className="text-xs font-mono font-bold text-indigo-600 bg-indigo-50 px-2 py-1 rounded min-w-[3rem] text-center">
+                                        {Math.round((config.bgmVolume ?? 0.2) * 100)}%
+                                    </span>
+                                    <input
+                                        type="range"
+                                        min="0.0"
+                                        max="0.5"
+                                        step="0.05"
+                                        value={config.bgmVolume ?? 0.2}
+                                        onChange={(e) => setConfig(p => ({ ...p, bgmVolume: parseFloat(e.target.value) }))}
+                                        className="w-24 accent-indigo-500 cursor-pointer"
+                                    />
+                                </div>
+                            </div>
+                        )}
+
                         {/* Custom Prompts Control */}
                         <div className="flex items-center justify-between border-t border-slate-100 pt-4">
                             <div 

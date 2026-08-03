@@ -12,6 +12,7 @@ import HistoryView from './components/HistoryView';
 import ScreenControls from './components/ScreenControls';
 import StateHydrator from './components/StateHydrator';
 import TTSView from './components/TTSView';
+import BgmController from './components/BgmController';
 
 
 const App = () => {
@@ -71,6 +72,8 @@ const App = () => {
             <Suspense fallback={null}>
                 <StateHydrator />
             </Suspense>
+
+            <BgmController />
 
             {/* Global Controls - Outside the recorded area */}
             <ScreenControls targetId={APP_CONTENT_ID} />
