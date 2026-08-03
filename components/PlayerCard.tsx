@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useAtomValue } from 'jotai';
 import { clsx } from 'clsx';
-import { playersAtom, currentSpeakerIdAtom, gamePhaseAtom, actorProfilesAtom, areRolesVisibleAtom, replayPerspectiveAtom, isReplayModeAtom, isPortraitModeAtom, godStateAtom } from '../store';
+import { playersAtom, currentSpeakerIdAtom, gamePhaseAtom, actorProfilesAtom, areRolesVisibleAtom, replayPerspectiveAtom, isReplayModeAtom, isPortraitModeAtom, godStateAtom, isDaytimeAtom } from '../store';
 import { ROLE_INFO, Role, GamePhase, PlayerStatus } from '../types';
 
 interface PlayerCardProps { seat: number; isTop: boolean; }
@@ -17,6 +17,7 @@ const PlayerCard: React.FC<PlayerCardProps> = ({ seat, isTop }) => {
     const isReplayMode = useAtomValue(isReplayModeAtom);
     const isPortrait = useAtomValue(isPortraitModeAtom);
     const godState = useAtomValue(godStateAtom);
+    const isDay = useAtomValue(isDaytimeAtom);
 
     const [imgLoaded, setImgLoaded] = useState(false);
 
@@ -254,7 +255,10 @@ const PlayerCard: React.FC<PlayerCardProps> = ({ seat, isTop }) => {
                 {player.isHuman ? (
                     <div className="flex flex-col items-center">
                         <span className={clsx(
-                            "text-[8px] sm:text-[9px] md:text-[10px] font-bold px-1.5 sm:px-2 py-0.5 text-indigo-700 bg-indigo-50 backdrop-blur-sm rounded-md shadow-sm border border-indigo-200"
+                            "text-[8px] sm:text-[9px] md:text-[10px] font-bold px-1.5 sm:px-2 py-0.5 rounded-md shadow-sm border backdrop-blur-sm transition-all duration-1000",
+                            isDay
+                                ? "text-indigo-700 bg-indigo-50 border-indigo-200"
+                                : "text-indigo-300 bg-indigo-950/80 border-indigo-900/40"
                         )}>
                             人类
                         </span>
@@ -262,7 +266,10 @@ const PlayerCard: React.FC<PlayerCardProps> = ({ seat, isTop }) => {
                 ) : actor && (
                     <div className="flex flex-col items-center opacity-90">
                         <span className={clsx(
-                            "truncate font-semibold text-slate-700 bg-white/70 backdrop-blur-sm rounded-md shadow-sm border border-white/40",
+                            "truncate font-semibold backdrop-blur-sm rounded-md shadow-sm border transition-all duration-1000",
+                            isDay
+                                ? "text-slate-700 bg-white/70 border-white/40"
+                                : "text-slate-300 bg-slate-800/80 border-slate-750/30",
                             isPortrait ? "text-[8px] max-w-[3rem] px-1 py-0.5" : "text-[8px] sm:text-[9px] md:text-[10px] max-w-[3.5rem] sm:max-w-[5rem] px-1 sm:px-1.5 py-0.5"
                         )}>
                             {actor.name}

@@ -10,7 +10,8 @@ import {
     godStateAtom,
     isReplayModeAtom,
     isTheaterModeAtom,
-    speakingQueueAtom
+    speakingQueueAtom,
+    isDaytimeAtom
 } from '../store';
 
 import { GamePhase, PlayerStatus } from '../types';
@@ -25,6 +26,7 @@ const HumanInputPanel = () => {
     const isPortrait = useAtomValue(isPortraitModeAtom);
     const isReplayMode = useAtomValue(isReplayModeAtom);
     const isTheaterMode = useAtomValue(isTheaterModeAtom);
+    const isDay = useAtomValue(isDaytimeAtom);
 
     const humanPlayer = players.find(p => p.isHuman);
     const isMyTurn = humanPlayer && currentSpeakerId === humanPlayer.id;
@@ -163,18 +165,26 @@ const HumanInputPanel = () => {
 
     return (
         <div className={clsx(
-            "fixed bottom-0 left-0 right-0 z-[100] p-4 animate-slide-up",
-            "bg-white/90 backdrop-blur-2xl border-t border-white/50 shadow-[0_-10px_40px_rgba(0,0,0,0.1)]"
+            "fixed bottom-0 left-0 right-0 z-[100] p-4 animate-slide-up transition-all duration-1000",
+            isDay
+                ? "bg-white/90 backdrop-blur-2xl border-t border-white/50 shadow-[0_-10px_40px_rgba(0,0,0,0.1)]"
+                : "bg-[#0b0f19]/90 backdrop-blur-2xl border-t border-slate-800 shadow-[0_-10px_40px_rgba(0,0,0,0.4)]"
         )}>
             <div className="max-w-4xl mx-auto space-y-4">
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                        <span className="text-indigo-600 font-bold">你的回合</span>
-                        <span className="px-2 py-0.5 bg-indigo-100 text-indigo-700 text-[10px] font-bold rounded-full uppercase tracking-wider">
+                        <span className={clsx("font-bold", isDay ? "text-indigo-600" : "text-indigo-400")}>你的回合</span>
+                        <span className={clsx(
+                            "px-2 py-0.5 text-[10px] font-bold rounded-full uppercase tracking-wider",
+                            isDay ? "bg-indigo-100 text-indigo-700" : "bg-indigo-950/80 text-indigo-300 border border-indigo-900/30"
+                        )}>
                             {humanPlayer.role}
                         </span>
                         {instruction && (
-                            <span className="text-xs text-slate-500 font-medium border-l border-slate-200 pl-2 ml-1">
+                            <span className={clsx(
+                                "text-xs font-medium border-l pl-2 ml-1 transition-all duration-1000",
+                                isDay ? "text-slate-500 border-slate-200" : "text-slate-400 border-slate-800"
+                            )}>
                                 {instruction}
                             </span>
                         )}
@@ -183,8 +193,10 @@ const HumanInputPanel = () => {
                         <button
                             onClick={startListening}
                             className={clsx(
-                                "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all",
-                                isListening ? "bg-red-500 text-white animate-pulse" : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                                "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all duration-300",
+                                isListening 
+                                    ? "bg-red-500 text-white animate-pulse" 
+                                    : (isDay ? "bg-slate-100 text-slate-600 hover:bg-slate-200" : "bg-slate-800 text-slate-300 hover:bg-slate-700")
                             )}
                         >
                             {isListening ? "正在聆听..." : "🎤 语音转文字"}
@@ -229,13 +241,21 @@ const HumanInputPanel = () => {
                                 value={text}
                                 onChange={(e) => setText(e.target.value)}
                                 placeholder="输入你的发言或理由..."
-                                className="w-full h-20 p-3 bg-white/50 border border-slate-200 rounded-2xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all resize-none shadow-sm text-slate-800 placeholder:text-slate-400 font-medium"
+                                className={clsx(
+                                    "w-full h-20 p-3 rounded-2xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all resize-none shadow-sm font-medium",
+                                    isDay
+                                        ? "bg-white/50 border border-slate-200 text-slate-800 placeholder:text-slate-400"
+                                        : "bg-slate-800/40 border border-slate-750 text-slate-100 placeholder:text-slate-500"
+                                )}
                             />
                         )}
 
                         {needsTarget && (
                             <div className="space-y-2">
-                                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">
+                                <label className={clsx(
+                                    "text-[10px] font-bold uppercase tracking-widest ml-1 transition-all duration-1000",
+                                    isDay ? "text-slate-500" : "text-slate-400"
+                                )}>
                                     {phase === GamePhase.WITCH_ACTION ? "选择操作目标 (可选)" : "选择目标"}
                                 </label>
                                 <div className="flex flex-wrap gap-2">
@@ -246,8 +266,10 @@ const HumanInputPanel = () => {
                                             className={clsx(
                                                 "px-4 py-2 rounded-xl text-sm font-bold transition-all border",
                                                 targetId === p.id
-                                                    ? "bg-indigo-600 border-indigo-600 text-white shadow-lg shadow-indigo-200"
-                                                    : "bg-white border-slate-200 text-slate-600 hover:border-indigo-300 shadow-sm"
+                                                    ? (isDay ? "bg-indigo-600 border-indigo-600 text-white shadow-lg shadow-indigo-100" : "bg-indigo-600 border-indigo-600 text-white shadow-lg shadow-indigo-950/50")
+                                                    : (isDay 
+                                                        ? "bg-white border-slate-200 text-slate-600 hover:border-indigo-300 shadow-sm" 
+                                                        : "bg-slate-800 border-slate-750 text-slate-300 hover:border-indigo-500/50 shadow-sm")
                                             )}
                                         >
                                             {p.id}号
@@ -259,8 +281,10 @@ const HumanInputPanel = () => {
                                             className={clsx(
                                                 "px-4 py-2 rounded-xl text-sm font-bold transition-all border",
                                                 targetId === 0
-                                                    ? "bg-emerald-600 border-emerald-600 text-white shadow-lg shadow-emerald-200"
-                                                    : "bg-white border-slate-200 text-slate-600 hover:border-emerald-300 shadow-sm"
+                                                    ? (isDay ? "bg-emerald-600 border-emerald-600 text-white shadow-lg shadow-emerald-100" : "bg-emerald-600 border-emerald-600 text-white shadow-lg shadow-emerald-950/50")
+                                                    : (isDay 
+                                                        ? "bg-white border-slate-200 text-slate-600 hover:border-emerald-300 shadow-sm" 
+                                                        : "bg-slate-800 border-slate-750 text-slate-300 hover:border-emerald-500/50 shadow-sm")
                                             )}
                                         >
                                             使用解药 (救人)
@@ -272,8 +296,10 @@ const HumanInputPanel = () => {
                                             className={clsx(
                                                 "px-4 py-2 rounded-xl text-sm font-bold transition-all border",
                                                 targetId === null
-                                                    ? "bg-red-600 border-red-600 text-white shadow-lg shadow-red-200"
-                                                    : "bg-white border-slate-200 text-slate-600 hover:border-red-300 shadow-sm"
+                                                    ? (isDay ? "bg-red-600 border-red-600 text-white shadow-lg shadow-red-100" : "bg-red-600 border-red-600 text-white shadow-lg shadow-red-950/50")
+                                                    : (isDay 
+                                                        ? "bg-white border-slate-200 text-slate-600 hover:border-red-300 shadow-sm" 
+                                                        : "bg-slate-800 border-slate-750 text-slate-300 hover:border-red-500/50 shadow-sm")
                                             )}
                                         >
                                             撕毁警徽 (撕警徽)
@@ -286,7 +312,9 @@ const HumanInputPanel = () => {
                                                 "px-4 py-2 rounded-xl text-sm font-bold transition-all border",
                                                 targetId === null
                                                     ? (isVoting ? "bg-slate-700 border-slate-700 text-white" : "bg-slate-800 border-slate-800 text-white")
-                                                    : "bg-white border-slate-200 text-slate-600 hover:border-slate-300 shadow-sm"
+                                                    : (isDay 
+                                                        ? "bg-white border-slate-200 text-slate-600 hover:border-slate-300 shadow-sm" 
+                                                        : "bg-slate-800 border-slate-750 text-slate-300 hover:border-slate-600/50 shadow-sm")
                                             )}
                                         >
                                             {isVoting ? "弃票" : "弃权/不操作"}
@@ -300,14 +328,22 @@ const HumanInputPanel = () => {
                             {isCandidateSpeaking && (
                                 <button
                                     onClick={handleQuitCampaign}
-                                    className="px-6 py-4 bg-red-100 hover:bg-red-200 text-red-700 rounded-2xl font-bold text-lg shadow-sm transition-all active:scale-[0.98]"
+                                    className={clsx(
+                                        "px-6 py-4 rounded-2xl font-bold text-lg shadow-sm transition-all active:scale-[0.98]",
+                                        isDay
+                                            ? "bg-red-100 hover:bg-red-200 text-red-700"
+                                            : "bg-red-950/30 hover:bg-red-950/50 text-red-400 border border-red-900/30"
+                                    )}
                                 >
                                     退水 (退出竞选)
                                 </button>
                             )}
                             <button
                                 onClick={handleSubmit}
-                                className="flex-grow py-4 bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 text-white rounded-2xl font-bold text-lg shadow-lg shadow-indigo-200 transition-all active:scale-[0.98]"
+                                className={clsx(
+                                    "flex-grow py-4 bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 text-white rounded-2xl font-bold text-lg transition-all active:scale-[0.98]",
+                                    isDay ? "shadow-lg shadow-indigo-100" : "shadow-lg shadow-indigo-950/50"
+                                )}
                             >
                                 确认行动
                             </button>

@@ -74,7 +74,7 @@ const GameRoomView = () => {
     return (
         <div
             ref={rootRef}
-            className="absolute inset-0 w-full bg-slate-900 flex flex-col overflow-hidden select-none text-slate-800 font-sans overscroll-none"
+            className="absolute inset-0 w-full bg-slate-950 flex flex-col overflow-hidden select-none text-slate-800 font-sans overscroll-none"
         >
             {/* --- Background Layers --- */}
             <div className="absolute inset-0 z-0 pointer-events-none">
@@ -87,21 +87,30 @@ const GameRoomView = () => {
                     <div className="absolute bottom-[-10%] left-[-10%] w-[50vw] h-[50vw] bg-blue-200/30 rounded-full blur-[80px] mix-blend-multiply" />
                 </div>
 
-                {/* Night Mode Background: Cool, Ethereal, "Light Night" (Lavender/Indigo) */}
+                {/* Night Mode Background: Dark, Mystical, Starry Night (Deep Indigo/Dark Purple) */}
                 <div className={clsx(
-                    "absolute inset-0 bg-gradient-to-br from-slate-200 via-indigo-100 to-purple-100 transition-opacity duration-1000 ease-in-out",
+                    "absolute inset-0 bg-gradient-to-br from-[#090d16] via-[#0f172a] to-[#181530] transition-opacity duration-1000 ease-in-out",
                     !isDay ? "opacity-100" : "opacity-0"
                 )}>
-                    <div className="absolute top-[10%] left-[20%] w-[50vw] h-[50vw] bg-indigo-300/20 rounded-full blur-[100px] mix-blend-multiply" />
-                    <div className="absolute bottom-[10%] right-[10%] w-[60vw] h-[60vw] bg-purple-300/20 rounded-full blur-[100px] mix-blend-multiply" />
-                    {/* Subtle moon glow hint */}
-                    <div className="absolute top-10 right-20 w-32 h-32 bg-white/40 blur-[60px] rounded-full" />
+                    <div className="absolute top-[10%] left-[20%] w-[50vw] h-[50vw] bg-indigo-500/10 rounded-full blur-[100px]" />
+                    <div className="absolute bottom-[10%] right-[10%] w-[60vw] h-[60vw] bg-purple-500/10 rounded-full blur-[100px]" />
+                    {/* Moon glow hint */}
+                    <div className="absolute top-10 right-20 w-32 h-32 bg-indigo-400/20 blur-[60px] rounded-full" />
                 </div>
             </div>
 
             {/* --- Controls Overlay --- */}
             <div className={clsx("absolute top-4 z-50", isPortrait ? "left-8" : "left-4")}>
-                <button onClick={exitGame} className="bg-white/20 hover:bg-white/40 text-slate-700 backdrop-blur-md border border-white/30 shadow-sm rounded-full p-2.5 transition-all active:scale-95" title="退出游戏">
+                <button
+                    onClick={exitGame}
+                    className={clsx(
+                        "backdrop-blur-md border shadow-sm rounded-full p-2.5 transition-all active:scale-95",
+                        isDay
+                            ? "bg-white/20 hover:bg-white/40 text-slate-700 border-white/30"
+                            : "bg-slate-800/40 hover:bg-slate-800/60 text-slate-200 border-slate-700/30"
+                    )}
+                    title="退出游戏"
+                >
                     <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" /></svg>
                 </button>
             </div>
@@ -109,29 +118,47 @@ const GameRoomView = () => {
             <div className={clsx("absolute top-4 z-50 flex items-center gap-2", isPortrait ? "right-8" : "right-4")}>
                 {/* --- Replay Perspective Switcher (Visible in Replay Mode) --- */}
                 {isReplayMode && (
-                    <div className="bg-white/30 backdrop-blur-md border border-white/40 rounded-full p-1 flex mr-2">
+                    <div className={clsx(
+                        "backdrop-blur-md border rounded-full p-1 flex mr-2 transition-all duration-1000",
+                        isDay
+                            ? "bg-white/30 border-white/40"
+                            : "bg-slate-800/40 border-slate-700/30"
+                    )}>
                         <button
                             onClick={() => setPerspective('GOOD')}
-                            className={clsx("px-3 py-1 rounded-full text-xs font-bold transition-all", perspective === 'GOOD' ? "bg-white text-indigo-600 shadow-sm" : "text-slate-600 hover:bg-white/50")}
+                            className={clsx(
+                                "px-3 py-1 rounded-full text-xs font-bold transition-all",
+                                perspective === 'GOOD'
+                                    ? (isDay ? "bg-white text-indigo-600 shadow-sm" : "bg-slate-700 text-white shadow-sm")
+                                    : (isDay ? "text-slate-600 hover:bg-white/50" : "text-slate-400 hover:bg-slate-800/50")
+                            )}
                         >
                             好人
                         </button>
                         <button
                             onClick={() => setPerspective('WOLF')}
-                            className={clsx("px-3 py-1 rounded-full text-xs font-bold transition-all", perspective === 'WOLF' ? "bg-red-500 text-white shadow-sm" : "text-slate-600 hover:bg-white/50")}
+                            className={clsx(
+                                "px-3 py-1 rounded-full text-xs font-bold transition-all",
+                                perspective === 'WOLF'
+                                    ? "bg-red-500 text-white shadow-sm"
+                                    : (isDay ? "text-slate-600 hover:bg-white/50" : "text-slate-400 hover:bg-slate-800/50")
+                            )}
                         >
                             狼人
                         </button>
                         <button
                             onClick={() => setPerspective('GOD')}
-                            className={clsx("px-3 py-1 rounded-full text-xs font-bold transition-all", perspective === 'GOD' ? "bg-indigo-600 text-white shadow-sm" : "text-slate-600 hover:bg-white/50")}
+                            className={clsx(
+                                "px-3 py-1 rounded-full text-xs font-bold transition-all",
+                                perspective === 'GOD'
+                                    ? (isDay ? "bg-indigo-600 text-white shadow-sm" : "bg-indigo-600 text-white shadow-sm")
+                                    : (isDay ? "text-slate-600 hover:bg-white/50" : "text-slate-400 hover:bg-slate-800/50")
+                            )}
                         >
                             上帝
                         </button>
                     </div>
                 )}
-
-
             </div>
 
             {/* --- Top Player Row --- */}
@@ -155,23 +182,26 @@ const GameRoomView = () => {
                 isPortrait ? "px-8" : "px-4"
             )}>
                 <div className={clsx(
-                    "w-full h-full max-h-full transition-all duration-1000 relative flex flex-col shadow-[0_8px_32px_0_rgba(31,38,135,0.15)]",
+                    "w-full h-full max-h-full transition-all duration-1000 relative flex flex-col",
                     isPortrait ? "py-3 rounded-xl max-w-full" : "py-6 rounded-3xl max-w-6xl", // Tighter padding & radius for portrait
-                    "bg-white/60 backdrop-blur-xl border border-white/50 ring-1 ring-white/60",
-                    "text-slate-800"
+                    isDay
+                        ? "bg-white/60 backdrop-blur-xl border border-white/50 ring-1 ring-white/60 text-slate-800 shadow-[0_8px_32px_0_rgba(31,38,135,0.15)]"
+                        : "bg-slate-900/65 backdrop-blur-xl border border-slate-800/60 ring-1 ring-slate-800/40 text-slate-100 shadow-[0_8px_32px_rgba(0,0,0,0.5)]"
                 )}>
                     <div className={clsx(
-                        "flex-none flex justify-between items-center border-b border-slate-900/5",
+                        "flex-none flex justify-between items-center border-b",
+                        isDay ? "border-slate-900/5" : "border-slate-100/10",
                         isPortrait ? "mb-2 pb-1 px-3" : "mb-4 pb-2 px-6"
                     )}>
                         <div className="flex items-center gap-3">
                             <span className="text-xs font-bold opacity-50 tracking-widest">DAY {turnCount}</span>
                             <span className={clsx(
                                 "text-xs font-bold px-3 py-1 rounded-full transition-colors shadow-sm",
-                                isDay ? "bg-orange-100 text-orange-700" : "bg-indigo-100 text-indigo-700"
+                                isDay 
+                                    ? "bg-orange-100 text-orange-700" 
+                                    : "bg-indigo-950/80 text-indigo-300 border border-indigo-900/30"
                             )}>
                                 {perspective === 'GOD' ? PHASE_LABELS[phase] : (isDay ? "白天" : "夜晚")}
-
                             </span>
                         </div>
                         <div className="flex items-center gap-2">
@@ -181,7 +211,9 @@ const GameRoomView = () => {
                                         onClick={() => setIsAuto(!isAuto)}
                                         className={clsx(
                                             "px-3 py-1.5 rounded-lg text-xs font-bold transition-all shadow-sm flex items-center gap-1.5",
-                                            isAuto ? "bg-emerald-500 text-white shadow-emerald-500/30" : "bg-slate-200 text-slate-600 hover:bg-slate-300"
+                                            isAuto 
+                                                ? "bg-emerald-500 text-white shadow-emerald-500/30" 
+                                                : (isDay ? "bg-slate-200 text-slate-600 hover:bg-slate-300" : "bg-slate-800 text-slate-300 hover:bg-slate-700")
                                         )}
                                     >
                                         {isAuto ? (
