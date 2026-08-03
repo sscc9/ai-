@@ -34,54 +34,16 @@ const HumanInputPanel = () => {
     const [text, setText] = useState('');
     const [targetId, setTargetId] = useState<number | null>(null);
     const [isListening, setIsListening] = useState(false);
-    const [isCollapsed, setIsCollapsed] = useState(false);
 
     // Reset when turn changes
     useEffect(() => {
         if (isMyTurn) {
             setText('');
             setTargetId(null);
-            setIsCollapsed(false); // Auto-expand when it's your turn
         }
     }, [isMyTurn, phase]); // Also reset on phase change
 
     if (!isMyTurn || !humanPlayer || isReplayMode || isTheaterMode) return null;
-
-    // Collapsed mini-bar mode
-    if (isCollapsed) {
-        return (
-            <div className={clsx(
-                "fixed bottom-0 left-0 right-0 z-[100] p-3 transition-all duration-300",
-                isDay
-                    ? "bg-white/90 backdrop-blur-2xl border-t border-white/50 shadow-[0_-4px_20px_rgba(0,0,0,0.08)]"
-                    : "bg-[#0b0f19]/90 backdrop-blur-2xl border-t border-slate-800 shadow-[0_-4px_20px_rgba(0,0,0,0.3)]"
-            )}>
-                <div className="max-w-4xl mx-auto flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                        <span className={clsx("font-bold text-sm", isDay ? "text-indigo-600" : "text-indigo-400")}>你的回合</span>
-                        <span className={clsx(
-                            "px-2 py-0.5 text-[10px] font-bold rounded-full uppercase tracking-wider",
-                            isDay ? "bg-indigo-100 text-indigo-700" : "bg-indigo-950/80 text-indigo-300 border border-indigo-900/30"
-                        )}>
-                            {humanPlayer.role}
-                        </span>
-                    </div>
-                    <button
-                        onClick={() => setIsCollapsed(false)}
-                        className={clsx(
-                            "flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-bold transition-all",
-                            isDay
-                                ? "bg-indigo-600 text-white hover:bg-indigo-700 shadow-sm"
-                                : "bg-indigo-600 text-white hover:bg-indigo-700 shadow-sm"
-                        )}
-                    >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" /></svg>
-                        展开操作面板
-                    </button>
-                </div>
-            </div>
-        );
-    }
 
 
     const aliveEveryone = players.filter(p => p.status === PlayerStatus.ALIVE);
@@ -227,32 +189,19 @@ const HumanInputPanel = () => {
                             </span>
                         )}
                     </div>
-                    <div className="flex items-center gap-2">
-                        {!isVoting && !isChoosingCampaign && !isChoosingDirection && (
-                            <button
-                                onClick={startListening}
-                                className={clsx(
-                                    "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all duration-300",
-                                    isListening 
-                                        ? "bg-red-500 text-white animate-pulse" 
-                                        : (isDay ? "bg-slate-100 text-slate-600 hover:bg-slate-200" : "bg-slate-800 text-slate-300 hover:bg-slate-700")
-                                )}
-                            >
-                                {isListening ? "正在聆听..." : "🎤 语音转文字"}
-                            </button>
-                        )}
+                    {!isVoting && !isChoosingCampaign && !isChoosingDirection && (
                         <button
-                            onClick={() => setIsCollapsed(true)}
+                            onClick={startListening}
                             className={clsx(
-                                "flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-bold transition-all duration-300",
-                                isDay ? "bg-slate-100 text-slate-500 hover:bg-slate-200" : "bg-slate-800 text-slate-400 hover:bg-slate-700"
+                                "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all duration-300",
+                                isListening 
+                                    ? "bg-red-500 text-white animate-pulse" 
+                                    : (isDay ? "bg-slate-100 text-slate-600 hover:bg-slate-200" : "bg-slate-800 text-slate-300 hover:bg-slate-700")
                             )}
-                            title="收起面板查看消息"
                         >
-                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
-                            收起
+                            {isListening ? "正在聆听..." : "🎤 语音转文字"}
                         </button>
-                    </div>
+                    )}
                 </div>
 
                 {isChoosingCampaign ? (
