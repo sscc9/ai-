@@ -40,7 +40,7 @@ const BgmController: React.FC = () => {
         bgm.setVolume(globalConfig.bgmVolume ?? 0.2);
 
         if (!bgmEnabled || !isActiveGamePhase(phase)) {
-            bgm.stop();
+            bgm.fadeOut();
         } else {
             const track = isNightPhase(phase) ? 'night' : 'day';
             bgm.play(track);
@@ -56,7 +56,7 @@ const BgmController: React.FC = () => {
         if (!bgmEnabled) return;
 
         if (!isActiveGamePhase(phase)) {
-            bgm.stop();
+            bgm.fadeOut();
             return;
         }
 
