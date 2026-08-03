@@ -37,15 +37,21 @@ const HumanInputPanel = () => {
     const [isCollapsed, setIsCollapsed] = useState(false);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
 
+    // Auto-resize textarea when text changes or panel expands
+    useEffect(() => {
+        if (textareaRef.current && !isCollapsed) {
+            textareaRef.current.style.height = '44px'; // Reset to min height to allow shrinking
+            const scrollHeight = textareaRef.current.scrollHeight;
+            textareaRef.current.style.height = `${Math.min(scrollHeight, 120)}px`;
+        }
+    }, [text, isCollapsed]);
+
     // Reset when turn changes
     useEffect(() => {
         if (isMyTurn) {
             setText('');
             setTargetId(null);
             setIsCollapsed(false); // Auto-expand when turn starts
-            if (textareaRef.current) {
-                textareaRef.current.style.height = '44px'; // Reset height
-            }
         }
     }, [isMyTurn, phase]); // Also reset on phase change
 
@@ -208,53 +214,35 @@ const HumanInputPanel = () => {
                     </div>
                 ) : (
                     <div className="flex flex-col gap-2">
-                        {/* Header Row: Role, Instruction, Voice Typing & Collapse Button */}
-                        <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800/80 pb-2 mb-1">
+                        {/* Header Row when Expanded */}
+                        <div className="flex items-center justify-between py-1 mb-1">
                             <div className="flex items-center gap-2">
-                                <span className={clsx("font-bold text-xs", isDay ? "text-indigo-600" : "text-indigo-400")}>你的回合</span>
-                                <span className={clsx(
-                                    "px-2 py-0.5 text-[9px] font-bold rounded-full uppercase tracking-wider",
-                                    isDay ? "bg-indigo-100 text-indigo-700" : "bg-indigo-950/80 text-indigo-300 border border-indigo-900/30"
-                                )}>
-                                    {humanPlayer.role}
+                                <span className={clsx("font-bold text-sm", isDay ? "text-indigo-600" : "text-indigo-400")}>
+                                    你的回合 ({humanPlayer.role})
                                 </span>
                                 {instruction && (
                                     <span className={clsx(
-                                        "text-[11px] font-medium border-l pl-2 ml-1 transition-all duration-1000",
+                                        "text-xs font-medium border-l pl-2 ml-1 max-w-[250px] truncate",
                                         isDay ? "text-slate-500 border-slate-200" : "text-slate-400 border-slate-800"
                                     )}>
                                         {instruction}
                                     </span>
                                 )}
                             </div>
-                            <div className="flex items-center gap-2">
-                                {!isVoting && !isChoosingCampaign && !isChoosingDirection && (
-                                    <button
-                                        onClick={startListening}
-                                        className={clsx(
-                                            "flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all duration-300",
-                                            isListening 
-                                                ? "bg-red-500 text-white animate-pulse" 
-                                                : (isDay ? "bg-slate-100 text-slate-600 hover:bg-slate-200" : "bg-slate-800 text-slate-300 hover:bg-slate-700")
-                                        )}
-                                    >
-                                        {isListening ? "正在聆听..." : "🎤 语音转文字"}
-                                    </button>
+                            <button
+                                onClick={() => setIsCollapsed(true)}
+                                className={clsx(
+                                    "flex items-center gap-1 px-3 py-1.5 rounded-full text-[11px] font-bold transition-all shadow-sm active:scale-95",
+                                    isDay ? "bg-slate-100 hover:bg-slate-200 text-slate-600" : "bg-slate-800 hover:bg-slate-700 text-slate-300"
                                 )}
-                                <button
-                                    onClick={() => setIsCollapsed(true)}
-                                    className={clsx(
-                                        "flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all duration-300",
-                                        isDay ? "bg-slate-100 text-slate-600 hover:bg-slate-200" : "bg-slate-800 text-slate-300 hover:bg-slate-700"
-                                    )}
-                                    title="收起发言面板"
-                                >
-                                    <span>收起 ▽</span>
-                                </button>
-                            </div>
+                            >
+                                <span>收起面板</span>
+                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                </svg>
+                            </button>
                         </div>
 
-                        {/* Content Area */}
                         {isChoosingCampaign ? (
                             <div className="flex gap-3 justify-end py-1">
                                 <button
@@ -296,20 +284,14 @@ const HumanInputPanel = () => {
                                 <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-end">
                                     {/* Speech text input (if not voting) */}
                                     {!isVoting && (
-                                        <div className="flex-grow">
+                                        <div className="flex-grow w-full">
                                             <textarea
                                                 ref={textareaRef}
                                                 value={text}
-                                                onChange={(e) => {
-                                                    setText(e.target.value);
-                                                    e.target.style.height = 'auto';
-                                                    e.target.style.height = `${Math.min(e.target.scrollHeight, 150)}px`;
-                                                }}
-                                                rows={1}
-                                                style={{ height: '44px', minHeight: '44px', maxHeight: '150px' }}
+                                                onChange={(e) => setText(e.target.value)}
                                                 placeholder="输入你的发言或选择目标的理由..."
                                                 className={clsx(
-                                                    "w-full px-3 py-2.5 text-xs rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all resize-none shadow-sm font-medium",
+                                                    "w-full min-h-[44px] p-2.5 text-xs rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all resize-none shadow-sm font-medium leading-relaxed overflow-y-auto",
                                                     isDay
                                                         ? "bg-white border border-slate-200 text-slate-800 placeholder:text-slate-400"
                                                         : "bg-slate-800/40 border border-slate-750 text-slate-100 placeholder:text-slate-500"
@@ -319,10 +301,10 @@ const HumanInputPanel = () => {
                                     )}
 
                                     {/* Target input and Submit controls */}
-                                    <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 shrink-0 justify-between sm:justify-end">
+                                    <div className="flex flex-wrap items-center gap-2 shrink-0 justify-between sm:justify-end w-full sm:w-auto">
                                         {needsTarget && (
                                             <div className={clsx(
-                                                "flex items-center gap-1.5 border px-2.5 rounded-xl shadow-sm h-11",
+                                                "flex items-center gap-1.5 border px-2.5 py-[7px] rounded-xl shadow-sm",
                                                 isDay ? "bg-slate-50 border-slate-200" : "bg-slate-800/40 border-slate-750"
                                             )}>
                                                 <span className={clsx("text-xs font-bold whitespace-nowrap", isDay ? "text-slate-600" : "text-slate-400")}>
@@ -344,7 +326,7 @@ const HumanInputPanel = () => {
                                                     placeholder="输入"
                                                     className={clsx(
                                                         "w-11 py-0.5 text-center text-xs font-bold border rounded-lg focus:outline-none focus:ring-1 focus:ring-indigo-500",
-                                                        isDay ? "bg-white border-slate-350 text-slate-850" : "bg-slate-900 border-slate-700 text-slate-100"
+                                                        isDay ? "bg-white border-slate-300 text-slate-850" : "bg-slate-900 border-slate-700 text-slate-100"
                                                     )}
                                                 />
                                                 <span className={clsx("text-xs font-bold mr-1.5", isDay ? "text-slate-600" : "text-slate-400")}>号</span>
@@ -359,7 +341,7 @@ const HumanInputPanel = () => {
                                                                 "px-2 py-0.5 rounded text-[10px] font-bold border transition-colors",
                                                                 targetId === 0
                                                                     ? "bg-emerald-600 border-emerald-600 text-white"
-                                                                    : (isDay ? "bg-white border-slate-200 text-slate-650 hover:bg-slate-100" : "bg-slate-900 border-slate-700 text-slate-300 hover:bg-slate-800")
+                                                                    : (isDay ? "bg-white border-slate-200 text-slate-600 hover:bg-slate-100" : "bg-slate-900 border-slate-700 text-slate-300 hover:bg-slate-800")
                                                             )}
                                                         >
                                                             救人
@@ -373,7 +355,7 @@ const HumanInputPanel = () => {
                                                                 "px-2 py-0.5 rounded text-[10px] font-bold border transition-colors",
                                                                 targetId === null
                                                                     ? "bg-red-650 border-red-650 text-white"
-                                                                    : (isDay ? "bg-white border-slate-200 text-slate-650 hover:bg-slate-100" : "bg-slate-900 border-slate-700 text-slate-300 hover:bg-slate-800")
+                                                                    : (isDay ? "bg-white border-slate-200 text-slate-600 hover:bg-slate-100" : "bg-slate-900 border-slate-700 text-slate-300 hover:bg-slate-800")
                                                             )}
                                                         >
                                                             撕警徽
@@ -387,7 +369,7 @@ const HumanInputPanel = () => {
                                                                 "px-2 py-0.5 rounded text-[10px] font-bold border transition-colors",
                                                                 targetId === null
                                                                     ? "bg-slate-700 border-slate-700 text-white"
-                                                                    : (isDay ? "bg-white border-slate-200 text-slate-650 hover:bg-slate-100" : "bg-slate-900 border-slate-700 text-slate-300 hover:bg-slate-800")
+                                                                    : (isDay ? "bg-white border-slate-200 text-slate-600 hover:bg-slate-100" : "bg-slate-900 border-slate-700 text-slate-300 hover:bg-slate-800")
                                                             )}
                                                         >
                                                             {isVoting ? "弃票" : "不操作"}
@@ -397,12 +379,12 @@ const HumanInputPanel = () => {
                                             </div>
                                         )}
 
-                                        <div className="flex gap-2 items-center h-11 shrink-0">
+                                        <div className="flex gap-2 items-center">
                                             {isCandidateSpeaking && (
                                                 <button
                                                     onClick={handleQuitCampaign}
                                                     className={clsx(
-                                                        "px-3.5 h-full rounded-xl text-xs font-bold border transition-all active:scale-[0.97] flex items-center justify-center",
+                                                        "px-3.5 py-1.5 rounded-xl text-xs font-bold border transition-all active:scale-[0.97]",
                                                         isDay
                                                             ? "bg-red-50 hover:bg-red-100 text-red-700 border-red-200"
                                                             : "bg-red-950/20 hover:bg-red-950/40 text-red-400 border-red-900/30"
@@ -415,7 +397,7 @@ const HumanInputPanel = () => {
                                                 onClick={handleSubmit}
                                                 disabled={needsTarget && targetId !== null && !targetCandidates.some(p => p.id === targetId) && !(phase === GamePhase.WITCH_ACTION && targetId === 0)}
                                                 className={clsx(
-                                                    "px-5 h-full bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 text-white rounded-xl font-bold text-xs shadow-sm transition-all active:scale-[0.97] flex items-center justify-center",
+                                                    "px-4 py-2 bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 text-white rounded-xl font-bold text-xs shadow-sm transition-all active:scale-[0.97]",
                                                     "disabled:from-slate-400 disabled:to-slate-400 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none"
                                                 )}
                                             >
@@ -432,8 +414,8 @@ const HumanInputPanel = () => {
                                         <span>可选目标号码: [{targetCandidates.map(p => p.id).join(', ')}] 号</span>
                                     </div>
                                 )}
-                            </div>
-                        )}
+                        </div>
+                    )}
                     </div>
                 )}
             </div>
