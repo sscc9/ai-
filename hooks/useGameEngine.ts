@@ -183,7 +183,7 @@ export const useGameEngine = () => {
         const count = config.playerCount;
         // 把每一个角色都列出来，不要统计数量
         const roleList = config.roles.map(r => ROLE_INFO[r].label).join('，');
-        return `${count}人局（带警徽）：${roleList}。`;
+        return `${count}人局（有警徽）：${roleList}。`;
     }, [config]);
 
     // --- Human Input Waiter ---
