@@ -8,6 +8,10 @@ import { GamePhase } from '../types';
 // Ambient audio elements kept outside component to persist across re-renders
 let rainAudio: HTMLAudioElement | null = null;
 let thunderAudio: HTMLAudioElement | null = null;
+let rainFadeInterval: ReturnType<typeof setInterval> | null = null;
+
+const RAIN_FADE_DURATION = 1500; // 1.5s fade in/out
+const RAIN_FADE_STEP = 30; // ms per step
 
 const WeatherBackground: React.FC = () => {
     const phase = useAtomValue(gamePhaseAtom);
@@ -45,31 +49,69 @@ const WeatherBackground: React.FC = () => {
         lastPhaseRef.current = phase;
     }, [phase, setWeather]);
 
-    // Handle Rain audio loop
+    // Handle Rain audio loop with fade in/out
     useEffect(() => {
         const isGameScreen = screen === 'GAME';
         const shouldPlayRain = isGameScreen && bgmEnabled && !isDay && (weather === GameWeather.RAINY || weather === GameWeather.THUNDERSTORM);
+        const targetVolume = bgmVolume * 0.45;
+
+        // Clear any ongoing fade
+        if (rainFadeInterval) {
+            clearInterval(rainFadeInterval);
+            rainFadeInterval = null;
+        }
 
         if (shouldPlayRain) {
             if (!rainAudio) {
                 rainAudio = new Audio('/bgm/rain.mp3');
                 rainAudio.loop = true;
             }
-            // Set rain volume to be softer than the main music
-            rainAudio.volume = bgmVolume * 0.45;
             if (rainAudio.paused) {
+                // Start from silence and fade in
+                rainAudio.volume = 0;
                 rainAudio.play().catch(e => console.warn("Rain audio autoplay blocked:", e));
             }
+            // Fade in to target volume
+            const steps = RAIN_FADE_DURATION / RAIN_FADE_STEP;
+            const volumeIncrement = (targetVolume - rainAudio.volume) / steps;
+            if (volumeIncrement > 0.0001) {
+                rainFadeInterval = setInterval(() => {
+                    if (!rainAudio) { clearInterval(rainFadeInterval!); rainFadeInterval = null; return; }
+                    const newVol = Math.min(rainAudio.volume + volumeIncrement, targetVolume);
+                    rainAudio.volume = newVol;
+                    if (newVol >= targetVolume - 0.001) {
+                        rainAudio.volume = targetVolume;
+                        clearInterval(rainFadeInterval!);
+                        rainFadeInterval = null;
+                    }
+                }, RAIN_FADE_STEP);
+            } else {
+                // Already near target, just set it
+                rainAudio.volume = targetVolume;
+            }
         } else {
+            // Fade out then pause
             if (rainAudio && !rainAudio.paused) {
-                rainAudio.pause();
+                const steps = RAIN_FADE_DURATION / RAIN_FADE_STEP;
+                const volumeDecrement = rainAudio.volume / steps;
+                rainFadeInterval = setInterval(() => {
+                    if (!rainAudio) { clearInterval(rainFadeInterval!); rainFadeInterval = null; return; }
+                    const newVol = Math.max(rainAudio.volume - volumeDecrement, 0);
+                    rainAudio.volume = newVol;
+                    if (newVol <= 0.001) {
+                        rainAudio.volume = 0;
+                        rainAudio.pause();
+                        clearInterval(rainFadeInterval!);
+                        rainFadeInterval = null;
+                    }
+                }, RAIN_FADE_STEP);
             }
         }
 
         return () => {
-            // Volume sync on change
-            if (rainAudio) {
-                rainAudio.volume = bgmVolume * 0.45;
+            if (rainFadeInterval) {
+                clearInterval(rainFadeInterval);
+                rainFadeInterval = null;
             }
         };
     }, [weather, screen, bgmEnabled, bgmVolume, isDay]);
