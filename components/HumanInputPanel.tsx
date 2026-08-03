@@ -324,10 +324,10 @@ const HumanInputPanel = () => {
                                     )}
 
                                     {/* Target input and Submit controls */}
-                                    <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 shrink-0 justify-between sm:justify-end w-full sm:w-auto sm:self-center">
+                                    <div className="flex flex-row items-center gap-2 shrink-0 justify-between sm:justify-end w-full sm:w-auto sm:self-center">
                                         {needsTarget && (
                                             <div className={clsx(
-                                                "flex items-center gap-1.5 border px-2.5 py-1.5 rounded-xl shadow-sm w-full sm:w-auto justify-between sm:justify-start",
+                                                "flex items-center gap-1.5 border px-2.5 py-1.5 rounded-xl shadow-sm justify-start",
                                                 isDay ? "bg-slate-50 border-slate-200" : "bg-slate-800/40 border-slate-750"
                                             )}>
                                                 <div className="flex items-center gap-1.5">
@@ -404,7 +404,7 @@ const HumanInputPanel = () => {
                                             </div>
                                         )}
 
-                                        <div className="flex gap-2 items-center shrink-0">
+                                        <div className="flex gap-2 items-center shrink-0 ml-auto sm:ml-0">
                                             {isCandidateSpeaking && (
                                                 <button
                                                     onClick={handleQuitCampaign}
