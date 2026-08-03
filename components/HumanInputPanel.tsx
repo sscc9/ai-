@@ -186,7 +186,7 @@ const HumanInputPanel = () => {
                 ? "bg-white/95 backdrop-blur-2xl border-t border-white/50 shadow-[0_-10px_40px_rgba(0,0,0,0.1)]"
                 : "bg-[#0b0f19]/95 backdrop-blur-2xl border-t border-slate-800 shadow-[0_-10px_40px_rgba(0,0,0,0.4)]"
         )}>
-            <div className="max-w-4xl mx-auto">
+            <div className="max-w-6xl mx-auto w-full px-2 sm:px-4">
                 {isCollapsed ? (
                     <div className="flex items-center justify-between py-1">
                         <div className="flex items-center gap-2">
