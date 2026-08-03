@@ -147,6 +147,12 @@ export const exitGameAtom = atom(null, (get, set) => {
     set(isAutoPlayAtom, false);
     set(isTheaterModeAtom, false);
     set(isPlayingAudioAtom, false);
+    set(currentSpeakerIdAtom, null);
+
+    // Actually stop any playing TTS audio
+    import('./audio').then(({ AudioService }) => {
+        AudioService.getInstance().stop();
+    });
 });
 
 // Add current game to Archives
