@@ -34,12 +34,14 @@ const HumanInputPanel = () => {
     const [text, setText] = useState('');
     const [targetId, setTargetId] = useState<number | null>(null);
     const [isListening, setIsListening] = useState(false);
+    const [isCollapsed, setIsCollapsed] = useState(false);
 
     // Reset when turn changes
     useEffect(() => {
         if (isMyTurn) {
             setText('');
             setTargetId(null);
+            setIsCollapsed(false); // Auto-expand when turn starts
         }
     }, [isMyTurn, phase]); // Also reset on phase change
 
@@ -165,190 +167,235 @@ const HumanInputPanel = () => {
 
     return (
         <div className={clsx(
-            "fixed bottom-0 left-0 right-0 z-[100] p-4 animate-slide-up transition-all duration-1000",
+            "fixed bottom-0 left-0 right-0 z-[100] p-4 transition-all duration-300",
             isDay
-                ? "bg-white/90 backdrop-blur-2xl border-t border-white/50 shadow-[0_-10px_40px_rgba(0,0,0,0.1)]"
-                : "bg-[#0b0f19]/90 backdrop-blur-2xl border-t border-slate-800 shadow-[0_-10px_40px_rgba(0,0,0,0.4)]"
+                ? "bg-white/95 backdrop-blur-2xl border-t border-white/50 shadow-[0_-10px_40px_rgba(0,0,0,0.1)]"
+                : "bg-[#0b0f19]/95 backdrop-blur-2xl border-t border-slate-800 shadow-[0_-10px_40px_rgba(0,0,0,0.4)]"
         )}>
-            <div className="max-w-4xl mx-auto space-y-4">
-                <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                        <span className={clsx("font-bold", isDay ? "text-indigo-600" : "text-indigo-400")}>你的回合</span>
-                        <span className={clsx(
-                            "px-2 py-0.5 text-[10px] font-bold rounded-full uppercase tracking-wider",
-                            isDay ? "bg-indigo-100 text-indigo-700" : "bg-indigo-950/80 text-indigo-300 border border-indigo-900/30"
-                        )}>
-                            {humanPlayer.role}
-                        </span>
-                        {instruction && (
-                            <span className={clsx(
-                                "text-xs font-medium border-l pl-2 ml-1 transition-all duration-1000",
-                                isDay ? "text-slate-500 border-slate-200" : "text-slate-400 border-slate-800"
-                            )}>
-                                {instruction}
+            <div className="max-w-4xl mx-auto">
+                {isCollapsed ? (
+                    <div className="flex items-center justify-between py-1">
+                        <div className="flex items-center gap-2">
+                            <span className="relative flex h-2 w-2">
+                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
+                                <span className="relative inline-flex rounded-full h-2 w-2 bg-indigo-500"></span>
                             </span>
-                        )}
-                    </div>
-                    {!isVoting && !isChoosingCampaign && !isChoosingDirection && (
-                        <button
-                            onClick={startListening}
-                            className={clsx(
-                                "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all duration-300",
-                                isListening 
-                                    ? "bg-red-500 text-white animate-pulse" 
-                                    : (isDay ? "bg-slate-100 text-slate-600 hover:bg-slate-200" : "bg-slate-800 text-slate-300 hover:bg-slate-700")
+                            <span className={clsx("font-bold text-sm", isDay ? "text-indigo-600" : "text-indigo-400")}>
+                                你的回合 ({humanPlayer.role})
+                            </span>
+                            {instruction && (
+                                <span className={clsx(
+                                    "text-xs font-medium border-l pl-2 ml-1 hidden sm:inline max-w-[250px] truncate",
+                                    isDay ? "text-slate-500 border-slate-200" : "text-slate-400 border-slate-800"
+                                )}>
+                                    {instruction}
+                                </span>
                             )}
-                        >
-                            {isListening ? "正在聆听..." : "🎤 语音转文字"}
-                        </button>
-                    )}
-                </div>
-
-                {isChoosingCampaign ? (
-                    <div className="flex gap-4">
+                        </div>
                         <button
-                            onClick={() => handleChooseCampaign(true)}
-                            className="flex-1 py-4 bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-600 hover:to-yellow-600 text-white rounded-2xl font-bold text-lg shadow-lg shadow-amber-100 transition-all active:scale-[0.98]"
+                            onClick={() => setIsCollapsed(false)}
+                            className="flex items-center gap-1.5 px-4 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full text-xs font-bold transition-all shadow-md active:scale-95"
                         >
-                            我要上警竞选警长
-                        </button>
-                        <button
-                            onClick={() => handleChooseCampaign(false)}
-                            className="flex-1 py-4 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-2xl font-bold text-lg shadow-sm transition-all active:scale-[0.98]"
-                        >
-                            留在警下投票
-                        </button>
-                    </div>
-                ) : isChoosingDirection ? (
-                    <div className="flex gap-4">
-                        <button
-                            onClick={() => handleChooseDirection("LEFT")}
-                            className="flex-1 py-4 bg-gradient-to-r from-indigo-500 to-blue-500 hover:from-indigo-600 hover:to-blue-600 text-white rounded-2xl font-bold text-lg shadow-lg shadow-indigo-100 transition-all active:scale-[0.98]"
-                        >
-                            从左边开始 (顺时针)
-                        </button>
-                        <button
-                            onClick={() => handleChooseDirection("RIGHT")}
-                            className="flex-1 py-4 bg-gradient-to-r from-indigo-500 to-blue-500 hover:from-indigo-600 hover:to-blue-600 text-white rounded-2xl font-bold text-lg shadow-lg shadow-indigo-100 transition-all active:scale-[0.98]"
-                        >
-                            从右边开始 (逆时针)
+                            <span>展开面板行动</span>
+                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+                            </svg>
                         </button>
                     </div>
                 ) : (
-                    <>
-                        {!isVoting && (
-                            <textarea
-                                value={text}
-                                onChange={(e) => setText(e.target.value)}
-                                placeholder="输入你的发言或理由..."
-                                className={clsx(
-                                    "w-full h-20 p-3 rounded-2xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all resize-none shadow-sm font-medium",
-                                    isDay
-                                        ? "bg-white/50 border border-slate-200 text-slate-800 placeholder:text-slate-400"
-                                        : "bg-slate-800/40 border border-slate-750 text-slate-100 placeholder:text-slate-500"
-                                )}
-                            />
-                        )}
-
-                        {needsTarget && (
-                            <div className="space-y-2">
-                                <label className={clsx(
-                                    "text-[10px] font-bold uppercase tracking-widest ml-1 transition-all duration-1000",
-                                    isDay ? "text-slate-500" : "text-slate-400"
+                    <div className="space-y-4">
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                                <span className={clsx("font-bold", isDay ? "text-indigo-600" : "text-indigo-400")}>你的回合</span>
+                                <span className={clsx(
+                                    "px-2 py-0.5 text-[10px] font-bold rounded-full uppercase tracking-wider",
+                                    isDay ? "bg-indigo-100 text-indigo-700" : "bg-indigo-950/80 text-indigo-300 border border-indigo-900/30"
                                 )}>
-                                    {phase === GamePhase.WITCH_ACTION ? "选择操作目标 (可选)" : "选择目标"}
-                                </label>
-                                <div className="flex flex-wrap gap-2">
-                                    {targetCandidates.map(p => (
-                                        <button
-                                            key={p.id}
-                                            onClick={() => setTargetId(p.id)}
-                                            className={clsx(
-                                                "px-4 py-2 rounded-xl text-sm font-bold transition-all border",
-                                                targetId === p.id
-                                                    ? (isDay ? "bg-indigo-600 border-indigo-600 text-white shadow-lg shadow-indigo-100" : "bg-indigo-600 border-indigo-600 text-white shadow-lg shadow-indigo-950/50")
-                                                    : (isDay 
-                                                        ? "bg-white border-slate-200 text-slate-600 hover:border-indigo-300 shadow-sm" 
-                                                        : "bg-slate-800 border-slate-750 text-slate-300 hover:border-indigo-500/50 shadow-sm")
-                                            )}
-                                        >
-                                            {p.id}号
-                                        </button>
-                                    ))}
-                                    {phase === GamePhase.WITCH_ACTION && (
-                                        <button
-                                            onClick={() => setTargetId(targetId === 0 ? null : 0)}
-                                            className={clsx(
-                                                "px-4 py-2 rounded-xl text-sm font-bold transition-all border",
-                                                targetId === 0
-                                                    ? (isDay ? "bg-emerald-600 border-emerald-600 text-white shadow-lg shadow-emerald-100" : "bg-emerald-600 border-emerald-600 text-white shadow-lg shadow-emerald-950/50")
-                                                    : (isDay 
-                                                        ? "bg-white border-slate-200 text-slate-600 hover:border-emerald-300 shadow-sm" 
-                                                        : "bg-slate-800 border-slate-750 text-slate-300 hover:border-emerald-500/50 shadow-sm")
-                                            )}
-                                        >
-                                            使用解药 (救人)
-                                        </button>
-                                    )}
-                                    {phase === GamePhase.SHERIFF_TRANS && (
-                                        <button
-                                            onClick={() => setTargetId(null)}
-                                            className={clsx(
-                                                "px-4 py-2 rounded-xl text-sm font-bold transition-all border",
-                                                targetId === null
-                                                    ? (isDay ? "bg-red-600 border-red-600 text-white shadow-lg shadow-red-100" : "bg-red-600 border-red-600 text-white shadow-lg shadow-red-950/50")
-                                                    : (isDay 
-                                                        ? "bg-white border-slate-200 text-slate-600 hover:border-red-300 shadow-sm" 
-                                                        : "bg-slate-800 border-slate-750 text-slate-300 hover:border-red-500/50 shadow-sm")
-                                            )}
-                                        >
-                                            撕毁警徽 (撕警徽)
-                                        </button>
-                                    )}
-                                    {phase !== GamePhase.SHERIFF_TRANS && (
-                                        <button
-                                            onClick={() => setTargetId(null)}
-                                            className={clsx(
-                                                "px-4 py-2 rounded-xl text-sm font-bold transition-all border",
-                                                targetId === null
-                                                    ? (isVoting ? "bg-slate-700 border-slate-700 text-white" : "bg-slate-800 border-slate-800 text-white")
-                                                    : (isDay 
-                                                        ? "bg-white border-slate-200 text-slate-600 hover:border-slate-300 shadow-sm" 
-                                                        : "bg-slate-800 border-slate-750 text-slate-300 hover:border-slate-600/50 shadow-sm")
-                                            )}
-                                        >
-                                            {isVoting ? "弃票" : "弃权/不操作"}
-                                        </button>
-                                    )}
-                                </div>
-                            </div>
-                        )}
-
-                        <div className="flex gap-4">
-                            {isCandidateSpeaking && (
-                                <button
-                                    onClick={handleQuitCampaign}
-                                    className={clsx(
-                                        "px-6 py-4 rounded-2xl font-bold text-lg shadow-sm transition-all active:scale-[0.98]",
-                                        isDay
-                                            ? "bg-red-100 hover:bg-red-200 text-red-700"
-                                            : "bg-red-950/30 hover:bg-red-950/50 text-red-400 border border-red-900/30"
-                                    )}
-                                >
-                                    退水 (退出竞选)
-                                </button>
-                            )}
-                            <button
-                                onClick={handleSubmit}
-                                className={clsx(
-                                    "flex-grow py-4 bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 text-white rounded-2xl font-bold text-lg transition-all active:scale-[0.98]",
-                                    isDay ? "shadow-lg shadow-indigo-100" : "shadow-lg shadow-indigo-950/50"
+                                    {humanPlayer.role}
+                                </span>
+                                {instruction && (
+                                    <span className={clsx(
+                                        "text-xs font-medium border-l pl-2 ml-1 transition-all duration-1000",
+                                        isDay ? "text-slate-500 border-slate-200" : "text-slate-400 border-slate-800"
+                                    )}>
+                                        {instruction}
+                                    </span>
                                 )}
-                            >
-                                确认行动
-                            </button>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                {!isVoting && !isChoosingCampaign && !isChoosingDirection && (
+                                    <button
+                                        onClick={startListening}
+                                        className={clsx(
+                                            "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all duration-300",
+                                            isListening 
+                                                ? "bg-red-500 text-white animate-pulse" 
+                                                : (isDay ? "bg-slate-100 text-slate-600 hover:bg-slate-200" : "bg-slate-800 text-slate-300 hover:bg-slate-700")
+                                        )}
+                                    >
+                                        {isListening ? "正在聆听..." : "🎤 语音转文字"}
+                                    </button>
+                                )}
+                                <button
+                                    onClick={() => setIsCollapsed(true)}
+                                    className={clsx(
+                                        "flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-bold transition-all duration-300",
+                                        isDay ? "bg-slate-100 text-slate-600 hover:bg-slate-200" : "bg-slate-800 text-slate-300 hover:bg-slate-700"
+                                    )}
+                                    title="收起发言面板"
+                                >
+                                    <span>收起 ▽</span>
+                                </button>
+                            </div>
                         </div>
-                    </>
+
+                        {isChoosingCampaign ? (
+                            <div className="flex gap-4">
+                                <button
+                                    onClick={() => handleChooseCampaign(true)}
+                                    className="flex-1 py-4 bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-600 hover:to-yellow-600 text-white rounded-2xl font-bold text-lg shadow-lg shadow-amber-100 transition-all active:scale-[0.98]"
+                                >
+                                    我要上警竞选警长
+                                </button>
+                                <button
+                                    onClick={() => handleChooseCampaign(false)}
+                                    className="flex-1 py-4 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-2xl font-bold text-lg shadow-sm transition-all active:scale-[0.98]"
+                                >
+                                    留在警下投票
+                                </button>
+                            </div>
+                        ) : isChoosingDirection ? (
+                            <div className="flex gap-4">
+                                <button
+                                    onClick={() => handleChooseDirection("LEFT")}
+                                    className="flex-1 py-4 bg-gradient-to-r from-indigo-500 to-blue-500 hover:from-indigo-600 hover:to-blue-600 text-white rounded-2xl font-bold text-lg shadow-lg shadow-indigo-100 transition-all active:scale-[0.98]"
+                                >
+                                    从左边开始 (顺时针)
+                                </button>
+                                <button
+                                    onClick={() => handleChooseDirection("RIGHT")}
+                                    className="flex-1 py-4 bg-gradient-to-r from-indigo-500 to-blue-500 hover:from-indigo-600 hover:to-blue-600 text-white rounded-2xl font-bold text-lg shadow-lg shadow-indigo-100 transition-all active:scale-[0.98]"
+                                >
+                                    从右边开始 (逆时针)
+                                </button>
+                            </div>
+                        ) : (
+                            <>
+                                {!isVoting && (
+                                    <textarea
+                                        value={text}
+                                        onChange={(e) => setText(e.target.value)}
+                                        placeholder="输入你的发言或理由..."
+                                        className={clsx(
+                                            "w-full h-20 p-3 rounded-2xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all resize-none shadow-sm font-medium",
+                                            isDay
+                                                ? "bg-white/50 border border-slate-200 text-slate-800 placeholder:text-slate-400"
+                                                : "bg-slate-800/40 border border-slate-750 text-slate-100 placeholder:text-slate-500"
+                                        )}
+                                    />
+                                )}
+
+                                {needsTarget && (
+                                    <div className="space-y-2">
+                                        <label className={clsx(
+                                            "text-[10px] font-bold uppercase tracking-widest ml-1 transition-all duration-1000",
+                                            isDay ? "text-slate-500" : "text-slate-400"
+                                        )}>
+                                            {phase === GamePhase.WITCH_ACTION ? "选择操作目标 (可选)" : "选择目标"}
+                                        </label>
+                                        <div className="flex flex-wrap gap-2">
+                                            {targetCandidates.map(p => (
+                                                <button
+                                                    key={p.id}
+                                                    onClick={() => setTargetId(p.id)}
+                                                    className={clsx(
+                                                        "px-4 py-2 rounded-xl text-sm font-bold transition-all border",
+                                                        targetId === p.id
+                                                            ? (isDay ? "bg-indigo-600 border-indigo-600 text-white shadow-lg shadow-indigo-100" : "bg-indigo-600 border-indigo-600 text-white shadow-lg shadow-indigo-950/50")
+                                                            : (isDay 
+                                                                ? "bg-white border-slate-200 text-slate-600 hover:border-indigo-300 shadow-sm" 
+                                                                : "bg-slate-800 border-slate-750 text-slate-300 hover:border-indigo-500/50 shadow-sm")
+                                                    )}
+                                                >
+                                                    {p.id}号
+                                                </button>
+                                            ))}
+                                            {phase === GamePhase.WITCH_ACTION && (
+                                                <button
+                                                    onClick={() => setTargetId(targetId === 0 ? null : 0)}
+                                                    className={clsx(
+                                                        "px-4 py-2 rounded-xl text-sm font-bold transition-all border",
+                                                        targetId === 0
+                                                            ? (isDay ? "bg-emerald-600 border-emerald-600 text-white shadow-lg shadow-emerald-100" : "bg-emerald-600 border-emerald-600 text-white shadow-lg shadow-emerald-950/50")
+                                                            : (isDay 
+                                                                ? "bg-white border-slate-200 text-slate-600 hover:border-emerald-300 shadow-sm" 
+                                                                : "bg-slate-800 border-slate-750 text-slate-300 hover:border-emerald-500/50 shadow-sm")
+                                                    )}
+                                                >
+                                                    使用解药 (救人)
+                                                </button>
+                                            )}
+                                            {phase === GamePhase.SHERIFF_TRANS && (
+                                                <button
+                                                    onClick={() => setTargetId(null)}
+                                                    className={clsx(
+                                                        "px-4 py-2 rounded-xl text-sm font-bold transition-all border",
+                                                        targetId === null
+                                                            ? (isDay ? "bg-red-600 border-red-600 text-white shadow-lg shadow-red-100" : "bg-red-600 border-red-600 text-white shadow-lg shadow-red-950/50")
+                                                            : (isDay 
+                                                                ? "bg-white border-slate-200 text-slate-600 hover:border-red-300 shadow-sm" 
+                                                                : "bg-slate-800 border-slate-750 text-slate-300 hover:border-red-500/50 shadow-sm")
+                                                    )}
+                                                >
+                                                    撕毁警徽 (撕警徽)
+                                                </button>
+                                            )}
+                                            {phase !== GamePhase.SHERIFF_TRANS && (
+                                                <button
+                                                    onClick={() => setTargetId(null)}
+                                                    className={clsx(
+                                                        "px-4 py-2 rounded-xl text-sm font-bold transition-all border",
+                                                        targetId === null
+                                                            ? (isVoting ? "bg-slate-700 border-slate-700 text-white" : "bg-slate-800 border-slate-800 text-white")
+                                                            : (isDay 
+                                                                ? "bg-white border-slate-200 text-slate-600 hover:border-slate-300 shadow-sm" 
+                                                                : "bg-slate-800 border-slate-750 text-slate-300 hover:border-slate-600/50 shadow-sm")
+                                                    )}
+                                                >
+                                                    {isVoting ? "弃票" : "弃权/不操作"}
+                                                </button>
+                                            )}
+                                        </div>
+                                    </div>
+                                )}
+
+                                <div className="flex gap-4">
+                                    {isCandidateSpeaking && (
+                                        <button
+                                            onClick={handleQuitCampaign}
+                                            className={clsx(
+                                                "px-6 py-4 rounded-2xl font-bold text-lg shadow-sm transition-all active:scale-[0.98]",
+                                                isDay
+                                                    ? "bg-red-100 hover:bg-red-200 text-red-700"
+                                                    : "bg-red-950/30 hover:bg-red-950/50 text-red-400 border border-red-900/30"
+                                            )}
+                                        >
+                                            退水 (退出竞选)
+                                        </button>
+                                    )}
+                                    <button
+                                        onClick={handleSubmit}
+                                        className={clsx(
+                                            "flex-grow py-4 bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 text-white rounded-2xl font-bold text-lg transition-all active:scale-[0.98]",
+                                            isDay ? "shadow-lg shadow-indigo-100" : "shadow-lg shadow-indigo-950/50"
+                                        )}
+                                    >
+                                        确认行动
+                                    </button>
+                                </div>
+                            </>
+                        )}
+                    </div>
                 )}
             </div>
         </div>
