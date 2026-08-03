@@ -91,10 +91,20 @@ export class WerewolfSkill implements Skill {
     // --- Core Builders ---
 
     private buildGameState(context: SkillContext, alivePlayers: Player[], roleConfigStr: string): string {
-        const { phase } = context;
+        const { phase, turnCount } = context;
         const aliveList = alivePlayers.map(p => `${p.id}号`).join('、');
 
+        const isNight = [
+            GamePhase.NIGHT_START,
+            GamePhase.WEREWOLF_ACTION,
+            GamePhase.SEER_ACTION,
+            GamePhase.WITCH_ACTION,
+            GamePhase.GUARD_ACTION
+        ].includes(phase);
+        const timeStr = isNight ? `第${turnCount}晚` : `第${turnCount}天`;
+
         return `
+- 当前时间: ${timeStr}
 - 当前阶段: ${PHASE_LABELS[phase]}
 - 板子配置: ${roleConfigStr}
 - 基础规则:
