@@ -28,24 +28,18 @@ const WeatherBackground: React.FC = () => {
         // Reset weather to SUNNY if game setup or over
         if (phase === GamePhase.SETUP) {
             setWeather(GameWeather.SUNNY);
-        } else if (phase === GamePhase.NIGHT_START || phase === GamePhase.DAY_ANNOUNCE) {
+        } else if (phase === GamePhase.NIGHT_START) {
+            // Only roll weather at night — daytime background is too bright for visual effects
             const roll = Math.random();
             let newWeather = GameWeather.SUNNY;
-
-            if (phase === GamePhase.NIGHT_START) {
-                // Night weather probabilities
-                if (roll < 0.50) newWeather = GameWeather.SUNNY;         // 50% clear starry sky
-                else if (roll < 0.75) newWeather = GameWeather.CLOUDY;   // 25% cloudy
-                else if (roll < 0.90) newWeather = GameWeather.RAINY;    // 15% rainy night
-                else newWeather = GameWeather.THUNDERSTORM;              // 10% thunderstorm
-            } else {
-                // Day weather probabilities
-                if (roll < 0.60) newWeather = GameWeather.SUNNY;         // 60% sunny day
-                else if (roll < 0.85) newWeather = GameWeather.CLOUDY;   // 25% cloudy
-                else if (roll < 0.95) newWeather = GameWeather.RAINY;    // 10% rainy day
-                else newWeather = GameWeather.THUNDERSTORM;              // 5% daytime thunderstorm
-            }
+            if (roll < 0.50) newWeather = GameWeather.SUNNY;         // 50% clear starry sky
+            else if (roll < 0.75) newWeather = GameWeather.CLOUDY;   // 25% cloudy
+            else if (roll < 0.90) newWeather = GameWeather.RAINY;    // 15% rainy night
+            else newWeather = GameWeather.THUNDERSTORM;              // 10% thunderstorm
             setWeather(newWeather);
+        } else if (phase === GamePhase.DAY_ANNOUNCE) {
+            // Daytime: always sunny (effects invisible against bright background)
+            setWeather(GameWeather.SUNNY);
         }
 
         lastPhaseRef.current = phase;
@@ -54,7 +48,7 @@ const WeatherBackground: React.FC = () => {
     // Handle Rain audio loop
     useEffect(() => {
         const isGameScreen = screen === 'GAME';
-        const shouldPlayRain = isGameScreen && bgmEnabled && (weather === GameWeather.RAINY || weather === GameWeather.THUNDERSTORM);
+        const shouldPlayRain = isGameScreen && bgmEnabled && !isDay && (weather === GameWeather.RAINY || weather === GameWeather.THUNDERSTORM);
 
         if (shouldPlayRain) {
             if (!rainAudio) {
@@ -78,12 +72,12 @@ const WeatherBackground: React.FC = () => {
                 rainAudio.volume = bgmVolume * 0.45;
             }
         };
-    }, [weather, screen, bgmEnabled, bgmVolume]);
+    }, [weather, screen, bgmEnabled, bgmVolume, isDay]);
 
     // Handle Thunderstorm loop (Lightning flashes & Thunder claps)
     useEffect(() => {
         const isGameScreen = screen === 'GAME';
-        if (weather !== GameWeather.THUNDERSTORM || !isGameScreen) {
+        if (weather !== GameWeather.THUNDERSTORM || !isGameScreen || isDay) {
             setIsLightningFlashing(false);
             return;
         }
@@ -141,7 +135,7 @@ const WeatherBackground: React.FC = () => {
             clearTimeout(flashEndTimeout2);
             clearTimeout(thunderPlayTimeout);
         };
-    }, [weather, screen, bgmEnabled, bgmVolume]);
+    }, [weather, screen, bgmEnabled, bgmVolume, isDay]);
 
     // Clean up audios on unmount
     useEffect(() => {
@@ -159,7 +153,7 @@ const WeatherBackground: React.FC = () => {
 
     // Memoize Rain Drops positioning to prevent jumping on state change
     const rainDrops = useMemo(() => {
-        if (weather !== GameWeather.RAINY && weather !== GameWeather.THUNDERSTORM) return [];
+        if (isDay || (weather !== GameWeather.RAINY && weather !== GameWeather.THUNDERSTORM)) return [];
         const count = weather === GameWeather.THUNDERSTORM ? 50 : 30;
         return Array.from({ length: count }).map((_, i) => ({
             left: `${Math.random() * 100}%`,
@@ -168,7 +162,7 @@ const WeatherBackground: React.FC = () => {
             duration: `${0.6 + Math.random() * 0.4}s`,
             opacity: 0.15 + Math.random() * 0.2
         }));
-    }, [weather]);
+    }, [weather, isDay]);
 
     // Memoize Stars positioning
     const stars = useMemo(() => {
@@ -183,8 +177,9 @@ const WeatherBackground: React.FC = () => {
         }));
     }, [isDay]);
 
-    // Cloud objects
+    // Cloud objects (night only)
     const clouds = useMemo(() => {
+        if (isDay) return [];
         const count = weather === GameWeather.CLOUDY ? 4 : (weather === GameWeather.SUNNY ? 1 : 2);
         return Array.from({ length: count }).map((_, i) => {
             const size = 150 + Math.random() * 180;
@@ -196,7 +191,7 @@ const WeatherBackground: React.FC = () => {
                 size
             };
         });
-    }, [weather]);
+    }, [weather, isDay]);
 
     const isRaining = weather === GameWeather.RAINY || weather === GameWeather.THUNDERSTORM;
 
