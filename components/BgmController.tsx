@@ -1,7 +1,7 @@
 
 import React, { useEffect } from 'react';
 import { useAtomValue } from 'jotai';
-import { gamePhaseAtom, isPlayingAudioAtom, currentSpeakerIdAtom, globalApiConfigAtom } from '../store';
+import { gamePhaseAtom, isPlayingAudioAtom, currentSpeakerIdAtom, globalApiConfigAtom, appScreenAtom } from '../store';
 import { GamePhase } from '../types';
 import { BgmService } from '../bgm';
 
@@ -21,6 +21,7 @@ const isActiveGamePhase = (phase: GamePhase): boolean => {
 
 const BgmController: React.FC = () => {
     const phase = useAtomValue(gamePhaseAtom);
+    const screen = useAtomValue(appScreenAtom);
     const currentSpeakerId = useAtomValue(currentSpeakerIdAtom);
     const isPlayingAudio = useAtomValue(isPlayingAudioAtom);
     const globalConfig = useAtomValue(globalApiConfigAtom);
@@ -28,9 +29,10 @@ const BgmController: React.FC = () => {
     // BGM is independent of TTS. Default to enabled if field is missing (undefined).
     const bgmEnabled = globalConfig.bgmEnabled !== false;
 
+    // Must be on the GAME screen AND in an active phase to play BGM
+    const shouldPlay = bgmEnabled && screen === 'GAME' && isActiveGamePhase(phase);
+
     // Only fade when a PLAYER's TTS is actually producing sound.
-    // Narrator/God speech (currentSpeakerId===null) does NOT fade.
-    // AI thinking time (isPlayingAudio===false) does NOT fade.
     const shouldFade = currentSpeakerId !== null && isPlayingAudio;
 
     // Synchronize BGM configuration (enabled and volume)
@@ -39,7 +41,7 @@ const BgmController: React.FC = () => {
         bgm.setEnabled(bgmEnabled);
         bgm.setVolume(globalConfig.bgmVolume ?? 0.2);
 
-        if (!bgmEnabled || !isActiveGamePhase(phase)) {
+        if (!shouldPlay) {
             bgm.fadeOut();
         } else {
             const track = isNightPhase(phase) ? 'night' : 'day';
@@ -50,12 +52,11 @@ const BgmController: React.FC = () => {
         }
     }, [bgmEnabled, globalConfig.bgmVolume]);
 
-    // Handle BGM track selection based on game phase changes
+    // Handle BGM track selection based on game phase / screen changes
     useEffect(() => {
         const bgm = BgmService.getInstance();
-        if (!bgmEnabled) return;
 
-        if (!isActiveGamePhase(phase)) {
+        if (!shouldPlay) {
             bgm.fadeOut();
             return;
         }
@@ -65,19 +66,19 @@ const BgmController: React.FC = () => {
         if (shouldFade) {
             bgm.fadeOut();
         }
-    }, [phase, bgmEnabled]);
+    }, [phase, screen, bgmEnabled]);
 
     // Fade BGM only when a player's TTS is actively playing audio.
     useEffect(() => {
         const bgm = BgmService.getInstance();
-        if (!bgmEnabled || !isActiveGamePhase(phase)) return;
+        if (!shouldPlay) return;
 
         if (shouldFade) {
             bgm.fadeOut();
         } else {
             bgm.fadeIn();
         }
-    }, [shouldFade, bgmEnabled, phase]);
+    }, [shouldFade, shouldPlay]);
 
     // Cleanup on unmount
     useEffect(() => {
