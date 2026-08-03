@@ -52,7 +52,7 @@ export class BgmService {
         // Start at 0 volume and fade in
         audio.volume = 0;
         this.currentAudio = audio;
-        this.isFadedOut = false;
+        this.isFadedOut = true; // Start as "faded out" so setVolume() won't jump to target
 
         audio.play().then(() => {
             this.fadeIn();
