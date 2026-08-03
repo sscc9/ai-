@@ -179,16 +179,25 @@ const HumanInputPanel = () => {
         GamePhase.GUARD_ACTION,
         GamePhase.SHERIFF_VOTE,
         GamePhase.SHERIFF_TRANS
-    ].includes(phase);    return (
+    ].includes(phase);
+
+    return (
         <div className={clsx(
-            "fixed bottom-0 left-0 right-0 z-[100] p-4 transition-all duration-300",
+            "fixed z-[100] transition-all duration-300 backdrop-blur-2xl border",
+            isCollapsed
+                ? "bottom-4 left-1/2 -translate-x-1/2 w-[90%] sm:w-auto sm:min-w-[320px] p-2.5 rounded-full"
+                : "bottom-4 left-4 right-4 sm:bottom-6 sm:left-1/2 sm:-translate-x-1/2 sm:w-full sm:max-w-4xl p-4 sm:p-5 rounded-2xl sm:rounded-3xl",
             isDay
-                ? "bg-white/95 backdrop-blur-2xl border-t border-white/50 shadow-[0_-10px_40px_rgba(0,0,0,0.1)]"
-                : "bg-[#0b0f19]/95 backdrop-blur-2xl border-t border-slate-800 shadow-[0_-10px_40px_rgba(0,0,0,0.4)]"
+                ? (isCollapsed 
+                    ? "bg-white/95 border-slate-200 text-slate-800 shadow-[0_8px_30px_rgba(0,0,0,0.08)]" 
+                    : "bg-white/95 border-slate-200/80 shadow-[0_20px_50px_rgba(0,0,0,0.15)]")
+                : (isCollapsed 
+                    ? "bg-[#0b0f19]/95 border-slate-800 text-slate-100 shadow-[0_8px_30px_rgba(0,0,0,0.3)]" 
+                    : "bg-[#0b0f19]/95 border-slate-800/80 shadow-[0_30px_60px_rgba(0,0,0,0.5)]")
         )}>
-            <div className="max-w-6xl mx-auto w-full px-2 sm:px-4">
+            <div className="w-full">
                 {isCollapsed ? (
-                    <div className="flex items-center justify-between py-1">
+                    <div className="flex items-center justify-between py-1 px-3">
                         <div className="flex items-center gap-2">
                             <span className="relative flex h-2 w-2">
                                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
