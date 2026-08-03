@@ -80,7 +80,7 @@ export class BgmService {
         if (this.fadeInterval) clearInterval(this.fadeInterval);
 
         const startVolume = this.currentAudio.volume;
-        const steps = 15; // Over ~750ms
+        const steps = 30; // Over ~1500ms
         const stepValue = startVolume / steps;
         let currentStep = 0;
 
@@ -111,7 +111,7 @@ export class BgmService {
         }
 
         const startVolume = this.currentAudio.volume;
-        const steps = 15; // Over ~750ms
+        const steps = 30; // Over ~1500ms
         const stepValue = (this.targetVolume - startVolume) / steps;
         let currentStep = 0;
 
