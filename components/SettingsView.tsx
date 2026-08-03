@@ -382,7 +382,8 @@ const SettingsView = () => {
                             </div>
                         </div>
 
-                        {/* TTS Speed Control */}
+                        {/* TTS Speed Control - only show when TTS is enabled */}
+                        {config.enabled && (
                         <div className="flex items-center justify-between border-t border-slate-100 pt-4">
                             <div>
                                 <span className="text-sm font-bold text-slate-800 block">朗读倍速</span>
@@ -403,6 +404,7 @@ const SettingsView = () => {
                                 />
                             </div>
                         </div>
+                        )}
 
                         {/* BGM Toggle Control */}
                         <div className="flex items-center justify-between border-t border-slate-100 pt-4">
