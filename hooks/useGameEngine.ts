@@ -728,7 +728,8 @@ export const useGameEngine = () => {
                         const sheriff = alive.find(p => p.id === godState.sheriffId);
 
                         if (sheriff) {
-                            await addSystemLog(`请警长 ${sheriff.id}号 决定从死者左手边或右手边开始发言。`);
+                            const startRefText = uniqueDeaths.length > 0 ? "死者" : "自己";
+                            await addSystemLog(`请警长 ${sheriff.id}号 决定从${startRefText}左手边或右手边开始发言。`);
                             let direction: "LEFT" | "RIGHT" = "LEFT";
                             if (sheriff.isHuman) {
                                 setSpeaker(sheriff.id);
