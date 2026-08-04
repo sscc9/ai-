@@ -101,10 +101,28 @@ export class WerewolfSkill implements Skill {
             GamePhase.WITCH_ACTION,
             GamePhase.GUARD_ACTION
         ].includes(phase);
-        const timeStr = isNight ? `第${turnCount}晚` : `第${turnCount}天`;
+
+        // Build timeline: 第1晚 → 第1天 → 第2晚 → 第2天(当前)
+        const timelineParts: string[] = [];
+        for (let t = 1; t <= turnCount; t++) {
+            const nightLabel = `第${t}晚`;
+            const dayLabel = `第${t}天`;
+            if (t < turnCount) {
+                // Past turns: both night and day already happened
+                timelineParts.push(nightLabel, dayLabel);
+            } else {
+                // Current turn
+                if (isNight) {
+                    timelineParts.push(`${nightLabel}(当前)`);
+                } else {
+                    timelineParts.push(nightLabel, `${dayLabel}(当前)`);
+                }
+            }
+        }
+        const timeline = timelineParts.join(' → ');
 
         return `
-- 当前时间: ${timeStr}
+- 时间线: ${timeline}
 - 当前阶段: ${PHASE_LABELS[phase]}
 - 板子配置: ${roleConfigStr}
 - 基础规则:
