@@ -325,6 +325,23 @@ export const useGameEngine = () => {
                 visibleTo: visibleTo
             }]);
 
+            // --- Background: Generate summary for human messages (non-blocking) ---
+            if (player.isHuman && speech && speech.length > 15 && !result?.summary) {
+                const { llm: hLlm, provider: hProvider } = getActorConfig(player.actorId);
+                const capturedId = sharedId;
+                const summaryMessages = [
+                    { role: 'system', content: '用15个字以内的中文总结以下狼人杀玩家发言的核心要点。只输出总结文本，不要任何格式标记。示例：起跳预言家验3号好人、村民过、怀疑7号是狼踩7号' },
+                    { role: 'user', content: speech }
+                ];
+                generateText(summaryMessages, hLlm, hProvider).then(summaryText => {
+                    if (summaryText && !summaryText.includes('Error:')) {
+                        const trimmed = summaryText.trim().slice(0, 30); // Safety cap
+                        setLogs(prev => prev.map(l => l.id === capturedId ? { ...l, summary: trimmed } : l));
+                        console.log(`[Human Summary] P${player.id}: ${trimmed}`);
+                    }
+                }).catch(e => console.warn('Human summary generation failed:', e));
+            }
+
             // Add to Timeline
             const audioKey = `audio_game_${sharedId}`;
             setTimeline(prev => [...prev, {
