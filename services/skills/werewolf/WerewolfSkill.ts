@@ -146,11 +146,17 @@ ${GAME_RULES}
         if (player.role === Role.SEER) {
             const checks = logs.filter(l => l.phase === GamePhase.SEER_ACTION && l.turn < turnCount && l.isSystem && l.visibleTo?.includes(player.id));
             if (checks.length) privateMemory += "\n[你过去的查验记录]:\n" + checks.map(l => l.content).join('\n');
+            // Include seer's own night monologue for continuous memory
+            const seerNightLogs = logs.filter(l => l.phase === GamePhase.SEER_ACTION && l.turn <= turnCount && !l.isSystem && l.speakerId === player.id);
+            if (seerNightLogs.length) privateMemory += "\n[你查验时的思考记录]:\n" + seerNightLogs.map(l => `第${l.turn}晚: ${l.content}`).join('\n');
         }
 
         if (player.role === Role.WITCH) {
             const history = logs.filter(l => l.phase === GamePhase.WITCH_ACTION && l.turn < turnCount && l.isSystem && l.visibleTo?.includes(player.id));
             if (history.length) privateMemory += "\n[你过去的使用药水记录]:\n" + history.map(l => l.content).join('\n');
+            // Include witch's own night monologue for continuous memory
+            const witchNightLogs = logs.filter(l => l.phase === GamePhase.WITCH_ACTION && l.turn <= turnCount && !l.isSystem && l.speakerId === player.id);
+            if (witchNightLogs.length) privateMemory += "\n[你用药时的思考记录]:\n" + witchNightLogs.map(l => `第${l.turn}晚: ${l.content}`).join('\n');
         }
 
         if (player.role === Role.WEREWOLF) {
