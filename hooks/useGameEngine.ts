@@ -800,6 +800,26 @@ export const useGameEngine = () => {
                 }
 
                 case GamePhase.DAY_DISCUSSION: {
+                    // Intercept Night 1 last words if not done yet
+                    if (turnCount === 1 && godState.deathsTonight && godState.deathsTonight.length > 0 && !godState.night1LastWordsDone) {
+                        setIsProcessing(true);
+                        try {
+                            await addSystemLog("请发表首夜遗言。");
+                            setGodState(prev => ({
+                                ...prev,
+                                night1LastWordsDone: true,
+                                nextPhaseAfterLastWords: GamePhase.DAY_DISCUSSION,
+                                savedDiscussionQueue: speakingQueue
+                            }));
+                            setPhase(GamePhase.LAST_WORDS);
+                            setSpeakingQueue(godState.deathsTonight);
+                            saveSnapshot();
+                            return; // Wait for next God loop tick
+                        } finally {
+                            setIsProcessing(false);
+                        }
+                    }
+
                     const [nextId, ...rest] = speakingQueue;
                     if (nextId) {
                         const player = players.find(p => p.id === nextId);
@@ -1460,9 +1480,21 @@ export const useGameEngine = () => {
                     } else {
                         setIsProcessing(true);
                         try {
-                            setTurnCount(t => t + 1);
-                            setPhase(GamePhase.NIGHT_START);
-                            await addSystemLog(`--- 第 ${turnCount + 1} 天 ---`);
+                            if (godState.nextPhaseAfterLastWords) {
+                                setPhase(godState.nextPhaseAfterLastWords);
+                                if (godState.savedDiscussionQueue) {
+                                    setSpeakingQueue(godState.savedDiscussionQueue);
+                                }
+                                setGodState(prev => ({
+                                    ...prev,
+                                    nextPhaseAfterLastWords: undefined,
+                                    savedDiscussionQueue: undefined
+                                }));
+                            } else {
+                                setTurnCount(t => t + 1);
+                                setPhase(GamePhase.NIGHT_START);
+                                await addSystemLog(`--- 第 ${turnCount + 1} 天 ---`);
+                            }
                             saveSnapshot();
                         } finally {
                             setIsProcessing(false);
