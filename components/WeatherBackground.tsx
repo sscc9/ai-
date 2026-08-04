@@ -25,6 +25,7 @@ const WeatherBackground: React.FC = () => {
     const bgmEnabled = globalConfig.bgmEnabled !== false;
     const bgmVolume = globalConfig.bgmVolume ?? 0.2;
 
+
     // Roll for new weather only on day/night transitions
     useEffect(() => {
         if (phase === lastPhaseRef.current) return;
@@ -41,13 +42,13 @@ const WeatherBackground: React.FC = () => {
             else if (roll < 0.90) newWeather = GameWeather.RAINY;    // 15% rainy night
             else newWeather = GameWeather.THUNDERSTORM;              // 10% thunderstorm
             setWeather(newWeather);
-        } else if (phase === GamePhase.DAY_ANNOUNCE) {
+        } else if (isDay) {
             // Daytime: always sunny (effects invisible against bright background)
             setWeather(GameWeather.SUNNY);
         }
 
         lastPhaseRef.current = phase;
-    }, [phase, setWeather]);
+    }, [phase, isDay, setWeather]);
 
     // Handle Rain audio loop with fade in/out
     useEffect(() => {
