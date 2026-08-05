@@ -30,6 +30,7 @@ const HumanInputPanel = () => {
 
     const humanPlayer = players.find(p => p.isHuman);
     const isMyTurn = humanPlayer && currentSpeakerId === humanPlayer.id;
+    const isMobile = typeof window !== 'undefined' ? /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent) : false;
 
     const [text, setText] = useState('');
     const [targetId, setTargetId] = useState<number | null>(null);
@@ -196,12 +197,6 @@ const HumanInputPanel = () => {
                     console.error("Speech recognition error", event.error);
                     setIsListening(false);
                     recognitionRef.current = null;
-                    
-                    // Ignore normal cancellation/timeout events on mobile
-                    if (event.error === 'aborted' || event.error === 'no-speech') {
-                        return;
-                    }
-
                     if (event.error === 'not-allowed') {
                         alert("麦克风权限被拒绝，请在浏览器或手机系统设置中允许访问麦克风。");
                     } else if (event.error === 'network') {
@@ -317,7 +312,7 @@ const HumanInputPanel = () => {
                             )}
                         </div>
                         <div className="flex items-center gap-2 shrink-0">
-                            {!isVoting && !isChoosingCampaign && !isChoosingDirection && (
+                            {!isVoting && !isChoosingCampaign && !isChoosingDirection && !isMobile && (
                                 <button
                                     onClick={toggleListening}
                                     className={clsx(
