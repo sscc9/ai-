@@ -36,6 +36,7 @@ const HumanInputPanel = () => {
     const [isListening, setIsListening] = useState(false);
     const [isCollapsed, setIsCollapsed] = useState(false);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
+    const recognitionRef = useRef<any>(null);
 
     // Auto-resize speech textarea based on content (with bounds 60px to 200px)
     useEffect(() => {
@@ -58,8 +59,21 @@ const HumanInputPanel = () => {
             setText('');
             setTargetId(null);
             setIsCollapsed(false); // Auto-expand when turn starts
+        } else {
+            if (recognitionRef.current) {
+                recognitionRef.current.stop();
+            }
         }
     }, [isMyTurn, phase]); // Also reset on phase change
+
+    // Cleanup speech recognition on unmount
+    useEffect(() => {
+        return () => {
+            if (recognitionRef.current) {
+                recognitionRef.current.stop();
+            }
+        };
+    }, []);
 
     if (!isMyTurn || !humanPlayer || isReplayMode || isTheaterMode) return null;
 
@@ -149,25 +163,38 @@ const HumanInputPanel = () => {
         });
     };
 
-    const startListening = () => {
-        if (!('webkitSpeechRecognition' in window)) {
-            alert("抱歉，您的浏览器不支持语音识别。");
-            return;
+    const toggleListening = () => {
+        if (isListening) {
+            if (recognitionRef.current) {
+                recognitionRef.current.stop();
+            }
+        } else {
+            if (!('webkitSpeechRecognition' in window)) {
+                alert("抱歉，您的浏览器不支持语音识别。");
+                return;
+            }
+
+            const recognition = new (window as any).webkitSpeechRecognition();
+            recognition.lang = 'zh-CN';
+            recognition.continuous = true;
+            recognition.interimResults = false;
+
+            recognition.onstart = () => setIsListening(true);
+            recognition.onend = () => {
+                setIsListening(false);
+                recognitionRef.current = null;
+            };
+            recognition.onresult = (event: any) => {
+                const latestResult = event.results[event.results.length - 1];
+                if (latestResult.isFinal) {
+                    const phrase = latestResult[0].transcript;
+                    setText(prev => prev + phrase);
+                }
+            };
+
+            recognitionRef.current = recognition;
+            recognition.start();
         }
-
-        const recognition = new (window as any).webkitSpeechRecognition();
-        recognition.lang = 'zh-CN';
-        recognition.continuous = false;
-        recognition.interimResults = false;
-
-        recognition.onstart = () => setIsListening(true);
-        recognition.onend = () => setIsListening(false);
-        recognition.onresult = (event: any) => {
-            const transcript = event.results[0][0].transcript;
-            setText(prev => prev + transcript);
-        };
-
-        recognition.start();
     };
 
     const needsTarget = [
@@ -258,7 +285,7 @@ const HumanInputPanel = () => {
                         <div className="flex items-center gap-2 shrink-0">
                             {!isVoting && !isChoosingCampaign && !isChoosingDirection && (
                                 <button
-                                    onClick={startListening}
+                                    onClick={toggleListening}
                                     className={clsx(
                                         "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all duration-300",
                                         isListening 
