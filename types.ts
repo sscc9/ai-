@@ -115,6 +115,7 @@ export interface LLMProviderConfig {
     type: 'gemini' | 'openai'; // 'openai' covers DeepSeek, Moonshot, etc.
     baseUrl?: string;
     apiKey?: string;
+    useProxy?: boolean; // Route requests through /api/proxy to bypass CORS
 }
 
 export interface LLMPreset {

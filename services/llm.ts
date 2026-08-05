@@ -77,7 +77,7 @@ export async function generateText(
             if (!providerConfig.apiKey) return "Error: No API Key configured for this provider.";
 
             const baseUrl = providerConfig.baseUrl || "https://api.openai.com/v1";
-            const url = baseUrl.endsWith('/') ? `${baseUrl}chat/completions` : `${baseUrl}/chat/completions`;
+            const targetUrl = baseUrl.endsWith('/') ? `${baseUrl}chat/completions` : `${baseUrl}/chat/completions`;
 
             const body: any = {
                 model: preset.modelId,
@@ -92,12 +92,32 @@ export async function generateText(
                 }
             }
 
-            const response = await fetch(url, {
+            // Route through proxy if enabled (solves CORS for providers like NVIDIA)
+            let fetchUrl: string;
+            let fetchHeaders: Record<string, string>;
+
+            if (providerConfig.useProxy) {
+                fetchUrl = '/api/proxy';
+                fetchHeaders = {
+                    'Content-Type': 'application/json',
+                    'x-target-url': targetUrl,
+                };
+                if (providerConfig.apiKey) {
+                    fetchHeaders['x-api-key'] = providerConfig.apiKey;
+                }
+            } else {
+                fetchUrl = targetUrl;
+                fetchHeaders = {
+                    'Content-Type': 'application/json',
+                };
+                if (providerConfig.apiKey) {
+                    fetchHeaders['Authorization'] = `Bearer ${providerConfig.apiKey}`;
+                }
+            }
+
+            const response = await fetch(fetchUrl, {
                 method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${providerConfig.apiKey}`,
-                    'Content-Type': 'application/json'
-                },
+                headers: fetchHeaders,
                 body: JSON.stringify(body)
             });
 

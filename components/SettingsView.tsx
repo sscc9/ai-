@@ -626,6 +626,16 @@ const SettingsView = () => {
                             <label className="block text-xs font-bold text-indigo-500 uppercase tracking-wide mb-1.5 ml-1">API Key</label>
                             <InputGroup type="password" value={provider.apiKey || ''} onChange={(e: any) => updateProvider(provider.id, { apiKey: e.target.value })} placeholder="sk-..." sub="仅存储在本地浏览器中" />
                         </div>
+
+                        {provider.type === 'openai' && (
+                            <label className="flex items-center gap-2.5 py-2.5 px-3 rounded-xl bg-amber-50/80 border border-amber-200/60 cursor-pointer hover:bg-amber-50 transition-colors">
+                                <input type="checkbox" checked={provider.useProxy || false} onChange={(e) => updateProvider(provider.id, { useProxy: e.target.checked })} className="w-4 h-4 rounded border-amber-300 text-amber-600 focus:ring-amber-500" />
+                                <div>
+                                    <div className="text-xs font-bold text-amber-800">使用代理转发请求</div>
+                                    <div className="text-[10px] text-amber-600/80">若 API 因跨域 (CORS) 无法直连，可开启此选项通过服务端代理转发</div>
+                                </div>
+                            </label>
+                        )}
                     </Card>
 
                     <SectionHeader text="模型列表" />
