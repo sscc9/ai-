@@ -166,34 +166,62 @@ const HumanInputPanel = () => {
     const toggleListening = () => {
         if (isListening) {
             if (recognitionRef.current) {
-                recognitionRef.current.stop();
+                try {
+                    recognitionRef.current.stop();
+                } catch (e) {
+                    console.warn("Failed to stop recognition:", e);
+                }
             }
         } else {
-            if (!('webkitSpeechRecognition' in window)) {
+            const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+            if (!SpeechRecognition) {
                 alert("抱歉，您的浏览器不支持语音识别。");
                 return;
             }
 
-            const recognition = new (window as any).webkitSpeechRecognition();
-            recognition.lang = 'zh-CN';
-            recognition.continuous = true;
-            recognition.interimResults = false;
+            try {
+                const recognition = new SpeechRecognition();
+                recognition.lang = 'zh-CN';
+                recognition.continuous = true;
+                recognition.interimResults = false;
 
-            recognition.onstart = () => setIsListening(true);
-            recognition.onend = () => {
+                recognition.onstart = () => {
+                    setIsListening(true);
+                };
+                recognition.onend = () => {
+                    setIsListening(false);
+                    recognitionRef.current = null;
+                };
+                recognition.onerror = (event: any) => {
+                    console.error("Speech recognition error", event.error);
+                    setIsListening(false);
+                    recognitionRef.current = null;
+                    if (event.error === 'not-allowed') {
+                        alert("麦克风权限被拒绝，请在浏览器或手机系统设置中允许访问麦克风。");
+                    } else if (event.error === 'network') {
+                        alert("网络连接错误，语音识别服务暂时不可用。");
+                    } else if (event.error === 'service-not-allowed') {
+                        alert("语音服务未被允许（部分浏览器在非 HTTPS 安全环境下会禁止使用语音识别）。");
+                    } else {
+                        alert(`语音识别出错: ${event.error}`);
+                    }
+                };
+                recognition.onresult = (event: any) => {
+                    const latestResult = event.results[event.results.length - 1];
+                    if (latestResult.isFinal) {
+                        const phrase = latestResult[0].transcript;
+                        setText(prev => prev + phrase);
+                    }
+                };
+
+                recognitionRef.current = recognition;
+                recognition.start();
+            } catch (err: any) {
+                console.error("Failed to initialize speech recognition", err);
                 setIsListening(false);
                 recognitionRef.current = null;
-            };
-            recognition.onresult = (event: any) => {
-                const latestResult = event.results[event.results.length - 1];
-                if (latestResult.isFinal) {
-                    const phrase = latestResult[0].transcript;
-                    setText(prev => prev + phrase);
-                }
-            };
-
-            recognitionRef.current = recognition;
-            recognition.start();
+                alert(`无法启动语音识别: ${err.message || err}`);
+            }
         }
     };
 
