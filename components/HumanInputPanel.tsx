@@ -196,6 +196,12 @@ const HumanInputPanel = () => {
                     console.error("Speech recognition error", event.error);
                     setIsListening(false);
                     recognitionRef.current = null;
+                    
+                    // Ignore normal cancellation/timeout events on mobile
+                    if (event.error === 'aborted' || event.error === 'no-speech') {
+                        return;
+                    }
+
                     if (event.error === 'not-allowed') {
                         alert("麦克风权限被拒绝，请在浏览器或手机系统设置中允许访问麦克风。");
                     } else if (event.error === 'network') {
