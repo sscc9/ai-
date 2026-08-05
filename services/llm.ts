@@ -4,6 +4,20 @@ import { LLMPreset, Player, ROLE_INFO, LLMProviderConfig, Role } from '../types'
 
 // --- LLM Service ---
 
+// Gemini rate limiter: enforce minimum interval between consecutive calls to avoid 429
+let lastGeminiCallTime = 0;
+const GEMINI_MIN_INTERVAL_MS = 2000; // 2 seconds minimum between Gemini calls
+
+async function geminiRateLimit() {
+    const now = Date.now();
+    const elapsed = now - lastGeminiCallTime;
+    if (elapsed < GEMINI_MIN_INTERVAL_MS) {
+        const waitMs = GEMINI_MIN_INTERVAL_MS - elapsed + Math.floor(Math.random() * 800);
+        await new Promise(r => setTimeout(r, waitMs));
+    }
+    lastGeminiCallTime = Date.now();
+}
+
 // Helper: auto-retry wrapper
 async function withRetry<T>(
     fn: () => Promise<T>,
@@ -55,6 +69,7 @@ export async function generateText(
                 }
             });
 
+            await geminiRateLimit();
             const response = await ai.models.generateContent({
                 model: preset.modelId,
                 contents: contents,
