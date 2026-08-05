@@ -628,13 +628,26 @@ const SettingsView = () => {
                         </div>
 
                         {provider.type === 'openai' && (
-                            <label className="flex items-center gap-2.5 py-2.5 px-3 rounded-xl bg-amber-50/80 border border-amber-200/60 cursor-pointer hover:bg-amber-50 transition-colors">
-                                <input type="checkbox" checked={provider.useProxy || false} onChange={(e) => updateProvider(provider.id, { useProxy: e.target.checked })} className="w-4 h-4 rounded border-amber-300 text-amber-600 focus:ring-amber-500" />
-                                <div>
-                                    <div className="text-xs font-bold text-amber-800">使用代理转发请求</div>
-                                    <div className="text-[10px] text-amber-600/80">若 API 因跨域 (CORS) 无法直连，可开启此选项通过服务端代理转发</div>
+                            <div className="flex items-center justify-between border-t border-slate-100 pt-4 mt-3">
+                                <div className="pr-4">
+                                    <span className="text-sm font-bold text-slate-800 block">使用代理转发请求</span>
+                                    <span className="text-[10px] text-slate-500 block mt-0.5 leading-relaxed">若 API 因跨域 (CORS) 无法直连，可开启此选项通过服务端代理转发</span>
                                 </div>
-                            </label>
+                                <button
+                                    onClick={() => updateProvider(provider.id, { useProxy: !provider.useProxy })}
+                                    className={clsx(
+                                        "relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none mr-1",
+                                        provider.useProxy ? 'bg-indigo-500' : 'bg-slate-200'
+                                    )}
+                                >
+                                    <span
+                                        className={clsx(
+                                            "pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out",
+                                            provider.useProxy ? 'translate-x-5' : 'translate-x-0'
+                                        )}
+                                    />
+                                </button>
+                            </div>
                         )}
                     </Card>
 
