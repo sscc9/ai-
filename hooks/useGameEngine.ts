@@ -865,7 +865,7 @@ export const useGameEngine = () => {
                             : alive.map(p => p.id);
 
                         // Vote
-                        await addSystemLog(isPkRound ? "正在收集所有玩家的 PK 投票，请稍候..." : "正在收集所有玩家的放逐投票，请解下/在警上的玩家做出决定...");
+                        await addSystemLog(isPkRound ? "正在收集所有玩家的 PK 投票，请稍候..." : "正在收集所有玩家的放逐投票，请稍候...");
                         saveSnapshot();
                         await new Promise(r => setTimeout(r, 100)); // Yield thread to render logs
 
