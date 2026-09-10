@@ -181,9 +181,11 @@ export const useGameEngine = () => {
     // --- 辅助：获取板子配置描述 ---
     const getRoleConfigStr = useCallback(() => {
         const count = config.playerCount;
-        // 把每一个角色都列出来，不要统计数量
-        const roleList = config.roles.map(r => ROLE_INFO[r].label).join('，');
-        return `${count}人局（有警徽）：${roleList}。`;
+        const wolves = config.roles.filter(r => r === Role.WEREWOLF);
+        const villagers = config.roles.filter(r => r === Role.VILLAGER);
+        const gods = config.roles.filter(r => GOD_ROLES.includes(r));
+        const godNames = gods.map(r => ROLE_INFO[r].label).join('、');
+        return `${count}人局（有警徽）：${wolves.length}狼、${villagers.length}民、${gods.length}神（${godNames}）。`;
     }, [config]);
 
     // --- Human Input Waiter ---
