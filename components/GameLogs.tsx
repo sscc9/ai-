@@ -140,31 +140,110 @@ export const LogItem = React.memo(LogItemComponent);
 
 export const AutoScrollLog = ({ logs, className, viewerId }: { logs: any[], className?: string, viewerId?: number }) => {
     const scrollRef = useRef<HTMLDivElement>(null);
-    const isPortrait = useAtomValue(isPortraitModeAtom); // Need access to portrait state
+    const isPortrait = useAtomValue(isPortraitModeAtom);
+    const [hasNewMessages, setHasNewMessages] = useState(false);
+    const isAtBottomRef = useRef(true);
+    const hideTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+    const prevLogsLengthRef = useRef(logs.length);
+
+    // 检查用户是否处于最新消息位置（距底部 70px 内）
+    const checkIfAtBottom = () => {
+        const container = scrollRef.current;
+        if (!container) return true;
+        const threshold = 70;
+        const isBottom = container.scrollHeight - container.scrollTop - container.clientHeight <= threshold;
+        isAtBottomRef.current = isBottom;
+        if (isBottom) {
+            setHasNewMessages(false);
+            if (hideTimeoutRef.current) {
+                clearTimeout(hideTimeoutRef.current);
+                hideTimeoutRef.current = null;
+            }
+        }
+        return isBottom;
+    };
+
+    const handleScroll = () => {
+        checkIfAtBottom();
+    };
+
+    const scrollToBottom = (smooth = true) => {
+        const container = scrollRef.current;
+        if (!container) return;
+        setHasNewMessages(false);
+        if (hideTimeoutRef.current) {
+            clearTimeout(hideTimeoutRef.current);
+            hideTimeoutRef.current = null;
+        }
+        container.scrollTo({
+            top: container.scrollHeight,
+            behavior: smooth ? 'smooth' : 'auto'
+        });
+        isAtBottomRef.current = true;
+    };
 
     useEffect(() => {
         const container = scrollRef.current;
         if (!container) return;
 
-        const lastChild = container.lastElementChild as HTMLElement;
-        if (lastChild) {
-            const isTall = lastChild.offsetHeight > 150;
-            if (isTall) {
-                container.scrollTo({ top: lastChild.offsetTop, behavior: 'smooth' });
+        // 仅当增加了新日志时响应
+        if (logs.length > prevLogsLengthRef.current) {
+            if (isAtBottomRef.current) {
+                // 原本就在底部：正常跟随最新消息自动向下滚动
+                const lastChild = container.lastElementChild as HTMLElement;
+                if (lastChild && lastChild.offsetHeight > 150) {
+                    container.scrollTo({ top: lastChild.offsetTop, behavior: 'smooth' });
+                } else {
+                    container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
+                }
             } else {
-                container.scrollTop = container.scrollHeight;
+                // 用户正在向上翻看历史消息：不打扰用户，浮出底部新消息提示
+                setHasNewMessages(true);
+                if (hideTimeoutRef.current) clearTimeout(hideTimeoutRef.current);
+                // 5 秒后自动消失
+                hideTimeoutRef.current = setTimeout(() => {
+                    setHasNewMessages(false);
+                }, 5000);
             }
         }
+        prevLogsLengthRef.current = logs.length;
     }, [logs]);
 
+    useEffect(() => {
+        return () => {
+            if (hideTimeoutRef.current) clearTimeout(hideTimeoutRef.current);
+        };
+    }, []);
+
     return (
-        <div ref={scrollRef} className={clsx("overflow-y-auto custom-scrollbar scroll-smooth relative", className)}>
-            {logs.length === 0 ? (
-                <div className="h-full flex items-center justify-center opacity-50 text-xl">
-                    等待记录...
+        <div className="relative flex-1 flex flex-col min-h-0 overflow-hidden">
+            <div 
+                ref={scrollRef} 
+                onScroll={handleScroll}
+                className={clsx("flex-1 overflow-y-auto custom-scrollbar scroll-smooth", className)}
+            >
+                {logs.length === 0 ? (
+                    <div className="h-full flex items-center justify-center opacity-50 text-xl">
+                        等待记录...
+                    </div>
+                ) : (
+                    logs.map((log) => <LogItem key={log.id} log={log} viewerId={viewerId} isPortrait={isPortrait} />)
+                )}
+            </div>
+
+            {/* 浮动新消息提醒按钮 */}
+            {hasNewMessages && (
+                <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-30 animate-in fade-in slide-in-from-bottom-2 duration-200">
+                    <button
+                        onClick={() => scrollToBottom(true)}
+                        className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white text-xs font-semibold shadow-lg shadow-indigo-500/30 transition-all border border-indigo-400/30 cursor-pointer select-none"
+                    >
+                        <span>有新发言</span>
+                        <svg className="w-3.5 h-3.5 animate-bounce" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+                        </svg>
+                    </button>
                 </div>
-            ) : (
-                logs.map((log) => <LogItem key={log.id} log={log} viewerId={viewerId} isPortrait={isPortrait} />)
             )}
         </div>
     );
