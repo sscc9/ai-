@@ -194,10 +194,22 @@ const WeatherBackground: React.FC = () => {
         };
     }, []);
 
+    const [isMobile, setIsMobile] = useState(false);
+
+    useEffect(() => {
+        const checkMobile = () => {
+            setIsMobile(window.innerWidth < 768 || /Android|iPhone|iPad|iPod/i.test(navigator.userAgent));
+        };
+        checkMobile();
+        window.addEventListener('resize', checkMobile);
+        return () => window.removeEventListener('resize', checkMobile);
+    }, []);
+
     // Memoize Rain Drops positioning to prevent jumping on state change
     const rainDrops = useMemo(() => {
         if (isDay || (weather !== GameWeather.RAINY && weather !== GameWeather.THUNDERSTORM)) return [];
-        const count = weather === GameWeather.THUNDERSTORM ? 50 : 30;
+        const baseCount = weather === GameWeather.THUNDERSTORM ? 50 : 30;
+        const count = isMobile ? Math.min(20, baseCount) : baseCount;
         return Array.from({ length: count }).map((_, i) => ({
             left: `${Math.random() * 100}%`,
             top: `${-20 - Math.random() * 20}%`,
@@ -205,25 +217,27 @@ const WeatherBackground: React.FC = () => {
             duration: `${0.6 + Math.random() * 0.4}s`,
             opacity: 0.15 + Math.random() * 0.2
         }));
-    }, [weather, isDay]);
+    }, [weather, isDay, isMobile]);
 
-    // Memoize Stars positioning
+    // Memoize Stars positioning (Desktop: 45 stars preserved, Mobile: 18 stars)
     const stars = useMemo(() => {
         if (isDay) return [];
-        return Array.from({ length: 45 }).map((_, i) => ({
+        const count = isMobile ? 18 : 45;
+        return Array.from({ length: count }).map((_, i) => ({
             left: `${Math.random() * 100}%`,
             top: `${Math.random() * 45}%`, // upper half
-            size: `${1 + Math.random() * 1.5}px`,
+            size: `${1.2 + Math.random() * 1.6}px`,
             delay: `${Math.random() * 4}s`,
-            duration: `${2 + Math.random() * 4}s`,
-            opacity: 0.2 + Math.random() * 0.6
+            duration: `${2.5 + Math.random() * 3.5}s`,
+            opacity: 0.3 + Math.random() * 0.6
         }));
-    }, [isDay]);
+    }, [isDay, isMobile]);
 
     // Cloud objects (night only)
     const clouds = useMemo(() => {
         if (isDay) return [];
-        const count = weather === GameWeather.CLOUDY ? 4 : (weather === GameWeather.SUNNY ? 1 : 2);
+        const baseCount = weather === GameWeather.CLOUDY ? 4 : (weather === GameWeather.SUNNY ? 1 : 2);
+        const count = isMobile ? Math.min(2, baseCount) : baseCount;
         return Array.from({ length: count }).map((_, i) => {
             const size = 150 + Math.random() * 180;
             return {
@@ -234,13 +248,13 @@ const WeatherBackground: React.FC = () => {
                 size
             };
         });
-    }, [weather, isDay]);
+    }, [weather, isDay, isMobile]);
 
     const isRaining = weather === GameWeather.RAINY || weather === GameWeather.THUNDERSTORM;
 
     return (
-        <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden select-none">
-            {/* Custom CSS animations */}
+        <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden select-none [transform:translateZ(0)]">
+            {/* Custom CSS animations optimized for GPU rendering */}
             <style dangerouslySetInnerHTML={{ __html: `
                 @keyframes weather-rain {
                     0% { transform: translateY(0) rotate(12deg); }
@@ -257,25 +271,30 @@ const WeatherBackground: React.FC = () => {
                 .weather-drop {
                     position: absolute;
                     width: 1px;
-                    height: 50px;
-                    background: linear-gradient(transparent, rgba(255, 255, 255, 0.45));
+                    height: 45px;
+                    background: linear-gradient(transparent, rgba(255, 255, 255, 0.4));
                     animation: weather-rain linear infinite;
+                    will-change: transform;
+                    contain: layout paint;
                 }
                 .weather-star {
                     position: absolute;
-                    background-color: white;
+                    background: radial-gradient(circle, #ffffff 65%, rgba(255, 255, 255, 0.4) 100%);
                     border-radius: 50%;
                     animation: weather-twinkle ease-in-out infinite;
+                    will-change: opacity;
+                    contain: layout paint;
                 }
                 .weather-cloud {
                     position: absolute;
-                    background: radial-gradient(circle, rgba(255, 255, 255, 0.15) 0%, transparent 70%);
+                    background: radial-gradient(circle, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0.04) 45%, transparent 70%);
                     border-radius: 50%;
                     animation: weather-cloud-drift linear infinite;
-                    filter: blur(10px);
+                    will-change: transform;
+                    contain: layout paint;
                 }
                 .weather-cloud-dark {
-                    background: radial-gradient(circle, rgba(15, 23, 42, 0.35) 0%, transparent 70%);
+                    background: radial-gradient(circle, rgba(15, 23, 42, 0.4) 0%, rgba(15, 23, 42, 0.15) 50%, transparent 70%);
                 }
             `}} />
 
@@ -291,8 +310,7 @@ const WeatherBackground: React.FC = () => {
                         height: s.size,
                         animationDelay: s.delay,
                         animationDuration: s.duration,
-                        opacity: s.opacity,
-                        boxShadow: '0 0 4px rgba(255, 255, 255, 0.8)'
+                        opacity: s.opacity
                     }}
                 />
             ))}

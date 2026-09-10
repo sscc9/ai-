@@ -206,8 +206,8 @@ const GameRoomView = () => {
                     "w-full h-full max-h-full transition-all duration-1000 relative flex flex-col",
                     isPortrait ? "py-3 rounded-xl max-w-full" : "py-6 rounded-3xl max-w-6xl", // Tighter padding & radius for portrait
                     isDay
-                        ? "bg-white/60 backdrop-blur-xl border border-white/50 ring-1 ring-white/60 text-slate-800 shadow-[0_8px_32px_0_rgba(31,38,135,0.15)]"
-                        : "bg-slate-900/65 backdrop-blur-xl border border-slate-800/60 ring-1 ring-slate-800/40 text-slate-100 shadow-[0_8px_32px_rgba(0,0,0,0.5)]"
+                        ? "bg-white/85 border border-white/60 ring-1 ring-white/60 text-slate-800 shadow-[0_8px_32px_0_rgba(31,38,135,0.08)]"
+                        : "bg-slate-900/85 border border-slate-800/80 ring-1 ring-slate-800/40 text-slate-100 shadow-[0_8px_32px_rgba(0,0,0,0.5)]"
                 )}>
                     <div className={clsx(
                         "flex-none flex justify-between items-center border-b",
