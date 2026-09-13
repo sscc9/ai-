@@ -158,7 +158,7 @@ const PlayerCard: React.FC<PlayerCardProps> = ({ seat, isTop }) => {
             )}>
                 {/* Target Selected Badge */}
                 {isSelected && (
-                    <div className="absolute -top-2.5 left-1/2 -translate-x-1/2 bg-gradient-to-r from-indigo-600 to-blue-600 text-white text-[9px] font-bold px-2 py-0.5 rounded-full shadow-md z-50 border border-indigo-200 whitespace-nowrap flex items-center gap-0.5 animate-pulse">
+                    <div className="absolute -top-2.5 left-1/2 -translate-x-1/2 bg-gradient-to-r from-indigo-600 to-blue-600 text-white text-[9px] font-bold px-2 py-0.5 rounded-full shadow-md z-50 border border-indigo-200 whitespace-nowrap flex items-center gap-0.5">
                         <span>✓ 已选</span>
                     </div>
                 )}
