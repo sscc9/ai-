@@ -98,6 +98,7 @@ export const replayPerspectiveAtom = atom<Perspective>('GOOD');
 export const isHumanModeAtom = atom<boolean>(false);
 export const humanPlayerSeatAtom = atom<number>(1);
 export const userInputAtom = atom<any>(null) as PrimitiveAtom<any>;
+export const selectedTargetIdAtom = atom<number | null>(null) as PrimitiveAtom<number | null>;
 
 export const godStateAtom = atom<GodState>({
     wolfTarget: null,

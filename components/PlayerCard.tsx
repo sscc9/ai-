@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { useAtomValue } from 'jotai';
+import { useAtom, useAtomValue } from 'jotai';
 import { clsx } from 'clsx';
-import { playersAtom, currentSpeakerIdAtom, gamePhaseAtom, actorProfilesAtom, areRolesVisibleAtom, replayPerspectiveAtom, isReplayModeAtom, isPortraitModeAtom, godStateAtom, isDaytimeAtom } from '../store';
+import { playersAtom, currentSpeakerIdAtom, gamePhaseAtom, actorProfilesAtom, areRolesVisibleAtom, replayPerspectiveAtom, isReplayModeAtom, isPortraitModeAtom, godStateAtom, isDaytimeAtom, selectedTargetIdAtom } from '../store';
 import { ROLE_INFO, Role, GamePhase, PlayerStatus } from '../types';
 
 interface PlayerCardProps { seat: number; isTop: boolean; }
@@ -18,6 +18,7 @@ const PlayerCard: React.FC<PlayerCardProps> = ({ seat, isTop }) => {
     const isPortrait = useAtomValue(isPortraitModeAtom);
     const godState = useAtomValue(godStateAtom);
     const isDay = useAtomValue(isDaytimeAtom);
+    const [selectedTargetId, setSelectedTargetId] = useAtom(selectedTargetIdAtom);
 
     const [imgLoaded, setImgLoaded] = useState(false);
 
@@ -43,55 +44,43 @@ const PlayerCard: React.FC<PlayerCardProps> = ({ seat, isTop }) => {
     // In many phases (Seer, Witch), the speaker/actor should be hidden from those who don't share the perspective.
     const isNightPhase = phase === GamePhase.WEREWOLF_ACTION || phase === GamePhase.SEER_ACTION || phase === GamePhase.WITCH_ACTION || phase === GamePhase.GUARD_ACTION;
     let canSeeSpeaker = true;
-
-    if (isNightPhase && !isReplayMode && humanPlayer) {
+    if (isNightPhase && !showRolesGlobal && perspective !== 'GOD') {
         if (phase === GamePhase.WEREWOLF_ACTION) {
-            canSeeSpeaker = humanPlayer.role === Role.WEREWOLF;
+            canSeeSpeaker = humanPlayer?.role === Role.WEREWOLF || perspective === 'WOLF';
         } else if (phase === GamePhase.SEER_ACTION) {
-            canSeeSpeaker = humanPlayer.role === Role.SEER;
+            canSeeSpeaker = humanPlayer?.role === Role.SEER;
         } else if (phase === GamePhase.WITCH_ACTION) {
-            canSeeSpeaker = humanPlayer.role === Role.WITCH;
+            canSeeSpeaker = humanPlayer?.role === Role.WITCH;
         } else if (phase === GamePhase.GUARD_ACTION) {
-            canSeeSpeaker = humanPlayer.role === Role.GUARD;
-        } else {
-            canSeeSpeaker = false; // Hide by default at night if human
+            canSeeSpeaker = humanPlayer?.role === Role.GUARD;
         }
     }
+
     const isSpeaking = isSpeakingRaw && canSeeSpeaker;
 
-    // --- Visibility Logic ---
-    let shouldShowRole = false;
+    // Target Selection Interaction
+    const isHumanTurn = humanPlayer && currentSpeakerId === humanPlayer.id;
+    const isSelected = selectedTargetId === player.id;
+    const needsTarget = [
+        GamePhase.VOTING,
+        GamePhase.WEREWOLF_ACTION,
+        GamePhase.SEER_ACTION,
+        GamePhase.WITCH_ACTION,
+        GamePhase.HUNTER_ACTION,
+        GamePhase.GUARD_ACTION,
+        GamePhase.SHERIFF_VOTE,
+        GamePhase.SHERIFF_TRANS
+    ].includes(phase);
+    const canSelectThisPlayer = isHumanTurn && needsTarget && player.status === PlayerStatus.ALIVE;
 
-    // Check if game is over (Review Mode) - Always reveal
-    const isGameOver = phase === GamePhase.GAME_REVIEW || phase === GamePhase.GAME_OVER;
-
-    if (isGameOver) {
-        shouldShowRole = true;
-    } else if (isReplayMode) {
-        // Replay Mode: Use perspective switcher
-        if (perspective === 'GOD') {
-            shouldShowRole = true;
-        } else if (perspective === 'WOLF') {
-            shouldShowRole = player.role === Role.WEREWOLF;
-        } else {
-            shouldShowRole = player.isHuman || false;
-        }
-    } else if (humanPlayer) {
-        // Live Game with Human: Only show what the human knows
-        if (player.id === humanPlayer.id) {
-            shouldShowRole = true;
-        } else if (humanPlayer.role === Role.WEREWOLF && player.role === Role.WEREWOLF) {
-            shouldShowRole = true;
-        } else {
-            shouldShowRole = false;
-        }
-    } else {
-        // Live Game (Pure AI): Show everything if configured
-        shouldShowRole = showRolesGlobal;
+    // Role Visibility Logic
+    let shouldShowRole = showRolesGlobal;
+    if (!shouldShowRole && humanPlayer) {
+        if (player.id === humanPlayer.id) shouldShowRole = true;
+        else if (humanPlayer.role === Role.WEREWOLF && player.role === Role.WEREWOLF) shouldShowRole = true;
     }
 
-    // Display Logic
-    const displayLabel = shouldShowRole ? ROLE_INFO[player.role].label : null;
+    const displayLabel = shouldShowRole ? ROLE_INFO[player.role].label : "";
     const displayColor = shouldShowRole ? ROLE_INFO[player.role].color : "";
 
     // Highlight wolves during action ONLY if visible
@@ -102,14 +91,21 @@ const PlayerCard: React.FC<PlayerCardProps> = ({ seat, isTop }) => {
 
     return (
         <div
+            onClick={() => {
+                if (canSelectThisPlayer) {
+                    setSelectedTargetId(selectedTargetId === player.id ? null : player.id);
+                }
+            }}
             className={clsx(
-                "flex flex-col items-center justify-start transition-all duration-500 relative group shrink-0", // Added shrink-0 to prevent squeezing
-                isPortrait ? "mx-0" : "mx-0.5 md:mx-1.5 lg:mx-3", // Normal margins in portrait
+                "flex flex-col items-center justify-start transition-all duration-500 relative group shrink-0",
+                isPortrait ? "mx-0" : "mx-0.5 md:mx-1.5 lg:mx-3",
                 animationClass,
                 isDead ? "grayscale opacity-60" : "cursor-pointer",
-                isSpeaking
-                    ? (isPortrait ? "z-30 scale-[1.02]" : "z-30 scale-105 sm:scale-110") // Revert: Subtle scale for portrait
-                    : "hover:scale-105 z-10",
+                isSelected
+                    ? "z-30 scale-105"
+                    : isSpeaking
+                        ? (isPortrait ? "z-30 scale-[1.02]" : "z-30 scale-105 sm:scale-110")
+                        : (canSelectThisPlayer ? "hover:scale-105 z-20" : "hover:scale-105 z-10"),
                 isTop ? "origin-top" : "origin-bottom"
             )}
             style={{
@@ -120,15 +116,25 @@ const PlayerCard: React.FC<PlayerCardProps> = ({ seat, isTop }) => {
             {/* Avatar Circle */}
             <div className={clsx(
                 "relative rounded-full shadow-lg overflow-visible transition-all duration-300 bg-slate-200",
-                // Responsive Sizing: Use fixed small sizes for Portrait, otherwise responsive
                 isPortrait
-                    ? "w-14 h-14 text-3xl" // Portrait: Fixed 56px, base font size
-                    : "w-12 h-12 sm:w-16 sm:h-16 md:w-20 md:h-20 lg:w-24 lg:h-24", // Desktop: Responsive
-                // Replace thick border with ring/shadow
-                isSpeaking ? "ring-2 ring-amber-400 shadow-[0_0_20px_rgba(251,191,36,0.6)]" :
-                    showWolfBorder ? "ring-2 ring-red-500 shadow-[0_0_20px_rgba(239,68,68,0.6)]" :
-                        "ring-2 ring-slate-100/50 shadow-md"
+                    ? "w-14 h-14 text-3xl"
+                    : "w-12 h-12 sm:w-16 sm:h-16 md:w-20 md:h-20 lg:w-24 lg:h-24",
+                isSelected
+                    ? "ring-4 ring-indigo-500 shadow-[0_0_25px_rgba(99,102,241,0.85)]"
+                    : isSpeaking
+                        ? "ring-2 ring-amber-400 shadow-[0_0_20px_rgba(251,191,36,0.6)]"
+                        : showWolfBorder
+                            ? "ring-2 ring-red-500 shadow-[0_0_20px_rgba(239,68,68,0.6)]"
+                            : canSelectThisPlayer
+                                ? "ring-2 ring-indigo-300/60 hover:ring-indigo-400 hover:shadow-indigo-300 shadow-sm"
+                                : "ring-2 ring-slate-100/50 shadow-md"
             )}>
+                {/* Target Selected Badge */}
+                {isSelected && (
+                    <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-gradient-to-r from-indigo-600 to-blue-600 text-white text-[9px] sm:text-[10px] font-black px-2 py-0.5 rounded-full shadow-md z-50 border border-indigo-200 whitespace-nowrap animate-pulse">
+                        已选目标 ✓
+                    </div>
+                )}
                 {/* Image Container (Inner clip) */}
                 <div className="w-full h-full rounded-full overflow-hidden relative bg-slate-300 isolate">
                     {!imgLoaded && (

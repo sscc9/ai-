@@ -1,22 +1,26 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useAtomValue, useSetAtom } from 'jotai';
+import { useAtom, useAtomValue, useSetAtom } from 'jotai';
 import { clsx } from 'clsx';
 import {
     playersAtom,
     currentSpeakerIdAtom,
     gamePhaseAtom,
+    godStateAtom,
+    speakingQueueAtom,
     userInputAtom,
     isPortraitModeAtom,
-    godStateAtom,
     isReplayModeAtom,
     isTheaterModeAtom,
-    speakingQueueAtom,
-    isDaytimeAtom
+    isDaytimeAtom,
+    selectedTargetIdAtom
 } from '../store';
+import { PlayerStatus, Role, GamePhase } from '../types';
 
-import { GamePhase, PlayerStatus } from '../types';
+interface HumanInputPanelProps {
+    className?: string;
+}
 
-const HumanInputPanel = () => {
+const HumanInputPanel: React.FC<HumanInputPanelProps> = ({ className }) => {
     const players = useAtomValue(playersAtom);
     const currentSpeakerId = useAtomValue(currentSpeakerIdAtom);
     const phase = useAtomValue(gamePhaseAtom);
@@ -33,7 +37,7 @@ const HumanInputPanel = () => {
     const isMobile = typeof window !== 'undefined' ? /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent) : false;
 
     const [text, setText] = useState('');
-    const [targetId, setTargetId] = useState<number | null>(null);
+    const [targetId, setTargetId] = useAtom(selectedTargetIdAtom);
     const [isListening, setIsListening] = useState(false);
     const [isCollapsed, setIsCollapsed] = useState(false);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -398,87 +402,89 @@ const HumanInputPanel = () => {
                                 )}
 
                                 {/* Target input and Submit controls */}
-                                <div className="flex flex-row items-center gap-2 shrink-0 justify-between sm:justify-end w-full sm:w-auto sm:self-center">
+                                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 shrink-0 justify-between w-full">
                                     {needsTarget && (
-                                        <div className={clsx(
-                                            "flex items-center gap-1.5 border px-2.5 py-1.5 rounded-xl shadow-sm justify-start",
-                                            isDay ? "bg-slate-50 border-slate-200" : "bg-slate-800/40 border-slate-750"
-                                        )}>
-                                            <div className="flex items-center gap-1.5">
-                                                <span className={clsx("text-xs font-bold whitespace-nowrap", isDay ? "text-slate-600" : "text-slate-400")}>
-                                                    目标号码:
-                                                </span>
-                                                <input
-                                                    type="number"
-                                                    min="1"
-                                                    max="15"
-                                                    value={targetId === null ? '' : (targetId === 0 ? '' : targetId)}
-                                                    onChange={(e) => {
-                                                        const val = e.target.value;
-                                                        if (val === '') {
-                                                            setTargetId(null);
-                                                        } else {
-                                                            setTargetId(parseInt(val));
-                                                        }
-                                                    }}
-                                                    placeholder="输入"
+                                        <div className="flex flex-wrap items-center gap-1.5 py-1">
+                                            <span className={clsx("text-xs font-bold shrink-0 mr-1", isDay ? "text-slate-600" : "text-slate-400")}>
+                                                {isVoting ? "选择投票目标:" : "选择行动目标:"}
+                                            </span>
+                                            {targetCandidates.map(p => (
+                                                <button
+                                                    key={p.id}
+                                                    type="button"
+                                                    onClick={() => setTargetId(targetId === p.id ? null : p.id)}
                                                     className={clsx(
-                                                        "w-11 py-0.5 text-center text-xs font-bold border rounded-lg focus:outline-none focus:ring-1 focus:ring-indigo-500",
-                                                        isDay ? "bg-white border-slate-300 text-slate-850" : "bg-slate-900 border-slate-700 text-slate-100"
+                                                        "px-3 py-1.5 rounded-xl text-xs font-bold transition-all border shadow-sm active:scale-95 flex items-center gap-1 cursor-pointer",
+                                                        targetId === p.id
+                                                            ? "bg-indigo-600 text-white border-indigo-600 ring-2 ring-indigo-400/50 shadow-indigo-300"
+                                                            : isDay
+                                                                ? "bg-white text-slate-700 border-slate-200 hover:bg-slate-100 hover:border-indigo-200"
+                                                                : "bg-slate-800 text-slate-200 border-slate-700 hover:bg-slate-750 hover:border-indigo-400"
                                                     )}
-                                                />
-                                                <span className={clsx("text-xs font-bold mr-1.5", isDay ? "text-slate-600" : "text-slate-400")}>号</span>
-                                            </div>
-
-                                            {/* Quick special action shortcuts */}
-                                            <div className="flex gap-1 border-l pl-2 border-slate-200/60 dark:border-slate-700/60">
-                                                {phase === GamePhase.WITCH_ACTION && (
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => setTargetId(targetId === 0 ? null : 0)}
-                                                        className={clsx(
-                                                            "px-2 py-0.5 rounded text-[10px] font-bold border transition-colors",
-                                                            targetId === 0
-                                                                ? "bg-emerald-600 border-emerald-600 text-white"
-                                                                : (isDay ? "bg-white border-slate-200 text-slate-600 hover:bg-slate-100" : "bg-slate-900 border-slate-700 text-slate-300 hover:bg-slate-800")
-                                                        )}
-                                                    >
-                                                        救人
-                                                    </button>
-                                                )}
-                                                {phase === GamePhase.SHERIFF_TRANS && (
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => setTargetId(null)}
-                                                        className={clsx(
-                                                            "px-2 py-0.5 rounded text-[10px] font-bold border transition-colors",
-                                                            targetId === null
-                                                                ? "bg-red-650 border-red-650 text-white"
-                                                                : (isDay ? "bg-white border-slate-200 text-slate-600 hover:bg-slate-100" : "bg-slate-900 border-slate-700 text-slate-300 hover:bg-slate-800")
-                                                        )}
-                                                    >
-                                                        撕警徽
-                                                    </button>
-                                                )}
-                                                {phase !== GamePhase.SHERIFF_TRANS && (
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => setTargetId(null)}
-                                                        className={clsx(
-                                                            "px-2 py-0.5 rounded text-[10px] font-bold border transition-colors",
-                                                            targetId === null
-                                                                ? "bg-slate-700 border-slate-700 text-white"
-                                                                : (isDay ? "bg-white border-slate-200 text-slate-600 hover:bg-slate-100" : "bg-slate-900 border-slate-700 text-slate-300 hover:bg-slate-800")
-                                                        )}
-                                                    >
-                                                        {isVoting ? "弃票" : "不操作"}
-                                                    </button>
-                                                )}
-                                            </div>
+                                                >
+                                                    <span>{p.id}号</span>
+                                                    {targetId === p.id && <span className="text-emerald-300 font-black">✓</span>}
+                                                </button>
+                                            ))}
+                                            {phase === GamePhase.WITCH_ACTION && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setTargetId(targetId === 0 ? null : 0)}
+                                                    className={clsx(
+                                                        "px-3 py-1.5 rounded-xl text-xs font-bold border transition-all active:scale-95 cursor-pointer",
+                                                        targetId === 0
+                                                            ? "bg-emerald-600 text-white border-emerald-600 ring-2 ring-emerald-400/50"
+                                                            : isDay ? "bg-white text-emerald-700 border-emerald-200 hover:bg-emerald-50" : "bg-slate-800 text-emerald-400 border-emerald-900/50 hover:bg-slate-750"
+                                                    )}
+                                                >
+                                                    🧪 救人 {targetId === 0 && '✓'}
+                                                </button>
+                                            )}
+                                            {phase === GamePhase.SHERIFF_TRANS && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setTargetId(null)}
+                                                    className={clsx(
+                                                        "px-3 py-1.5 rounded-xl text-xs font-bold border transition-all active:scale-95 cursor-pointer",
+                                                        targetId === null
+                                                            ? "bg-red-600 text-white border-red-600 ring-2 ring-red-400/50"
+                                                            : isDay ? "bg-white text-red-600 border-red-200 hover:bg-red-50" : "bg-slate-800 text-red-400 border-red-900/50 hover:bg-slate-750"
+                                                    )}
+                                                >
+                                                    撕警徽 {targetId === null && '✓'}
+                                                </button>
+                                            )}
+                                            {phase !== GamePhase.SHERIFF_TRANS && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setTargetId(null)}
+                                                    className={clsx(
+                                                        "px-3 py-1.5 rounded-xl text-xs font-bold border transition-all active:scale-95 cursor-pointer",
+                                                        targetId === null
+                                                            ? "bg-amber-600 text-white border-amber-600 ring-2 ring-amber-400/50"
+                                                            : isDay ? "bg-white text-slate-500 border-slate-200 hover:bg-slate-100" : "bg-slate-800 text-slate-400 border-slate-700 hover:bg-slate-750"
+                                                    )}
+                                                >
+                                                    {isVoting ? "弃票" : "不操作"} {targetId === null && '✓'}
+                                                </button>
+                                            )}
                                         </div>
                                     )}
 
-                                    <div className="flex gap-2 items-center shrink-0 ml-auto sm:ml-0">
+                                    <div className="flex gap-2 items-center shrink-0 ml-auto justify-end">
+                                        {needsTarget && (
+                                            <div className={clsx(
+                                                "px-3 py-1.5 rounded-xl text-xs font-bold border flex items-center gap-1 shrink-0",
+                                                targetId !== null
+                                                    ? "bg-indigo-50 border-indigo-200 text-indigo-700 dark:bg-indigo-950/40 dark:border-indigo-800 dark:text-indigo-300"
+                                                    : "bg-slate-100 border-slate-200 text-slate-600 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-300"
+                                            )}>
+                                                <span className="opacity-70">已选:</span>
+                                                <span className="font-extrabold text-indigo-600 dark:text-indigo-400">
+                                                    {targetId === 0 ? "救人" : (targetId === null ? (isVoting ? "弃票" : "不操作") : `${targetId}号`)}
+                                                </span>
+                                            </div>
+                                        )}
                                         {isCandidateSpeaking && (
                                             <button
                                                 onClick={handleQuitCampaign}
@@ -496,7 +502,7 @@ const HumanInputPanel = () => {
                                             onClick={handleSubmit}
                                             disabled={needsTarget && targetId !== null && !targetCandidates.some(p => p.id === targetId) && !(phase === GamePhase.WITCH_ACTION && targetId === 0)}
                                             className={clsx(
-                                                "px-4 py-2 bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 text-white rounded-xl font-bold text-xs shadow-sm transition-all active:scale-[0.97]",
+                                                "px-4 py-2 bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 text-white rounded-xl font-bold text-xs shadow-sm transition-all active:scale-[0.97] cursor-pointer",
                                                 "disabled:from-slate-400 disabled:to-slate-400 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none"
                                             )}
                                         >

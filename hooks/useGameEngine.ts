@@ -205,7 +205,13 @@ export const useGameEngine = () => {
                 setSpeaker(player.id);
                 const result = await waitForHumanInput();
                 setSpeaker(null);
-                return result?.actionTarget && validTargets.includes(result.actionTarget) ? result.actionTarget : null;
+                const chosen = result?.actionTarget && validTargets.includes(result.actionTarget) ? result.actionTarget : null;
+                if (chosen) {
+                    await addSystemLog(`[你的决定] 你已投票给 ${chosen}号 玩家。`, [player.id]);
+                } else {
+                    await addSystemLog(`[你的决定] 你选择了弃票。`, [player.id]);
+                }
+                return chosen;
             }
 
             const currentTurnLogs = logs.filter(l => l.turn <= turnCount && (!l.visibleTo || l.visibleTo.includes(player.id)));
@@ -1009,20 +1015,15 @@ export const useGameEngine = () => {
                         const human = alive.find(p => p.isHuman);
 
                         if (godState.sheriffCandidates === undefined) {
-                            // --- Check human decision first (avoid wasting LLM calls if waiting) ---
-                            let humanDecided = false;
+                            // --- Check human decision first with proper async wait to avoid looping ---
                             let humanRun = false;
                             if (human) {
-                                if (userInputRef.current) {
-                                    humanDecided = true;
-                                    humanRun = !!userInputRef.current.runForSheriff;
-                                    setUserInput(null);
-                                } else {
-                                    await addSystemLog("天亮了。第一天上午，开始竞选警长！请选择是否上警参选...");
-                                    setSpeaker(human.id);
-                                    saveSnapshot();
-                                    return; // Pause and wait for human input
-                                }
+                                await addSystemLog("天亮了。第一天上午，开始竞选警长！请选择是否上警参选...");
+                                setSpeaker(human.id);
+                                saveSnapshot();
+                                const input = await waitForHumanInput();
+                                setSpeaker(null);
+                                humanRun = !!input?.runForSheriff;
                             }
 
                             // --- AI Sheriff Decision: Use LLM to decide based on night memory ---
@@ -1071,7 +1072,7 @@ export const useGameEngine = () => {
                             let candidates: number[] = [];
                             aiDecisions.forEach(d => { if (d.run) candidates.push(d.id); });
 
-                            if (human && humanDecided && humanRun) {
+                            if (human && humanRun) {
                                 candidates.push(human.id);
                             }
 
@@ -1158,7 +1159,8 @@ export const useGameEngine = () => {
                     try {
                         const alive = players.filter(p => p.status === PlayerStatus.ALIVE);
                         const candidates = godState.sheriffCandidates?.filter(c => !godState.sheriffQuitters?.includes(c)) || [];
-                        const voters = alive.filter(p => !godState.sheriffCandidates?.includes(p.id));
+                        // 仍在候选名单上的玩家无投票权；未上警或已退水的玩家均回到警下，拥有投票权
+                        const voters = alive.filter(p => !candidates.includes(p.id));
 
                         if (candidates.length === 0) {
                             await addSystemLog("所有候选人均已退水，警徽流失。");
@@ -1176,11 +1178,17 @@ export const useGameEngine = () => {
                         }
 
                         if (voters.length === 0) {
-                            await addSystemLog("警下无投票玩家（全员参选或退水），警徽流失。");
+                            await addSystemLog("警下无投票玩家（全员参选且无退水），警徽流失。");
                             setGodState(prev => ({ ...prev, sheriffId: null }));
                             setPhase(GamePhase.DAY_ANNOUNCE);
                             saveSnapshot();
                             return;
+                        }
+
+                        // 如果人类玩家在警上作为候选人，明确告知为何不参与本次投票
+                        const humanPlayer = alive.find(p => p.isHuman);
+                        if (humanPlayer && candidates.includes(humanPlayer.id)) {
+                            await addSystemLog("提示: 您正在参与竞选（警上候选人），本轮无投票权，请等待警下玩家投票...", [humanPlayer.id]);
                         }
 
                         await addSystemLog("开始进行警长选举投票，请警下玩家做出决定...");
