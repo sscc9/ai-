@@ -44,15 +44,17 @@ const PlayerCard: React.FC<PlayerCardProps> = ({ seat, isTop }) => {
     // In many phases (Seer, Witch), the speaker/actor should be hidden from those who don't share the perspective.
     const isNightPhase = phase === GamePhase.WEREWOLF_ACTION || phase === GamePhase.SEER_ACTION || phase === GamePhase.WITCH_ACTION || phase === GamePhase.GUARD_ACTION;
     let canSeeSpeaker = true;
-    if (isNightPhase && !showRolesGlobal && perspective !== 'GOD') {
+    if (isNightPhase && !isReplayMode && humanPlayer) {
         if (phase === GamePhase.WEREWOLF_ACTION) {
-            canSeeSpeaker = humanPlayer?.role === Role.WEREWOLF || perspective === 'WOLF';
+            canSeeSpeaker = humanPlayer.role === Role.WEREWOLF;
         } else if (phase === GamePhase.SEER_ACTION) {
-            canSeeSpeaker = humanPlayer?.role === Role.SEER;
+            canSeeSpeaker = humanPlayer.role === Role.SEER;
         } else if (phase === GamePhase.WITCH_ACTION) {
-            canSeeSpeaker = humanPlayer?.role === Role.WITCH;
+            canSeeSpeaker = humanPlayer.role === Role.WITCH;
         } else if (phase === GamePhase.GUARD_ACTION) {
-            canSeeSpeaker = humanPlayer?.role === Role.GUARD;
+            canSeeSpeaker = humanPlayer.role === Role.GUARD;
+        } else {
+            canSeeSpeaker = false; // Hide by default at night if human
         }
     }
 
@@ -73,14 +75,38 @@ const PlayerCard: React.FC<PlayerCardProps> = ({ seat, isTop }) => {
     ].includes(phase);
     const canSelectThisPlayer = isHumanTurn && needsTarget && player.status === PlayerStatus.ALIVE;
 
-    // Role Visibility Logic
-    let shouldShowRole = showRolesGlobal;
-    if (!shouldShowRole && humanPlayer) {
-        if (player.id === humanPlayer.id) shouldShowRole = true;
-        else if (humanPlayer.role === Role.WEREWOLF && player.role === Role.WEREWOLF) shouldShowRole = true;
+    // --- Visibility Logic ---
+    let shouldShowRole = false;
+
+    // Check if game is over (Review Mode) - Always reveal
+    const isGameOver = phase === GamePhase.GAME_REVIEW || phase === GamePhase.GAME_OVER;
+
+    if (isGameOver) {
+        shouldShowRole = true;
+    } else if (isReplayMode) {
+        // Replay Mode: Use perspective switcher
+        if (perspective === 'GOD') {
+            shouldShowRole = true;
+        } else if (perspective === 'WOLF') {
+            shouldShowRole = player.role === Role.WEREWOLF;
+        } else {
+            shouldShowRole = player.isHuman || false;
+        }
+    } else if (humanPlayer) {
+        // Live Game with Human: Only show what the human knows
+        if (player.id === humanPlayer.id) {
+            shouldShowRole = true;
+        } else if (humanPlayer.role === Role.WEREWOLF && player.role === Role.WEREWOLF) {
+            shouldShowRole = true;
+        } else {
+            shouldShowRole = false;
+        }
+    } else {
+        // Live Game (Pure AI): Show everything if configured
+        shouldShowRole = showRolesGlobal;
     }
 
-    const displayLabel = shouldShowRole ? ROLE_INFO[player.role].label : "";
+    const displayLabel = shouldShowRole ? ROLE_INFO[player.role].label : null;
     const displayColor = shouldShowRole ? ROLE_INFO[player.role].color : "";
 
     // Highlight wolves during action ONLY if visible
