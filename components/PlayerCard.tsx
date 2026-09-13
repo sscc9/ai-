@@ -62,8 +62,7 @@ const PlayerCard: React.FC<PlayerCardProps> = ({ seat, isTop }) => {
 
     // Target Selection Interaction
     const isHumanTurn = humanPlayer && currentSpeakerId === humanPlayer.id;
-    const isSelected = selectedTargetId === player.id;
-    const needsTarget = [
+    const isSelectingPhase = [
         GamePhase.VOTING,
         GamePhase.WEREWOLF_ACTION,
         GamePhase.SEER_ACTION,
@@ -73,7 +72,9 @@ const PlayerCard: React.FC<PlayerCardProps> = ({ seat, isTop }) => {
         GamePhase.SHERIFF_VOTE,
         GamePhase.SHERIFF_TRANS
     ].includes(phase);
-    const canSelectThisPlayer = isHumanTurn && needsTarget && player.status === PlayerStatus.ALIVE;
+    // 仅在当前处于目标选择/投票阶段时显示选中，投票结果产生或进入其他阶段后自动消失
+    const isSelected = isSelectingPhase && selectedTargetId === player.id;
+    const canSelectThisPlayer = isHumanTurn && isSelectingPhase && player.status === PlayerStatus.ALIVE;
 
     // --- Visibility Logic ---
     let shouldShowRole = false;
@@ -157,8 +158,8 @@ const PlayerCard: React.FC<PlayerCardProps> = ({ seat, isTop }) => {
             )}>
                 {/* Target Selected Badge */}
                 {isSelected && (
-                    <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-gradient-to-r from-indigo-600 to-blue-600 text-white text-[9px] sm:text-[10px] font-black px-2 py-0.5 rounded-full shadow-md z-50 border border-indigo-200 whitespace-nowrap animate-pulse">
-                        已选目标 ✓
+                    <div className="absolute -top-2.5 left-1/2 -translate-x-1/2 bg-gradient-to-r from-indigo-600 to-blue-600 text-white text-[9px] font-bold px-2 py-0.5 rounded-full shadow-md z-50 border border-indigo-200 whitespace-nowrap flex items-center gap-0.5 animate-pulse">
+                        <span>✓ 已选</span>
                     </div>
                 )}
                 {/* Image Container (Inner clip) */}

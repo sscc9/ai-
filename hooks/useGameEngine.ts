@@ -28,7 +28,8 @@ import {
     areRolesVisibleAtom,
     userInputAtom,
     enabledCustomPromptsAtom,
-    customRolePromptsAtom
+    customRolePromptsAtom,
+    selectedTargetIdAtom
 } from '../atoms';
 import { GamePhase, ROLE_INFO, PlayerStatus, PHASE_LABELS, Role, Player, GOD_ROLES, VILLAGER_ROLES } from '../types';
 import { AudioService } from '../audio';
@@ -45,6 +46,7 @@ export const useGameEngine = () => {
     const [isAuto, setIsAuto] = useAtom(isAutoPlayAtom);
     const [isProcessing, setIsProcessing] = useAtom(isProcessingAtom);
     const setSpeaker = useSetAtom(currentSpeakerIdAtom);
+    const setSelectedTargetId = useSetAtom(selectedTargetIdAtom);
     const saveSnapshot = useSetAtom(saveSnapshotAtom);
     const [godState, setGodState] = useAtom(godStateAtom);
     const [speakingQueue, setSpeakingQueue] = useAtom(speakingQueueAtom);
@@ -885,6 +887,7 @@ export const useGameEngine = () => {
                             voter: p.id,
                             target: await getAiVote(p, validTargets, GamePhase.VOTING)
                         })));
+                        setSelectedTargetId(null); // 投票统计完毕，清除目标选中状态标志
 
                         // Count votes for logic, Sheriff vote counts as 1.5
                         results.forEach(({ voter, target }) => {
@@ -1208,6 +1211,7 @@ export const useGameEngine = () => {
                             voter: p.id,
                             target: await getAiVote(p, candidates, GamePhase.SHERIFF_VOTE)
                         })));
+                        setSelectedTargetId(null); // 警长投票统计完毕，清除目标选中状态标志
 
                         const votes: Record<number, number> = {};
                         results.forEach(({ voter, target }) => { if (target) votes[target] = (votes[target] || 0) + 1; });
