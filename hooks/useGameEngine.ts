@@ -190,10 +190,14 @@ export const useGameEngine = () => {
 
     // --- Human Input Waiter ---
     const waitForHumanInput = useCallback(async () => {
+        // 同步清除先前的残留输入，确保本次等待纯净
+        userInputRef.current = null;
+        setUserInput(null);
         while (!userInputRef.current) {
-            await new Promise(r => setTimeout(r, 500));
+            await new Promise(r => setTimeout(r, 200));
         }
         const input = userInputRef.current;
+        userInputRef.current = null;
         setUserInput(null);
         return input;
     }, [setUserInput]);
@@ -1024,6 +1028,11 @@ export const useGameEngine = () => {
                                 const input = await waitForHumanInput();
                                 setSpeaker(null);
                                 humanRun = !!input?.runForSheriff;
+                                if (humanRun) {
+                                    await addSystemLog(`[你的决定] 你选择上警参与警长竞选。`, [human.id]);
+                                } else {
+                                    await addSystemLog(`[你的决定] 你选择留在警下，不参与竞选。`, [human.id]);
+                                }
                             }
 
                             // --- AI Sheriff Decision: Use LLM to decide based on night memory ---
