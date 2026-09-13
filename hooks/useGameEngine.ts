@@ -303,17 +303,17 @@ export const useGameEngine = () => {
                 result = parseLLMResponse(responseText || "{}");
 
                 // Parse error feedback retry
-                const isInvalid = !result || !result.thought || (!result.speak && !result.speech);
+                const isInvalid = !result || (!result.speak && !result.speech);
                 if (isInvalid && responseText && !responseText.includes("Error:")) {
                     console.warn(`JSON parsing failed/incomplete for Player ${player.id}, retrying with feedback...`);
                     messages = [
                         ...messages,
                         { role: 'model', content: responseText },
-                        { role: 'user', content: "解析错误：您的输出未能被正确解析为 JSON。请确保您的回复中【仅包含】纯 JSON 对象（不要用 ```json 标记包裹，不要有任何前导或尾随文字，确保没有格式错误，且必须首个输出 thought 字段以进行策略推理）。请重新输出您的 JSON 对象。" }
+                        { role: 'user', content: "解析错误：您的输出未能被正确解析为包含 'speak' 字段的 JSON。请确保您的回复中【仅包含】纯 JSON 对象（如：{ \"speak\": \"发言内容\", \"summary\": \"要点\" }，不要用 markdown 代码块包裹，不要有任何多余文字）。请重新输出您的 JSON 对象。" }
                     ];
                     responseText = await generateText(messages, llm, provider);
                     const retryResult = parseLLMResponse(responseText || "{}");
-                    if (retryResult && retryResult.thought) {
+                    if (retryResult && (retryResult.speak || retryResult.speech)) {
                         result = retryResult;
                     }
                 }
