@@ -245,7 +245,7 @@ const PlayerCard: React.FC<PlayerCardProps> = ({ seat, isTop }) => {
 
                 {/* Sheriff Badge */}
                 {godState.sheriffId === player.id && (
-                    <div className="absolute -right-2 -top-2 bg-gradient-to-r from-amber-400 to-yellow-500 text-white rounded-full w-5.5 h-5.5 sm:w-7 sm:h-7 flex items-center justify-center shadow-lg shadow-amber-200 border-2 border-amber-100 z-40 text-[10px] sm:text-xs font-black animate-pulse" title="警长">
+                    <div className="absolute -right-2 -top-2 bg-gradient-to-r from-amber-400 to-yellow-500 text-white rounded-full w-5.5 h-5.5 sm:w-7 sm:h-7 flex items-center justify-center shadow-lg shadow-amber-200 border-2 border-amber-100 z-40 text-[10px] sm:text-xs font-black" title="警长">
                         👑
                     </div>
                 )}
