@@ -5,7 +5,7 @@ const SYSTEM_PROMPT = `你是一位顶尖的线上狼人杀竞技选手。
 
 ## 唯一核心目标
 - **好人阵营**：唯一目标是【探求事实真相，排查并放逐所有狼人】。
-- **狼人阵营**：最高收益是【深水潜伏与分化好人】。白天必须伪装成不知情的好人视角，**严禁全员抱团死保队友暴露关系网**！必须分散站队、倒钩潜伏甚至适度踩队友做身份。
+- **狼人阵营**：唯一胜利条件是【消灭所有村民 或 消灭所有神职】。为了最终胜利，队友在必要时完全可以牺牲。个人与队友的存亡都是次要的，屠边胜利是唯一的终点。
 
 ## 高阶竞技思维（真相推演体系）
 1. **假设推演与阵营收益分析（Payoff & Motive）**：
@@ -349,22 +349,18 @@ ${privateMemory || "无"}
                 };
             }
 
-            // Wolf Special Vision & Stealth Task Hint
+            // Wolf Special Vision
             let wolfInfo = "";
-            let wolfTaskHint = "";
-            if (player.role === Role.WEREWOLF) {
-                if (godState?.wolfTarget) {
-                    const target = players.find(p => p.id === godState.wolfTarget);
-                    wolfInfo = `[狼人视角私密信息] 昨晚你们袭击了 ${godState.wolfTarget}号。袭击结果: ${target?.status === PlayerStatus.ALIVE ? '被救活（平安夜）' : '已死亡'}。`;
-                }
-                wolfTaskHint = `\n- **狼人潜伏铁律**：白天必须彻底代入好人视角。**严禁抱团死保狼队友**（否则直接暴露全队）！狼队必须分散站队（可倒钩站边真预言家、深水潜伏甚至踩队友做身份），向全场伪造一份合乎常理的假狼坑。`;
+            if (player.role === Role.WEREWOLF && godState?.wolfTarget) {
+                const target = players.find(p => p.id === godState.wolfTarget);
+                wolfInfo = `[狼人视角私密信息] 昨晚你们袭击了 ${godState.wolfTarget}号。袭击结果: ${target?.status === PlayerStatus.ALIVE ? '被救活（平安夜）' : '已死亡'}。`;
             }
 
             return {
                 task: `进行白天发言。${wolfInfo} ${instruction || "请开始你的发言。"}`,
                 constraints: `- **核心任务**：
   1. **博弈收益与站边推演**：从阵营收益与行为动机出发说明你站边的逻辑（谁的做法符合好人/狼人利益），并正面回应前人的事实证据。
-  2. **明确狼坑闭环**：向全场清晰交代你认定的完整狼坑名单（如9人局排出3狼组合）。${wolfTaskHint}
+  2. **明确狼坑闭环**：向全场清晰交代你认定的完整狼坑名单（如9人局排出3狼组合）。
 - **自然说话**：必须像真人玩家一样交流，**严禁在发言中出现“双世界推演”、“置信度”等术语字样**。
 - 格式: { "speak": "你的公开演讲/发言内容（控制在300字以内）", "summary": "15字以内的发言核心要点" }
 - 示例: { "speak": "从收益上看，昨晚狼人根本没有动机去刀一个无信息的4号，除非4号是被真预言家验出的金水。5号声称4号是查杀完全违背夜间刀口收益，显然5号是悍跳狼。我目前的狼坑锁定在5号、以及为他冲锋的8号和9号。", "summary": "从收益矛盾揭露5号并排狼坑" }`
