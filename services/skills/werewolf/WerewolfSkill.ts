@@ -292,7 +292,7 @@ ${privateMemory || "无"}
                 task: `投票放逐一名玩家。可选目标：[${targets}]。`,
                 constraints: `- 输出 JSON 格式。
 - 格式: { "speak": "投票理由（白天公开宣布）", "actionTarget": 投票目标玩家号码(数字) }
-- 示例: { "speak": "我这一票投给4号，认为他发言不好。", "actionTarget": 4 }`
+- 示例: { "speak": "我这一票投给5号，他的查验和夜间死伤事实严重冲突，标狼出局。", "actionTarget": 5 }`
             };
         }
 
@@ -304,7 +304,7 @@ ${privateMemory || "无"}
                     task: "你目前正在竞选警长。你的核心目标是**让其他玩家相信你、信任你**，从而把警长票投给你。注意：别人不会因为你说了什么身份就自动相信你，你需要用逻辑和证据主动说服他们。你也可以选择“退水”退出竞选。",
                     constraints: `- 输出 JSON 格式。
 - 格式: { "speak": "竞选演讲内容", "quitCampaign": 是否退水(退出竞选)(布尔值，true或false), "summary": "15字以内的发言核心要诀" }
-- 示例: { "speak": "我是预言家，警徽交给我带领发言。", "quitCampaign": false, "summary": "预言家起跳拿警徽" }`
+- 示例: { "speak": "我起跳为好人争夺警徽并提供逻辑视角，大家跟着事实走。", "quitCampaign": false, "summary": "起跳竞选警长" }`
                 };
             } else {
                 return {
