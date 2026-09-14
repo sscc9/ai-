@@ -231,6 +231,7 @@ export interface GameConfig {
     phasePrompts: Record<string, string>;
     rolePrompts: Record<string, string>;
     globalAiInstructions: string;
+    hasSheriff?: boolean;
 }
 
 // Agent Chat Types

@@ -2,13 +2,14 @@
 import React, { useState, useEffect } from 'react';
 import { useSetAtom, useAtom } from 'jotai';
 import { clsx } from 'clsx';
-import { initGameAtom, appScreenAtom, isHumanModeAtom } from '../store';
+import { initGameAtom, appScreenAtom, isHumanModeAtom, hasSheriffAtom } from '../store';
 
 const HomeView = () => {
     const initGame = useSetAtom(initGameAtom);
     const setScreen = useSetAtom(appScreenAtom);
     const [selectedMode, setSelectedMode] = useState<9 | 12>(9);
     const [isHumanMode, setIsHumanMode] = useAtom(isHumanModeAtom);
+    const [hasSheriff, setHasSheriff] = useAtom(hasSheriffAtom);
 
     // Detect fullscreen mode to fix mobile scrolling issue
     const [isFullscreen, setIsFullscreen] = useState(false);
@@ -156,6 +157,33 @@ const HomeView = () => {
                             className={clsx(
                                 "pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out",
                                 isHumanMode ? 'translate-x-5' : 'translate-x-0'
+                            )}
+                        />
+                    </div>
+                </div>
+
+                {/* Sheriff Mode Toggle */}
+                <div className="w-full flex items-center justify-between p-4 bg-white/60 backdrop-blur-sm border border-slate-200 rounded-2xl shadow-sm">
+                    <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-xl flex items-center justify-center bg-amber-50 flex-shrink-0">
+                            <span className="text-lg">👑</span>
+                        </div>
+                        <div>
+                            <span className="text-sm font-bold text-slate-800 block">警长竞选功能</span>
+                            <span className="text-[10px] text-slate-400 font-medium">开启后首日竞选警长，拥有1.5票权与归票权</span>
+                        </div>
+                    </div>
+                    <div
+                        onClick={() => setHasSheriff(!hasSheriff)}
+                        className={clsx(
+                            "relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none",
+                            hasSheriff ? 'bg-amber-500' : 'bg-slate-300'
+                        )}
+                    >
+                        <span
+                            className={clsx(
+                                "pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out",
+                                hasSheriff ? 'translate-x-5' : 'translate-x-0'
                             )}
                         />
                     </div>

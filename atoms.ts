@@ -30,7 +30,8 @@ export const gameConfigAtom = atom<GameConfig>({
     roles: PRESETS[9].roles,
     phasePrompts: { ...DEFAULT_PHASE_PROMPTS },
     rolePrompts: { ...DEFAULT_ROLE_PROMPTS },
-    globalAiInstructions: "你正在参与一场高水平的狼人杀对局。请使用简短、口语化的中文发言。不要复述规则，直接表达观点。逻辑要清晰，符合你的身份视角。"
+    globalAiInstructions: "你正在参与一场高水平的狼人杀对局。请使用简短、口语化的中文发言。不要复述规则，直接表达观点。逻辑要清晰，符合你的身份视角。",
+    hasSheriff: false
 });
 
 const defaultLlmProviders: LLMProviderConfig[] = [
@@ -96,6 +97,7 @@ export const areRolesVisibleAtom = atom<boolean>(true);
 export const replayPerspectiveAtom = atom<Perspective>('GOOD');
 
 export const isHumanModeAtom = atom<boolean>(false);
+export const hasSheriffAtom = atomWithStorage<boolean>('werewolf-hasSheriff', false);
 export const humanPlayerSeatAtom = atom<number>(1);
 export const userInputAtom = atom<any>(null) as PrimitiveAtom<any>;
 export const selectedTargetIdAtom = atom<number | null>(null) as PrimitiveAtom<number | null>;

@@ -7,7 +7,8 @@ import {
     timelineAtom, replaySourceLogsAtom, isReplayModeAtom, areRolesVisibleAtom,
     gameArchivesAtom, isProcessingAtom, agentMessagesAtom,
     llmPresetsAtom, ttsPresetsAtom,
-    isHumanModeAtom, humanPlayerSeatAtom, userInputAtom
+    isHumanModeAtom, humanPlayerSeatAtom, userInputAtom,
+    hasSheriffAtom
 } from './atoms';
 
 import {
@@ -59,11 +60,14 @@ export const initGameAtom = atom(null, (get, set, playerCount: 9 | 12) => {
     // Filter out narrator from players pool
     const playerCandidates = allActors.filter(a => a.id !== narratorId);
 
+    const hasSheriff = get(hasSheriffAtom);
+
     // Reset Config
     set(gameConfigAtom, (prev) => ({
         ...prev,
         playerCount: preset.playerCount,
-        roles: preset.roles
+        roles: preset.roles,
+        hasSheriff
     }));
 
     // Shuffle Roles
@@ -117,7 +121,7 @@ export const initGameAtom = atom(null, (get, set, playerCount: 9 | 12) => {
         id: 'sys-init',
         turn: 1,
         phase: GamePhase.NIGHT_START,
-        content: `游戏开始。${playerCount} 人局。\n配置：${preset.roles.map(r => ROLE_INFO[r].label).join(' ')}`,
+        content: `游戏开始。${playerCount} 人局（${hasSheriff ? '有警徽' : '无警徽'}）。\n配置：${preset.roles.map(r => ROLE_INFO[r].label).join(' ')}`,
         timestamp: Date.now(),
         isSystem: true
     }]);

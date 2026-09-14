@@ -187,7 +187,8 @@ export const useGameEngine = () => {
         const villagers = config.roles.filter(r => r === Role.VILLAGER);
         const gods = config.roles.filter(r => GOD_ROLES.includes(r));
         const godNames = gods.map(r => ROLE_INFO[r].label).join('、');
-        return `${count}人局（有警徽）：${wolves.length}狼、${villagers.length}民、${gods.length}神（${godNames}）。`;
+        const hasSheriff = config.hasSheriff ?? false;
+        return `${count}人局（${hasSheriff ? '有警徽' : '无警徽'}）：${wolves.length}狼、${villagers.length}民、${gods.length}神（${godNames}）。`;
     }, [config]);
 
     // --- Human Input Waiter ---
@@ -656,7 +657,8 @@ export const useGameEngine = () => {
                         await new Promise(r => setTimeout(r, 2000));
 
 
-                        if (turnCount === 1) {
+                        const hasSheriff = config.hasSheriff ?? false;
+                        if (turnCount === 1 && hasSheriff) {
                             setPhase(GamePhase.SHERIFF_ELECT);
                         } else {
                             setPhase(GamePhase.DAY_ANNOUNCE);
