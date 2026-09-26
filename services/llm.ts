@@ -85,6 +85,19 @@ export async function generateText(
                 }
             });
 
+            // Log Gemini Context Caching metrics
+            const usage = (response as any).usageMetadata;
+            if (usage) {
+                const cachedTokens = usage.cachedContentTokenCount || 0;
+                const promptTokens = usage.promptTokenCount || 0;
+                if (cachedTokens > 0) {
+                    const hitPercent = promptTokens > 0 ? Math.round((cachedTokens / promptTokens) * 100) : 0;
+                    console.log(`[Gemini Cache] 🎯 命中缓存: ${cachedTokens} / ${promptTokens} tokens (${hitPercent}%) [${preset.modelId}]`);
+                } else {
+                    console.log(`[Gemini Cache] ⚪ 未命中缓存 (输入: ${promptTokens} tokens) [${preset.modelId}]`);
+                }
+            }
+
             return response.text || "";
 
         } else {
@@ -143,6 +156,20 @@ export async function generateText(
             }
 
             const data = await response.json();
+
+            // Log OpenAI/DeepSeek Context Caching metrics
+            const usage = data.usage;
+            if (usage) {
+                const cachedTokens = usage.prompt_cache_hit_tokens ?? usage.cached_tokens ?? 0;
+                const promptTokens = usage.prompt_tokens ?? 0;
+                if (cachedTokens > 0) {
+                    const hitPercent = promptTokens > 0 ? Math.round((cachedTokens / promptTokens) * 100) : 0;
+                    console.log(`[${providerConfig.name} Cache] 🎯 命中缓存: ${cachedTokens} / ${promptTokens} tokens (${hitPercent}%) [${preset.modelId}]`);
+                } else if (usage.prompt_cache_hit_tokens !== undefined || usage.cached_tokens !== undefined) {
+                    console.log(`[${providerConfig.name} Cache] ⚪ 未命中缓存 (输入: ${promptTokens} tokens) [${preset.modelId}]`);
+                }
+            }
+
             return data.choices?.[0]?.message?.content || "";
         }
     };

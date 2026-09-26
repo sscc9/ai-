@@ -20,36 +20,19 @@ const SYSTEM_PROMPT = `你是一位顶尖的线上狼人杀竞技选手。
 4. **自然说话，严禁报菜名**：
    **严禁在公开发言中说出“双世界推演”、“置信度”等概念术语**！这些是你的内在思考逻辑，发言时要像真人高玩一样自然论证（直接说：“如果X是真的，这完全不符合狼人刀人收益；反之他是狼，一切就顺理成章了”）。
 5. **铁证面前凝聚共识**：
-   当有人摆出客观铁证（如刀口矛盾、报验冲突）拆穿假预言家时，好人阵营必须正面认同该事实并跟进共识，合力指认狼人。`.trim();
+   当有人摆出客观铁证（如刀口矛盾、报验冲突）拆穿假预言家时，好人阵营必须正面认同该事实并跟进共识，合力指认狼人。
 
-
-const INSTRUCTION_TEMPLATE = `
-#### 当前游戏状态
-{gameState}
-
-#### 游戏历史与记忆
-{history}
-
-#### 你的身份
-{roleInfo}
-
-#### 当前任务
-{task}
-
-#### 规则与约束
-- 必须严格输出纯 JSON 格式，不要包含任何 markdown 块标记或多余文字。
-- **字数限制**：\`speak\` 字段必须控制在 200 字以内，言之有物，简明扼要。
-{constraints}
-`.trim();
-
-const GAME_RULES = `
+## 基础规则与结算机制
 - 狼人阵营：击杀所有村民 或 所有神职人员。
 - 预言家：每晚可以查验一名玩家的身份（好人或狼人）。
 - 女巫：拥有一瓶解药和一瓶毒药，每种药水每局只能使用一次。
 - 猎人：出局时（被毒杀除外）可以开枪带走一名玩家。
 - 守卫：每晚可以守护一名玩家免受狼人袭击，不能连续两晚守护同一个人。
 - 结算优先级：守卫守护 > 女巫解药救人 > 狼人击杀。（若守卫与女巫同守同救，目标玩家会因“药效冲突”死亡）。
-`.trim();
+
+## 全局输出规范
+- 必须严格输出纯 JSON 格式，不要包含任何 markdown 块标记或多余文字。
+- **字数限制**：\`speak\` 字段必须控制在 200 字以内，言之有物，简明扼要。`.trim();
 
 export class WerewolfSkill implements Skill {
     id = 'werewolf_core';
@@ -57,45 +40,47 @@ export class WerewolfSkill implements Skill {
     description = 'Standard Werewolf game logic and role-playing engine.';
 
     async generatePrompts(player: Player, context: SkillContext, instruction?: string): Promise<{ role: string; content: string }[]> {
-        const { phase, roleConfigStr, alivePlayers = [] } = context;
+        const { roleConfigStr, alivePlayers = [] } = context;
 
-        // 1. Build Game State Section
-        const gameState = this.buildGameState(context, alivePlayers, roleConfigStr);
+        // 1. Build Public Board Config (100% constant across game)
+        const boardConfig = `板子配置: ${roleConfigStr}`;
 
-        // 2. Build History Section
-        const history = this.buildHistory(player, context);
+        // 2. Build Public Transcript (Monotonically appended public logs, 100% shared by all players)
+        const publicTranscript = this.buildPublicTranscript(context);
 
-        // 3. Build Role Info
-        const roleInfo = this.buildRoleInfo(player);
+        // 3. Build Current Game Progress (Phase & Alive Players)
+        const gameProgress = this.buildGameProgress(context, alivePlayers);
 
-        // 4. Determine Task & Constraints
+        // 4. Build Player Role Info & Specific Strategy (Role guidelines)
+        const roleInfo = this.buildRoleInfo(player, context);
+
+        // 5. Build Private Memory (Seer/Witch/Wolf private info)
+        const privateMemory = this.buildPrivateMemory(player, context);
+
+        // 6. Determine Phase Task & Constraints
         const { task, constraints } = this.getPhaseInstruction(player, context, instruction);
 
-        // 5. Assemble User Prompt
-        const userPrompt = INSTRUCTION_TEMPLATE
-            .replace('{gameState}', gameState)
-            .replace('{history}', history)
-            .replace('{roleInfo}', roleInfo)
-            .replace('{task}', task)
-            .replace('{constraints}', constraints);
-
-        let systemPromptContent = SYSTEM_PROMPT;
-        const { enabledCustomPrompts, customRolePrompts } = context;
-        const customVal = enabledCustomPrompts ? customRolePrompts?.[player.role] : null;
-        const rolePrompt = (customVal && customVal.trim()) ? customVal : (DEFAULT_ROLE_PROMPTS[player.role] || '');
-        if (rolePrompt) {
-            systemPromptContent += `\n\n### 你的特殊角色策略与行事准则（核心底牌设定）\n${rolePrompt}`;
-        }
+        // Assemble user prompt in cache-friendly hierarchy:
+        // [Static Board] -> [Public History] -> [Current Progress] -> [Role Guidelines] -> [Private Memory] -> [Task & Constraints]
+        const userPrompt = [
+            `#### 对局板子配置\n${boardConfig}`,
+            `#### 公共对局记录与历史发言\n${publicTranscript}`,
+            `#### 当前局势进度\n${gameProgress}`,
+            `#### 你的身份与底牌设定\n${roleInfo}`,
+            privateMemory ? `#### 你的私有记忆\n${privateMemory}` : '',
+            `#### 当前行动任务\n${task}`,
+            `#### 本阶段指令约束\n${constraints}`
+        ].filter(Boolean).join('\n\n');
 
         return [
-            { role: 'system', content: systemPromptContent },
+            { role: 'system', content: SYSTEM_PROMPT },
             { role: 'user', content: userPrompt }
         ];
     }
 
     // --- Core Builders ---
 
-    private buildGameState(context: SkillContext, alivePlayers: Player[], roleConfigStr: string): string {
+    private buildGameProgress(context: SkillContext, alivePlayers: Player[]): string {
         const { phase, turnCount } = context;
         const aliveList = alivePlayers.map(p => `${p.id}号`).join('、');
 
@@ -113,10 +98,8 @@ export class WerewolfSkill implements Skill {
             const nightLabel = `第${t}晚`;
             const dayLabel = `第${t}天`;
             if (t < turnCount) {
-                // Past turns: both night and day already happened
                 timelineParts.push(nightLabel, dayLabel);
             } else {
-                // Current turn
                 if (isNight) {
                     timelineParts.push(`${nightLabel}(当前)`);
                 } else {
@@ -126,50 +109,47 @@ export class WerewolfSkill implements Skill {
         }
         const timeline = timelineParts.join(' → ');
 
-        return `
-- 时间线: ${timeline}
-- 当前阶段: ${PHASE_LABELS[phase]}
-- 板子配置: ${roleConfigStr}
-- 基础规则:
-${GAME_RULES}
-- 存活玩家: [${aliveList}]
-`.trim();
+        return `- 时间线: ${timeline}\n- 当前阶段: ${PHASE_LABELS[phase]}\n- 存活玩家: [${aliveList}]`;
     }
 
-    private buildHistory(player: Player, context: SkillContext): string {
-        const { logs, turnCount, currentTurnLogs = [] } = context;
+    private buildPublicTranscript(context: SkillContext): string {
+        const { logs, turnCount } = context;
+        // Strictly filter public logs (visible to everyone) up to the current turn
+        const publicLogs = logs.filter(l => !l.visibleTo && l.turn <= turnCount);
 
-        // 1. Current Turn Transcript (Most important)
-        const currentTranscript = currentTurnLogs.length > 0
-            ? currentTurnLogs.map(l => {
-                if (l.isSystem) return `[系统公告]: ${l.content}`;
-                if (l.turn < turnCount) {
-                    let summary = l.summary;
-                    if (!summary) {
-                        if (l.content.length <= 40) {
-                            summary = l.content;
+        if (publicLogs.length === 0) {
+            return "(当前暂无公开记录)";
+        }
+
+        return publicLogs.map(l => {
+            if (l.isSystem) return `[系统公告]: ${l.content}`;
+            if (l.turn < turnCount) {
+                let summary = l.summary;
+                if (!summary) {
+                    if (l.content.length <= 40) {
+                        summary = l.content;
+                    } else {
+                        const keyPattern = /(预言家|女巫|猎人|守卫|狼人|查杀|金水|银水|跳神|跳女巫|跳预言家|跳猎人|跳守卫|警长|警徽)/;
+                        if (keyPattern.test(l.content)) {
+                            summary = l.content.length > 100 ? l.content.slice(0, 100) + '...' : l.content;
                         } else {
-                            const keyPattern = /(预言家|女巫|猎人|守卫|狼人|查杀|金水|银水|跳神|跳女巫|跳预言家|跳猎人|跳守卫|警长|警徽)/;
-                            if (keyPattern.test(l.content)) {
-                                summary = l.content.length > 100 ? l.content.slice(0, 100) + '...' : l.content;
-                            } else {
-                                summary = l.content.slice(0, 30) + '...';
-                            }
+                            summary = l.content.slice(0, 30) + '...';
                         }
                     }
-                    return `[${l.speakerId}号玩家 (发言要点)]: ${summary}`;
                 }
-                return `[${l.speakerId}号玩家]: ${l.content}`;
-            }).join('\n')
-            : "(当前暂无发言记录)";
+                return `[${l.speakerId}号玩家 (发言要点)]: ${summary}`;
+            }
+            return `[${l.speakerId}号玩家]: ${l.content}`;
+        }).join('\n');
+    }
 
-        // 2. Private Memory (for special roles)
+    private buildPrivateMemory(player: Player, context: SkillContext): string {
+        const { logs, turnCount, godState } = context;
         let privateMemory = "";
 
         if (player.role === Role.SEER) {
             const checks = logs.filter(l => l.phase === GamePhase.SEER_ACTION && l.turn < turnCount && l.isSystem && l.visibleTo?.includes(player.id));
             if (checks.length) privateMemory += "\n[你过去的查验记录]:\n" + checks.map(l => l.content).join('\n');
-            // Include seer's own night monologue for continuous memory
             const seerNightLogs = logs.filter(l => l.phase === GamePhase.SEER_ACTION && l.turn <= turnCount && !l.isSystem && l.speakerId === player.id);
             if (seerNightLogs.length) privateMemory += "\n[你查验时的思考记录]:\n" + seerNightLogs.map(l => `第${l.turn}晚: ${l.content}`).join('\n');
         }
@@ -177,17 +157,14 @@ ${GAME_RULES}
         if (player.role === Role.WITCH) {
             const history = logs.filter(l => l.phase === GamePhase.WITCH_ACTION && l.turn < turnCount && l.isSystem && l.visibleTo?.includes(player.id));
             if (history.length) privateMemory += "\n[你过去的使用药水记录]:\n" + history.map(l => l.content).join('\n');
-            // Include witch's own night monologue for continuous memory
             const witchNightLogs = logs.filter(l => l.phase === GamePhase.WITCH_ACTION && l.turn <= turnCount && !l.isSystem && l.speakerId === player.id);
             if (witchNightLogs.length) privateMemory += "\n[你用药时的思考记录]:\n" + witchNightLogs.map(l => `第${l.turn}晚: ${l.content}`).join('\n');
         }
 
         if (player.role === Role.WEREWOLF) {
-            const { godState } = context;
             const wolfSummaries = godState?.wolfNightSummaries || {};
             const history = logs.filter(l => l.phase === GamePhase.WEREWOLF_ACTION && l.turn <= turnCount && !l.isSystem && l.visibleTo?.includes(player.id));
             if (history.length) {
-                // Group by night (turn)
                 const nightMap = new Map<number, typeof history>();
                 history.forEach(l => {
                     if (!nightMap.has(l.turn)) nightMap.set(l.turn, []);
@@ -196,28 +173,28 @@ ${GAME_RULES}
                 const nightLines = Array.from(nightMap.entries())
                     .sort(([a], [b]) => a - b)
                     .map(([turn, nightLogs]) => {
-                        // Use LLM summary if available (generated in background)
                         if (wolfSummaries[turn]) {
                             return `第${turn}晚: ${wolfSummaries[turn]}`;
                         }
-                        // Current night or summary not ready yet: show full text
                         return `第${turn}晚: ${nightLogs.map(l => `${l.speakerId}号:${l.content}`).join('；')}`;
                     });
                 privateMemory += "\n[狼人夜间讨论记忆]:\n" + nightLines.join('\n');
             }
         }
 
-        return `
-### 公共对局记录与发言
-${currentTranscript}
-
-### 你的私有记忆
-${privateMemory || "无"}
-`.trim();
+        return privateMemory.trim();
     }
 
-    private buildRoleInfo(player: Player): string {
-        return `你是 ${player.id}号 玩家。你的角色是：${ROLE_INFO[player.role].label} (${player.role})。`;
+    private buildRoleInfo(player: Player, context: SkillContext): string {
+        const { enabledCustomPrompts, customRolePrompts } = context;
+        const customVal = enabledCustomPrompts ? customRolePrompts?.[player.role] : null;
+        const rolePrompt = (customVal && customVal.trim()) ? customVal : (DEFAULT_ROLE_PROMPTS[player.role] || '');
+
+        let text = `你是 ${player.id}号 玩家。你的角色是：${ROLE_INFO[player.role].label} (${player.role})。`;
+        if (rolePrompt) {
+            text += `\n- **核心底牌准则**：\n${rolePrompt}`;
+        }
+        return text;
     }
 
     private getPhaseInstruction(player: Player, context: SkillContext, instruction?: string): { task: string, constraints: string } {
